@@ -221,6 +221,20 @@ async function run(): Promise<void> {
                 jobFunction: r.job_function,
                 atsId: r.ats_id,
                 site: r.site,
+                // Walk-in fields. The discovery row carries the venue, the drive
+                // window and the contact block; without them a drive arrives
+                // here with no venue, so no DriveDetails row is created and the
+                // listing can never appear in the walk-in feed.
+                venueAddress: r.venue_address ?? undefined,
+                clusterName: r.cluster_name ?? undefined,
+                latitude: r.latitude ?? undefined,
+                longitude: r.longitude ?? undefined,
+                walkinDate: r.walkin_date ?? undefined,
+                walkinTime: r.walkin_time ?? undefined,
+                reportingTime: r.reporting_time ?? undefined,
+                contactPerson: r.contact_person ?? undefined,
+                contactPhone: r.contact_phone ?? undefined,
+                requiredDocs: r.required_docs ?? undefined,
                 _supabaseId: r.id,
             })).filter(j => !processedUrls.has(j.applyLink));
 

@@ -6,6 +6,7 @@ import {
   collectDorkSearches,
   collectWalkinDrives,
   collectVcStartupPortals,
+  collectBoardSearches,
 
   filterAndVerifyJobs,
   saveDiscoveredJobsArtifact,
@@ -95,19 +96,25 @@ async function runSearchEngine() {
     const keywords = options.roles ? await loadRolesFromCdn() : CORE_SEARCH_KEYWORDS;
 
     // Run selected or all channels concurrently
-    const [feedJobs, vcJobs, companyJobs, githubJobs, walkinJobs] = await Promise.all([
+    const [feedJobs, vcJobs, boardJobs, companyJobs, githubJobs, walkinJobs] = await Promise.all([
       (channel === 'all' || channel === 'feeds') ? collectPublicFeeds({ resultsWanted: limit, hoursOld }) : Promise.resolve([]),
-      (channel === 'all' || channel === 'vc' || channel === 'boards') ? collectVcStartupPortals() : Promise.resolve([]),
+      (channel === 'all' || channel === 'vc') ? collectVcStartupPortals() : Promise.resolve([]),
+      // The `boards` channel used to run the VC collector, which made
+      // `--channel boards` and `--channel vc` identical and left
+      // `collectBoardSearches` (Internshala, LinkedIn, HasJob, ...) with no
+      // caller at all. It now runs the board collector it is named for.
+      (channel === 'boards') ? collectBoardSearches(keywords, { resultsPerKeyword: limit, hoursOld }) : Promise.resolve([]),
       (channel === 'all' || channel === 'companies') ? collectDirectCompanyPortals({ resultsWanted: limit, hoursOld }) : Promise.resolve([]),
       (channel === 'all' || channel === 'github') ? collectGitHubHiring({ resultsWanted: limit }) : Promise.resolve([]),
       (channel === 'all' || channel === 'walkin') ? collectWalkinDrives({ resultsWanted: 10, hoursOld }) : Promise.resolve([]),
     ]);
 
-    // Job boards (Internshala, LinkedIn, HasJob, HackerNews, WeWorkRemotely) are
-    // no longer crawled: they only republish employer postings, they cost the
-    // most crawl time, and their links/titles are the polluted ones. Everything
-    // collected below comes from direct employer/ATS pages.
-    rawCandidates.push(...feedJobs, ...vcJobs, ...companyJobs, ...githubJobs, ...walkinJobs);
+    // The default `all` channel still does not crawl job boards
+    // (Internshala, LinkedIn, HasJob, HackerNews, WeWorkRemotely): they only
+    // republish employer postings, they cost the most crawl time, and their
+    // links/titles are the polluted ones. Everything collected below comes
+    // from direct employer/ATS pages unless `boards` is requested explicitly.
+    rawCandidates.push(...feedJobs, ...vcJobs, ...boardJobs, ...companyJobs, ...githubJobs, ...walkinJobs);
 
 
     // Track raw source counts

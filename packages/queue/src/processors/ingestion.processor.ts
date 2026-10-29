@@ -1,6 +1,12 @@
 import { RawOpportunity } from '@fresherflow/types';
-import { generateOpportunitySlug, calculateTrendingScore } from '@fresherflow/utils';
-import { generateOpportunityFingerprint } from '@fresherflow/utils';
+import {
+    generateOpportunitySlug,
+    calculateTrendingScore,
+    generateOpportunityFingerprint,
+    // The domain-trust rule lives in one place (`@fresherflow/utils`) so the
+    // queue and the promote step cannot drift apart on what may go live.
+    isTrustedListingUrl,
+} from '@fresherflow/utils';
 import prisma, { EmploymentType, OpportunityStatus } from '@fresherflow/database';
 
 /**
@@ -80,28 +86,9 @@ export async function processIngestionJob(job: { data: { rawOpportunityId: strin
         // 5. Domain Trust Logic (Auto-Publish High-Trust Sources)
         // Hostname check, not substring: `new URL().hostname` with a
         // dot-anchored suffix match so `evil.com/?x=lever.co` and
-        // `lever.co.evil.com` cannot pass.
-        const TRUSTED_SUFFIXES = [
-            'lever.co',
-            'greenhouse.io',
-            'myworkdayjobs.com',
-            'jobvite.com',
-            'smartrecruiters.com',
-            'ashbyhq.com',
-        ];
-
-        function isTrustedListingUrl(rawUrl: string): boolean {
-            if (!rawUrl || rawUrl.length > 2000) return false;
-            try {
-                const parsed = new URL(rawUrl);
-                if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
-                const host = parsed.hostname.toLowerCase();
-                return TRUSTED_SUFFIXES.some((suffix) => host === suffix || host.endsWith(`.${suffix}`));
-            } catch {
-                return false;
-            }
-        }
-
+        // `lever.co.evil.com` cannot pass. The rule itself lives in
+        // `@fresherflow/utils` (isTrustedListingUrl) so this processor and
+        // the promote step share one definition.
         const isTrusted = isTrustedListingUrl(url);
         const status = isTrusted ? OpportunityStatus.PUBLISHED : OpportunityStatus.DRAFT;
 

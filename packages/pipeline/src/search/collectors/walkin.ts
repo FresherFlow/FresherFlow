@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import { BOARD_SCRAPER_REGISTRY, ScraperInputDto, AtsJob } from '@fresherflow/plugins';
-import { parseWalkInDetails, matchTechCluster, ParsedWalkInDetails, MatchedClusterResult, isSeniorJob } from '@fresherflow/utils';
+import { parseWalkInDetails, matchTechCluster, ParsedWalkInDetails, MatchedClusterResult, isSeniorJob, isPlausibleVenueAddress } from '@fresherflow/utils';
 import { unwrapRedirectors, isValidApplyLink } from '../../core/extractor.js';
 
 export interface WalkInJobOpportunity extends AtsJob {
@@ -33,6 +33,46 @@ const SCAM_PHRASES = [
 function isScamWalkin(text: string): boolean {
   const lower = (text || '').toLowerCase();
   return SCAM_PHRASES.some(p => lower.includes(p));
+}
+
+/**
+ * Anchor a drive to a concrete date the feed can actually list.
+ *
+ * WHY: a walk-in is only worth publishing while it still has a date to
+ * attend. Downstream, a listing that HAS drive details but no future date is
+ * dropped from the feed (its `nextDriveAt` is null, and null is only allowed
+ * when there are no drive details at all). The collector labels a drive with
+ * no parseable date as "Active Walk-in" — but without a date that row was
+ * born invisible: venue and time present, nothing to attend, so it never
+ * reached the public feed.
+ *
+ * WHAT: `parseWalkInDetails` already owns the house rule for an undated
+ * drive — it assigns an expiry three days out at 5:00 PM. This reuses that
+ * expiry as the drive's date instead of inventing a second clock, so an
+ * undated drive is published for exactly the window the extractor says it is
+ * valid, and a drive whose parsed dates have all passed keeps them (it
+ * happened; it must not be republished as upcoming).
+ */
+export function anchorDriveDates(details: ParsedWalkInDetails): ParsedWalkInDetails {
+  const now = Date.now();
+  const parsed = Array.isArray(details.dates) ? details.dates : [];
+
+  const upcoming = parsed.filter((d) => {
+    const t = Date.parse(d);
+    return !Number.isNaN(t) && t >= now;
+  });
+  if (upcoming.length > 0) {
+    return { ...details, dates: upcoming };
+  }
+
+  // No future date parsed. The extractor's fallback expiry is the drive's
+  // window when it is still ahead of us.
+  const expiry = details.expiresAt ? Date.parse(details.expiresAt) : Number.NaN;
+  if (!Number.isNaN(expiry) && expiry >= now) {
+    return { ...details, dates: [details.expiresAt as string] };
+  }
+
+  return { ...details, dates: parsed };
 }
 
 /**
@@ -204,8 +244,13 @@ export async function collectWalkinDrives(options: {
                 // Hyderabad, so a Bengaluru drive was labelled
                 // "Hyderabad, Telangana" and clustered under Gachibowli.
                 const city = detectCity(`${post.title} ${bodyText}`) || 'Hyderabad';
-                const details = parseWalkInDetails(post.title, bodyText, city);
-                if (!details.venueAddress || details.venueAddress.length < 8 || details.venueAddress === city) {
+                const details = anchorDriveDates(parseWalkInDetails(post.title, bodyText, city));
+                // The venue gate (see @fresherflow/utils) rejects a bare city
+                // name. `parseWalkInDetails` falls back to the location string
+                // when the post has no "Venue:" line, so the old length-only
+                // check accepted "Hyderabad" (9 characters) and filed an
+                // ordinary posting as a drive with a synthetic venue.
+                if (!isPlausibleVenueAddress(details.venueAddress, city)) {
                   continue;
                 }
 
@@ -318,8 +363,8 @@ export async function collectWalkinDrives(options: {
 
             const firstLine = text.split('\n')[0].replace(/[🚨📢🔥✅]/gu, '').trim();
             const city = detectCity(text) || 'Hyderabad';
-            const details = parseWalkInDetails(firstLine, text, city);
-            if (!details.venueAddress || details.venueAddress.length < 8 || details.venueAddress === city) {
+            const details = anchorDriveDates(parseWalkInDetails(firstLine, text, city));
+            if (!isPlausibleVenueAddress(details.venueAddress, city)) {
               return;
             }
 
@@ -431,12 +476,22 @@ export async function collectWalkinDrives(options: {
           const location = job.location?.displayLocation() || detectedCity;
 
           const walkinScore = calculateWalkinScore(title, desc);
-          if (walkinScore >= 6) {
+          // Threshold 8, the same bar the other two channels use.
+          //
+          // Reading `calculateWalkinScore`: every signal is worth 3-5, so the
+          // score can only land on 6 or 7 through a pair of weak signals —
+          // "direct interview" (+4) with "fresher" (+3), or "venue:" (+4)
+          // with "timing:" (+3). Both are things an ordinary posting mentions
+          // in passing. The strong combinations (an explicit "walk-in drive"
+          // = +10, or "walk-in" + a city = +10) clear 8 comfortably, so
+          // raising the bar from 6 to 8 keeps every real drive and drops the
+          // ordinary postings that were being filed as drives.
+          if (walkinScore >= 8) {
             if (isScamWalkin(desc) || isScamWalkin(title)) continue;
             if (isSeniorJob(`${title} ${desc}`)) continue;
 
-            const walkInDetails = parseWalkInDetails(title, desc, detectedCity);
-            if (!walkInDetails.venueAddress || walkInDetails.venueAddress.length < 8 || walkInDetails.venueAddress === detectedCity) {
+            const walkInDetails = anchorDriveDates(parseWalkInDetails(title, desc, detectedCity));
+            if (!isPlausibleVenueAddress(walkInDetails.venueAddress, detectedCity)) {
               continue;
             }
 

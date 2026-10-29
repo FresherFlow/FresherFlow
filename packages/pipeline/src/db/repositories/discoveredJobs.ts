@@ -222,11 +222,33 @@ export interface DiscoveredJobRow {
     ats_id?: string;
     site?: string;
     status: string;
+    /**
+     * Walk-in fields.
+     *
+     * `upsertJobs` writes these columns; the read below used to omit them, so
+     * every drive that came back from the database lost its venue, its date and
+     * its contact details before the processor ever saw it. A drive with no
+     * venue cannot become a DriveDetails row downstream, and a DriveDetails
+     * row with no future date is dropped from the feed — so an omitted column
+     * here silently cost the whole walk-in category.
+     */
+    venue_address?: string | null;
+    cluster_name?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    walkin_date?: string | null;
+    walkin_time?: string | null;
+    reporting_time?: string | null;
+    contact_person?: string | null;
+    contact_phone?: string | null;
+    required_docs?: string | null;
 }
 
 export async function fetchUnprocessedFromSupabase(limit = 100): Promise<DiscoveredJobRow[]> {
     const { rows } = await pool.query<DiscoveredJobRow>(
-        `SELECT id, apply_link, source, source_url, company, title, description, location, location_city, location_country, location_region, is_remote, employment_type, job_type, job_level, work_from_home_type, skills, experience_level, experience_range, experience_years, salary_min, salary_max, salary_currency, salary_interval, batch_year, degree, department, job_function, posted_at, ats_id, site, status 
+        `SELECT id, apply_link, source, source_url, company, title, description, location, location_city, location_country, location_region, is_remote, employment_type, job_type, job_level, work_from_home_type, skills, experience_level, experience_range, experience_years, salary_min, salary_max, salary_currency, salary_interval, batch_year, degree, department, job_function, posted_at, ats_id, site, status,
+                venue_address, cluster_name, latitude, longitude,
+                walkin_date, walkin_time, reporting_time, contact_person, contact_phone, required_docs
          FROM discovered_jobs 
          WHERE status IN ('PENDING', 'APPROVED') 
          ORDER BY created_at DESC 

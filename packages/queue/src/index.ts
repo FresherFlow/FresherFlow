@@ -252,7 +252,13 @@ export interface EmailJobData {
 }
 
 export interface CronJobData {
-    task: 'EXPIRY_CHECK' | 'LINK_VERIFICATION' | 'ALERTS_CYCLE';
+    /**
+     * `INGESTION` dispatches `POST /api/cron/ingestion`, which runs every
+     * enabled ingestion source that is due. It was missing from this union
+     * even though the API route existed, so the ingestion cron could never be
+     * enqueued on the `internal` queue.
+     */
+    task: 'EXPIRY_CHECK' | 'LINK_VERIFICATION' | 'ALERTS_CYCLE' | 'INGESTION';
 }
 
 export interface CacheRevalidateJobData {

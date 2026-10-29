@@ -6,6 +6,7 @@ const TASK_ENDPOINTS: Record<CronJobData['task'], string> = {
     LINK_VERIFICATION: '/cron/verify',
     ALERTS_CYCLE: '/cron/alerts',
     EXPIRY_CHECK: '/cron/expire',
+    INGESTION: '/cron/ingestion',
 };
 
 async function callCronEndpoint(endpoint: string): Promise<void> {
