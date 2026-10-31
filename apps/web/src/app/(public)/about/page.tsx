@@ -16,14 +16,14 @@ import {
 export const metadata: Metadata = {
     // `absolute`: the title names the brand already, and the root layout's
     // "%s | FresherFlow" template was appending a second suffix.
-    title: { absolute: 'About FresherFlow | Jobs, powered by freshers.' },
+    title: { absolute: 'About FresherFlow' },
     description:
         'FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.',
     alternates: {
         canonical: '/about',
     },
     openGraph: {
-        title: 'About FresherFlow — Jobs, powered by freshers.',
+        title: 'About FresherFlow',
         description:
             'FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.',
         url: '/about',

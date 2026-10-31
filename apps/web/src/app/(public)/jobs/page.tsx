@@ -14,13 +14,18 @@ import { buildCompanyFollowMap } from '@/features/companies/utils/companyDirecto
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Fresher Jobs in India | Off-Campus Jobs & Walk-ins',
+    // Generic hub title: /jobs is the unfiltered all-jobs feed. It must NOT
+    // claim "Off-Campus" or "Walk-ins" — those words belong to /jobs/browse and
+    // /drives/walk-in, and every skill/city/role board lives under /jobs/[slug]
+    // with its own generateMetadata. Matching the H1 ("Jobs") keeps this page
+    // the parent hub instead of competing with its own children.
+    title: 'Fresher Jobs in India | All Latest Job Openings',
     description: 'Browse verified jobs for freshers across India, including full-time roles, off-campus drives, internships and walk-in interviews.',
     alternates: {
         canonical: '/jobs',
     },
     openGraph: {
-        title: 'Fresher Jobs in India | Off-Campus Jobs & Walk-ins',
+        title: 'Fresher Jobs in India | All Latest Job Openings',
         description: 'Browse verified jobs for freshers across India, including full-time roles, off-campus drives, internships and walk-in interviews.',
         type: 'website',
         images: [
@@ -34,7 +39,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Fresher Jobs in India | Off-Campus Jobs & Walk-ins',
+        title: 'Fresher Jobs in India | All Latest Job Openings',
         description: 'Browse verified jobs for freshers across India, including full-time roles, off-campus drives, internships and walk-in interviews.',
         images: ['/main.png'],
     },
@@ -104,10 +109,10 @@ export default async function JobsPage() {
     const opportunities = feedIndexData?.opportunities || [];
     const companyDirectory = buildCompanyFollowMap(opportunities, companiesMetadata || []);
     const initialData = opportunities.length ? {
-        opportunities: opportunities.slice(0, FEED_PAGE_SIZE),
+        opportunities: opportunities,
         total: feedIndexData?.count ?? opportunities.length,
         cachedAt: new Date(feedIndexData?.generatedAt || Date.now()).getTime(),
-        partial: (feedIndexData?.count ?? opportunities.length) > FEED_PAGE_SIZE,
+        partial: false,
     } : null;
 
     return (

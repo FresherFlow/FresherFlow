@@ -12,7 +12,6 @@ import {
   type GovtPhaseFilter,
   type GovtCategoryFilter,
 } from "@/features/jobs/components/GovtPhaseTabs";
-import { formatJobFeedTitle } from "@/features/jobs/utils/formatJobFeedTitle";
 import {
   filterOpportunities,
   applyLocalFilters,
@@ -789,46 +788,13 @@ export function useCategoryPageState({
     driveRadiusKm,
   ]);
 
-  useEffect(() => {
-    if (!mounted) return;
-    const newTitle = formatJobFeedTitle({
-      type: type,
-      workMode: filters.workMode,
-      location: filters.location,
-      skills: filters.skills,
-      sector: filters.sector,
-      course: filters.course,
-      search: search,
-      year: filters.year,
-    });
-    if (newTitle) {
-      const count = visibleOpps.length;
-      const countPrefix = count > 0 ? `${count} ` : "";
-      const finalTitle = `${countPrefix}${newTitle} | FresherFlow`;
-
-      if (document.title !== finalTitle) {
-        document.title = finalTitle;
-      }
-
-      // Next.js completely replaces the <title> tag on soft navigation.
-      // We MUST observe the document head to catch the replacement and enforce our dynamic title.
-      const observer = new MutationObserver(() => {
-        if (document.title !== finalTitle) {
-          document.title = finalTitle;
-        }
-      });
-
-      if (document.head) {
-        observer.observe(document.head, {
-          childList: true,
-          subtree: true,
-          characterData: true,
-        });
-      }
-
-      return () => observer.disconnect();
-    }
-  }, [type, filters, search, mounted, searchParams, visibleOpps.length]);
+  // No document.title rewrite here. Every route this hook serves already
+  // publishes an authored <title> from generateMetadata, and the old rewrite
+  // replaced it after hydration with "<count> Jobs in <filter> | FresherFlow".
+  // Google renders JS, so it indexed that count title instead of the real one.
+  // Filtered views (?location=, ?skills=) are views of the canonical URL, not
+  // pages — the SEO landing pages for those queries are the /jobs/[slug]
+  // taxonomy boards, which carry their own titles. Keep the <title> alone.
 
   // Open the row named by `?job=<slug|id>` once the feed has loaded it, so a
   // shared or bookmarked link reproduces the same list with the same job open.

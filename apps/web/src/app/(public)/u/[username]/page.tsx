@@ -28,7 +28,7 @@ interface PageProps {
 const getProfile = cache(async (username: string): Promise<PublicProfile | null> => {
     try {
         const res = await serverApiClient<{ success: boolean; data: PublicProfile }>(
-            `/api/public/profiles/${encodeURIComponent(username.toLowerCase())}`,
+            `/api/profile/public/${encodeURIComponent(username.toLowerCase())}`,
             // Align with this page's revalidate window. The server client otherwise caches
             // public reads for 30 minutes, so a profile the owner just republished would
             // keep serving the previous version long after the page itself refreshed.

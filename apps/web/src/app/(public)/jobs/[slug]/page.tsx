@@ -122,28 +122,8 @@ export const dynamicParams = true;
 
 
 export async function generateStaticParams() {
-    try {
-        const [feed, govtFeed] = await Promise.all([
-            fetchFeedIndex(),
-            fetchGovernmentFeed(),
-        ]);
-
-        const slugs = new Set<string>();
-
-        feed?.opportunities?.forEach((opp) => {
-            const slug = opp.slug || opp.id;
-            if (slug) slugs.add(slug);
-        });
-
-        govtFeed?.opportunities?.forEach((opp) => {
-            const slug = opp.slug || opp.id;
-            if (slug) slugs.add(slug);
-        });
-
-        return Array.from(slugs).map((slug) => ({ slug }));
-    } catch {
-        return [];
-    }
+    // Generate on-demand only - avoid build-time pre-rendering of all job pages
+    return [];
 }
 
 // Generate dynamic SEO metadata.
@@ -178,13 +158,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     try {
-        const opportunity = await fetchOpportunityForMetadata(slugOrId);
+        // Metadata must resolve the SAME opportunity the body renders.
+        // fetchOpportunityForMetadata is shard-only; when the shard misses it
+        // returns null even though the body below still finds the job through
+        // fetchOpportunityForPage's index/government/expired/bootstrap fallback
+        // — which is React.cache()-shared with this request, so the fallback
+        // here costs no extra fetch. Without it a live 200 page ships a
+        // "Job Not Found" title.
+        const opportunity =
+            (await fetchOpportunityForMetadata(slugOrId)) ?? (await fetchOpportunityForPage(slugOrId));
         if (!opportunity) throw new Error('Opportunity not found');
         return await generateOpportunityMetadata(opportunity);
     } catch {
         return {
-            title: 'Opportunity Not Found',
-            description: 'This opportunity listing is no longer available.',
+            title: 'Job Not Found',
+            description: 'This job listing is no longer available.',
         };
     }
 }

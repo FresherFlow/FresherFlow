@@ -58,6 +58,10 @@ const plexMono = IBM_Plex_Mono({
 const SITE_DESCRIPTION =
   "FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.";
 
+/** One home for the site title. It was pasted into default, openGraph,
+ *  twitter and og:image alt below; each edit left the others stale. */
+export const SITE_TITLE = "FresherFlow — Fresher jobs, internships and walk in drives";
+
 const SITE_ORIGIN = SITE_URL;
 const METADATA_BASE = SITE_ORIGIN ? new URL(SITE_ORIGIN) : undefined;
 const OG_IMAGE_URL = SITE_ORIGIN ? `${SITE_ORIGIN}/opengraph-image` : '/opengraph-image';
@@ -92,14 +96,14 @@ export const metadata: Metadata = {
   metadataBase: METADATA_BASE,
   applicationName: "FresherFlow",
   title: {
-    default: "FresherFlow — Jobs, powered by freshers.",
+    default: SITE_TITLE,
     template: "%s | FresherFlow",
   },
   description: SITE_DESCRIPTION,
   openGraph: {
     type: "website",
     siteName: "FresherFlow",
-    title: "FresherFlow — Jobs, powered by freshers.",
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: [
       {
@@ -107,13 +111,13 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         type: "image/png",
-        alt: "FresherFlow — Jobs, powered by freshers.",
+        alt: SITE_TITLE,
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "FresherFlow — Jobs, powered by freshers.",
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: [TWITTER_IMAGE_URL],
   },

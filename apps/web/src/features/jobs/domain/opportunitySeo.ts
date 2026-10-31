@@ -233,8 +233,9 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     }
     const seoTitle = truncateTitleByPixels(rawTitle);
 
-    const eligibility = opportunity.allowedPassoutYears.length > 0
-        ? `${opportunity.allowedPassoutYears.join(', ')} graduates`
+    const passoutYears = opportunity.allowedPassoutYears ?? [];
+    const eligibility = passoutYears.length > 0
+        ? `${passoutYears.join(', ')} graduates`
         : 'freshers';
 
     const baseDesc = `Current and active ${type.toLowerCase()} opening at ${company} in ${location}. Open to ${eligibility}.`;

@@ -860,7 +860,14 @@ export function CategoryPageView({
                         </Button>
                     </div>
                 </div>
-            ) : isLoading ? (
+            // isDesktop is null on the server AND on the client's first render
+            // (viewport can't be known during SSR). Without this gate the feed
+            // branch below evaluates desktopRows=false and paints the MOBILE
+            // card UI for one frame, then swaps to OpportunityRow when the
+            // effect sets isDesktop — a visible flash of the wrong layout on
+            // every desktop reload. Holding the skeleton until the viewport is
+            // known matches the SSR HTML, so nothing re-flashes either way.
+            ) : isLoading || (type !== 'GOVERNMENT' && isDesktop === null) ? (
                 type === 'GOVERNMENT' ? (
                     <div className="ff-reading-col mx-auto grid grid-cols-1 gap-2 pt-3.5">
                         {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant={isDesktop === false ? 'compact' : 'wide'} />)}
@@ -971,7 +978,7 @@ export function CategoryPageView({
                                     }}
                                 />
                             )}
-                            {visibleOpps.slice(0, visibleCount).map((opp, index) => (
+                            {visibleOpps.map((opp, index) => (
                                 // One row implementation for the whole desktop
                                 // feed — List and Split render the same thing.
                                 //
