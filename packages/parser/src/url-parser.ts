@@ -490,6 +490,135 @@ function extractAtsBoard(urlStr: string): { provider: string, boardId: string } 
     }
 }
 
+/**
+ * Path segments that describe a listing page (a board, a search page, a
+ * careers hub) rather than one posting. Compared after removing `.`, `-` and
+ * `_`, so `External_Career_Site`, `external-career-site` and `externalcareersite`
+ * are the same token.
+ */
+const LANDING_SEGMENTS: ReadonlySet<string> = new Set([
+    'career', 'careers', 'job', 'jobs', 'opening', 'openings', 'position', 'positions',
+    'vacancy', 'vacancies', 'opportunity', 'opportunities', 'role', 'roles', 'hiring',
+    'apply', 'application', 'search', 'listing', 'listings', 'browse', 'explore',
+    'results', 'viewall', 'view', 'all', 'join', 'joinus', 'workwithus', 'workforus',
+    'team', 'teams', 'department', 'departments', 'location', 'locations',
+    'company', 'about', 'life', 'culture', 'students', 'graduates', 'campus',
+    'internship', 'internships', 'external', 'externalcareersite', 'externaljobsite',
+    'home', 'index', 'start', 'openroles', 'openpositions', 'currentopenings',
+]);
+
+/** A leading language/region tag, e.g. `en`, `en-US`, `en_US`, `pt-BR`. */
+const LOCALE_SEGMENT = /^[a-z]{2}(?:[-_][a-z]{2}|[-_][a-z]{4})?$/;
+
+/** Query keys that carry a posting identifier on an otherwise generic path. */
+const POSTING_ID_QUERY = /^(?:gh_jid|jid|job_?id|job|job_?req_?id|posting_?id|requisition_?id|req_?id|vacancy_?id|id_?job|ref_?id|id)$/i;
+
+const UUID_SEGMENT = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** A path segment long enough / structured enough to be a posting slug. */
+const MIN_SLUG_LENGTH = 8;
+
+function landingKey(segment: string): string {
+    return segment.replace(/[-_.\s]/g, '').toLowerCase();
+}
+
+function isLandingSegment(segment: string): boolean {
+    return LANDING_SEGMENTS.has(landingKey(segment));
+}
+
+/** Meaningful path segments, with file extensions and locale prefixes removed. */
+function postingSegments(pathname: string): string[] {
+    let segments: string[] = [];
+    try {
+        segments = pathname
+            .split('/')
+            .map((part) => decodeURIComponent(part).trim())
+            .filter(Boolean)
+            .map((part) => part.replace(/\.(?:html?|php|aspx?|jsp)$/i, ''))
+            .filter(Boolean)
+            .map((part) => part.toLowerCase());
+    } catch {
+        return [];
+    }
+    // "/en/careers", "/en-US/jobs" — drop the locale tag, not a company slug.
+    while (segments.length > 1 && LOCALE_SEGMENT.test(segments[0])) segments = segments.slice(1);
+    return segments;
+}
+
+/**
+ * True when a segment or query parameter names a single posting with a hard
+ * identifier: a job-id query parameter, a UUID, or a segment containing digits.
+ */
+function hasHardPostingIdentifier(u: URL, segments: string[]): boolean {
+    for (const [key, value] of u.searchParams) {
+        if (!POSTING_ID_QUERY.test(key)) continue;
+        const trimmed = value.trim();
+        if (trimmed.length >= 3 && /\d/.test(trimmed)) return true;
+    }
+
+    return segments.some((segment) => {
+        if (isLandingSegment(segment) || LOCALE_SEGMENT.test(segment)) return false;
+        return UUID_SEGMENT.test(segment) || /\d/.test(segment);
+    });
+}
+
+/**
+ * True when a segment looks like a posting slug — a multi-word or long token
+ * (`senior-backend-engineer`). Weaker than an id, so ATS board roots are ruled
+ * out first.
+ */
+function hasPostingSlug(segments: string[]): boolean {
+    return segments.some((segment) =>
+        !isLandingSegment(segment)
+        && !LOCALE_SEGMENT.test(segment)
+        && segment.length >= MIN_SLUG_LENGTH,
+    );
+}
+
+/** True when the host is an ATS the parser knows about (any path). */
+export function isAtsHost(urlStr: string): boolean {
+    return extractAtsBoard(urlStr) !== null;
+}
+
+/**
+ * True when the URL addresses one posting — it carries a job id, a UUID, or a
+ * posting slug. False for a landing page: a bare board root
+ * (`boards.greenhouse.io/acme`), a careers hub (`https://example.com/careers`),
+ * a search page, or a Workday site root (`.../en-US/External`).
+ *
+ * Callers use this to refuse to advertise a link that leads to nothing: a
+ * reader who opens it has to hunt for the role, and the post usually points at
+ * jobs that no longer exist.
+ */
+export function isSpecificJobUrl(urlStr: string): boolean {
+    let u: URL;
+    try {
+        u = new URL(urlStr);
+    } catch {
+        return false;
+    }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+
+    const segments = postingSegments(u.pathname);
+
+    // `?gh_jid=4556789` on a company careers page is still one posting.
+    if (hasHardPostingIdentifier(u, segments)) return true;
+
+    // Parser-extracted id, unless it is just the board name in a locale/board
+    // tail such as Workday's `.../en-US/External`.
+    const parsed = parseJobUrl(urlStr);
+    if (parsed && !isLandingSegment(parsed.jobId) && !LOCALE_SEGMENT.test(parsed.jobId)) return true;
+
+    // A known ATS host with no hard id is a board root, even when the company
+    // slug is long (`boards.greenhouse.io/acme-corp`).
+    if (isAtsHost(urlStr)) return false;
+
+    // A multi-word / long slug on an employer site is a posting
+    // (`example.com/careers/senior-backend-engineer`); a bare navigation path
+    // is not.
+    return hasPostingSlug(segments);
+}
+
 export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
     try {
         const u = new URL(urlStr);

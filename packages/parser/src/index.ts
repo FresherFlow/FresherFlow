@@ -32,7 +32,7 @@ export { parseJobTextLite } from './lite.js';
 
 export { normalizeSalary, normalizeExpiry, normalizeCompany, normalizeLocation, normalizeTitle, demuxJobTitle, extractCompanyFromUrl } from './normalize.js';
 export type { DemuxedTitleResult } from './normalize.js';
-export { UrlParser, parseJobUrl } from './url-parser.js';
+export { UrlParser, parseJobUrl, isAtsHost, isSpecificJobUrl } from './url-parser.js';
 export type { JobSourceType, UrlParseResult, ParsedJobUrl } from './url-parser.js';
 
 export { cleanAndResolveLocations } from './location-matcher.js';
