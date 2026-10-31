@@ -2,6 +2,7 @@
 // Consistent labels and formatting for the platform.
 
 import type { Opportunity } from '@fresherflow/types';
+import { normalizeLocationLabels } from './location.js';
 
 /**
  * Formats a salary range for display.
@@ -95,35 +96,32 @@ export function formatTimeText12Hour(input?: string | null): string {
 
 /**
  * Normalizes an array of locations into a human-friendly display label.
- * Prioritizes PAN India drive status.
+ * Delegates to `normalizeLocationLabels`, so a label already contained in a
+ * fuller one is collapsed, a legacy comma-split row is folded back into its
+ * city, and a country shared by every entry is omitted rather than repeated.
+ * "Remote" is only returned when there is no location data at all.
  */
 export function parseOpportunityLocation(locations?: string[] | null): { shortLabel: string; fullLabel: string; city?: string; state?: string; cities?: string[] } {
-    if (!locations || locations.length === 0) {
+    const labels = normalizeLocationLabels(locations);
+    const values = labels.map((entry) => entry.label).filter(Boolean);
+
+    if (values.length === 0) {
         return { shortLabel: 'Remote', fullLabel: 'Remote / Work from Home', city: 'Remote', cities: [] };
     }
 
-    const rawTokens = locations
-        .flatMap((value) => value.split(','))
-        .map((token) => token.trim())
-        .filter(Boolean);
-
-    const citiesList = Array.from(new Set(rawTokens));
-    const first = citiesList[0] || 'Remote';
-
-    let shortLabel = 'Remote';
-    if (citiesList.length === 1) {
-        shortLabel = first;
-    } else if (citiesList.length === 2) {
-        shortLabel = citiesList.join(', ');
-    } else if (citiesList.length > 2) {
-        shortLabel = `${first} +${citiesList.length - 1}`;
-    }
+    const first = values[0];
+    const shortLabel = values.length === 1
+        ? first
+        : values.length === 2
+            ? values.join(', ')
+            : `${first} +${values.length - 1}`;
 
     return {
         shortLabel,
-        fullLabel: locations.join(', '),
-        city: first,
-        cities: citiesList,
+        fullLabel: values.join(', '),
+        city: labels[0].city ?? labels[0].label,
+        state: labels[0].state,
+        cities: labels.map((entry) => entry.city ?? entry.label),
     };
 }
 
