@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { logger } from '@fresherflow/utils';
+import { formatLocationText, logger } from '@fresherflow/utils';
 import fs from 'fs';
 import path from 'path';
 import { getPublicSiteUrl } from '../../../utils/runtimeConfig';
@@ -113,10 +113,7 @@ export async function generateAndUploadOgImage(opportunity: OgOpportunity): Prom
         const badge = getBadgeColors(isDrive ? undefined : opportunity.type);
         const title = truncate(opportunity.title || 'Opportunity', 65);
         const company = truncate(opportunity.company || 'Company', 34);
-        const location = truncate(
-            (Array.isArray(opportunity.locations) && opportunity.locations.length > 0 ? opportunity.locations[0] : 'India'),
-            24
-        );
+        const location = truncate(formatLocationText(opportunity.locations, { max: 1 }), 24);
         const urgency = urgencyLabel(getDays(opportunity.expiresAt));
         const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
 
@@ -132,8 +129,13 @@ export async function generateAndUploadOgImage(opportunity: OgOpportunity): Prom
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const bottomBadges: any[] = [
             { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: badge.bg, border: `1px solid ${badge.border}`, fontSize: 24, fontWeight: 700, letterSpacing: '0.07em', color: badge.color }, children: typeLabel } },
-            { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.11)', fontSize: 24, fontWeight: 600, color: 'rgba(245,247,248,0.65)' }, children: location } }
         ];
+
+        if (location) {
+            bottomBadges.push(
+                { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.11)', fontSize: 24, fontWeight: 600, color: 'rgba(245,247,248,0.65)' }, children: location } }
+            );
+        }
 
         if (urgency) {
             bottomBadges.push({

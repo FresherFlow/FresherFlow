@@ -1,7 +1,7 @@
 import prisma from '../../../infrastructure/database/prisma';
 import axios from 'axios';
 import { enqueueTelegramBroadcast } from '@fresherflow/queue';
-import { logger } from '@fresherflow/utils';
+import { formatLocationText, logger } from '@fresherflow/utils';
 
 import { getCanonicalShareOrigin, getPublicSiteUrl, getAppSiteUrl, getRootDomainHost } from '../../../utils/runtimeConfig';
 
@@ -290,7 +290,7 @@ class TelegramService {
             return;
         }
 
-        const locationText = locations.length > 0 ? locations.join(' / ') : 'India';
+        const locationText = formatLocationText(locations) || 'Location not specified';
         const frontendOrigin = this.resolveCanonicalShareOrigin();
         const prefix = type === 'GOVERNMENT' ? 'govt' : 'jobs';
         const jobUrl = `${frontendOrigin}/${prefix}/${slug}`;

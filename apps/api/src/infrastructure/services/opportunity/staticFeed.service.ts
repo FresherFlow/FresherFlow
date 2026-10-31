@@ -1064,9 +1064,22 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 await StorageService.uploadToR2('feeds/resources-feed.json', resourcesBody, 'application/json');
             }
 
-            // 14. Group & Upload Company Shards sequentially (garbage collect references)
-            let companyShardsCount = 0;
-            if (target === 'all' || target === 'companies' || target === 'bootstrap' || target === 'govt') {
+            // 14. Upload companies metadata (root companies.json)
+            if (target === 'all' || target === 'companies' || target === 'bootstrap') {
+                try {
+                    const companiesMetadata = await FeedGeneratorService.generateCompaniesMetadata();
+                    const companiesBody = JSON.stringify(companiesMetadata);
+                    StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'companies.json'), companiesBody);
+                    await StorageService.uploadToR2('companies.json', companiesBody, 'application/json');
+                    logger.info(`[StaticFeedService] Uploaded companies.json (${companiesMetadata.length} companies)`);
+                } catch (e) {
+                    logger.error('[StaticFeedService] Failed to upload companies.json', e);
+                }
+            }
+
+                // 15. Group & Upload Company Shards sequentially (garbage collect references)
+                let companyShardsCount = 0;
+                if (target === 'all' || target === 'companies' || target === 'bootstrap' || target === 'govt') {
                 const groupedCompanies = new Map<string, typeof activeMapped>();
                 for (const opp of activeMapped) {
                     if (!opp.company) continue;
