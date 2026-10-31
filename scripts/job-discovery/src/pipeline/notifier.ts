@@ -133,7 +133,7 @@ export async function sendNotifications(state: DiscoveryState) {
                 title: j.title,
                 applyLink: j.applyLink,
                 company: j.company,
-                locations: [j.location, j.locationCity].filter((l): l is string => !!l && !!l.trim()),
+                locations: [j.location || j.locationCity].filter((l): l is string => !!l && !!l.trim()),
                 source: j.source,
             })),
             state.postedLinks
@@ -148,7 +148,7 @@ export async function sendNotifications(state: DiscoveryState) {
                     title: j.title,
                     company: j.company || '',
                     applyLink: j.applyLink,
-                    locations: [j.location, j.locationCity].filter((l): l is string => !!l && !!l.trim()),
+                    locations: [j.location || j.locationCity].filter((l): l is string => !!l && !!l.trim()),
                 });
             }
             const bs = board.summary();

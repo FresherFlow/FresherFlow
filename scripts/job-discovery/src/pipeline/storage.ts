@@ -6,7 +6,7 @@ import { DiscoveredJobEntry } from '@fresherflow/pipeline';
 import { CDN_URL } from '@fresherflow/pipeline';
 import { uploadJsonToR2, listR2Objects } from '@fresherflow/utils/r2';
 import { saveVisited, saveRejectedReasons, savePostedLinks } from '@fresherflow/pipeline';
-import { parseJobUrl } from '@fresherflow/parser';
+import { parseJobUrl, isSpecificJobUrl } from '@fresherflow/parser';
 
 import { withConcurrency } from '@fresherflow/pipeline';
 import { normalizeUrl } from '@fresherflow/pipeline';
@@ -199,17 +199,21 @@ function isAtsBoardOrCompany(applyLink: string): boolean {
  *
  * Cumulative and deduped by normalized apply link: re-running never drops a
  * job a consumer already saw, and the original `discoveredAt` is preserved.
+ *
+ * Links that point at a careers hub / board root instead of one posting are
+ * excluded: this snapshot feeds the community board directly, and a landing
+ * link has no role in it.
  */
 export async function saveFoundJobsSnapshot(state: DiscoveryState): Promise<void> {
     const fresh = state.newJobsFound
-        .filter((j) => !!j.applyLink && !!j.title)
+        .filter((j) => !!j.applyLink && !!j.title && isSpecificJobUrl(j.applyLink))
         .map((j) => ({
             title: j.title,
             company: j.company || 'Company',
             applyLink: j.applyLink,
             source: j.source,
             sourceType: j.sourceType,
-            locations: [j.location, j.locationCity].filter((l): l is string => !!l && !!l.trim()),
+            locations: [j.location || j.locationCity].filter((l): l is string => !!l && !!l.trim()),
             discoveredAt: j.discoveredAt || new Date().toISOString(),
             reviewRequired: !!j.reviewRequired,
         }));

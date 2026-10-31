@@ -41,7 +41,7 @@ import {
 
 import { resolveCompanyWebsiteAndLogo } from '@fresherflow/utils';
 
-import { matchFromCdn, demuxJobTitle, extractCompanyFromUrl } from '@fresherflow/parser';
+import { matchFromCdn, demuxJobTitle, extractCompanyFromUrl, cleanAndResolveLocations } from '@fresherflow/parser';
 
 async function fileExists(filePath: string): Promise<boolean> {
     try {
@@ -465,12 +465,16 @@ async function run(): Promise<void> {
 
                 let parsedLocation: string[] = [];
                 if (job.location) {
+                    let rawLocations: string[] = [];
                     if (job.location.startsWith('[')) {
-                        try { parsedLocation = JSON.parse(job.location); }
-                        catch (e) { parsedLocation = [job.location]; }
+                        try {
+                            const parsed = JSON.parse(job.location);
+                            rawLocations = Array.isArray(parsed) ? parsed.map(String) : [job.location];
+                        } catch { rawLocations = [job.location]; }
                     } else {
-                        parsedLocation = job.location.split(',').map((s: string) => s.trim()).filter(Boolean);
+                        rawLocations = [job.location];
                     }
+                    parsedLocation = cleanAndResolveLocations(rawLocations).locations;
                 }
                 const dbLocations = parsedLocation.length > 0 ? parsedLocation : (job.locationCity ? [job.locationCity] : []);
                 const dbSalary = job.salaryMin ? `${job.salaryCurrency || 'INR'} ${job.salaryMin}${job.salaryMax ? '-' + job.salaryMax : ''} / ${job.salaryInterval || 'year'}` : '';
