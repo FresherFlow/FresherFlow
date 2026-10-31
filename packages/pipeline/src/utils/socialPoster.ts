@@ -1,5 +1,5 @@
 import { normalizeUrl } from './url.js';
-import { parseJobUrl } from '@fresherflow/parser';
+import { isSpecificJobUrl, parseJobUrl } from '@fresherflow/parser';
 import { buildSocialCaption } from '@fresherflow/utils/social';
 
 // Shared social-media poster used by every bot that schedules individual job
@@ -76,6 +76,17 @@ export function isBlockedSocialLink(rawUrl: string): boolean {
         if (host.endsWith(`.${blocked}`)) return true;
     }
     return false;
+}
+
+
+/**
+ * True when the apply link is a landing page rather than one posting: a careers
+ * hub (`https://nango.dev/careers`), a board root, or a search page. We refuse
+ * these — the reader lands on a page with no role in it, and the specific job
+ * is usually gone. Detection lives in the parser next to the ATS URL knowledge.
+ */
+export function isGenericLandingLink(rawUrl: string): boolean {
+    return !isSpecificJobUrl(rawUrl);
 }
 
 
@@ -315,8 +326,16 @@ export async function postJobsToSocial(jobs: SocialPostJob[], postedLinks: strin
     if (blocked > 0) {
         console.log(`[social] Blocked ${blocked} aggregator/board link(s) — only direct employer/ATS links are posted.`);
     }
-    if (allowed.length === 0) {
-        console.log('[social] Nothing to post — every candidate link was an aggregator/board URL.');
+
+    // Second hard rule: the link must point at ONE posting. A careers hub or a
+    // board root ("/careers") has no job in it, so there is nothing to announce.
+    const postable = allowed.filter(j => !isGenericLandingLink(j.applyLink));
+    const landing = allowed.length - postable.length;
+    if (landing > 0) {
+        console.log(`[social] Blocked ${landing} link(s) that point at a careers/board landing page, not a specific posting.`);
+    }
+    if (postable.length === 0) {
+        console.log('[social] Nothing to post — every candidate link was an aggregator/board URL or a landing page.');
         return 0;
     }
 
@@ -325,7 +344,7 @@ export async function postJobsToSocial(jobs: SocialPostJob[], postedLinks: strin
         return 0;
     }
 
-    const pending = allowed.filter(j => !postedLinks.includes(normalizeUrl(j.applyLink)));
+    const pending = postable.filter(j => !postedLinks.includes(normalizeUrl(j.applyLink)));
     if (pending.length === 0) {
         console.log('[social] All jobs already posted — nothing new to schedule.');
         return 0;

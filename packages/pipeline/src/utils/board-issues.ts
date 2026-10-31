@@ -25,6 +25,8 @@
  *   JOBS_REPO_TOKEN           PAT with issues:write on the target repo
  */
 
+import { isSpecificJobUrl } from '@fresherflow/parser';
+
 const GH_API = 'https://api.github.com';
 
 export interface BoardJob {
@@ -82,6 +84,8 @@ export function boardRejectReason(job: BoardJob): string | null {
         return 'applyLink is not a valid URL';
     }
     if (u.protocol !== 'https:' && u.protocol !== 'http:') return 'applyLink is not http(s)';
+    // A board root or careers hub has no role in it; filing it pollutes the board.
+    if (!isSpecificJobUrl(job.applyLink)) return 'applyLink is a landing page, not a specific posting';
     if (!job.title || job.title.trim().length < 3) return 'title too short';
     if (job.title.length > 160) return 'title too long';
     if (JUNK_TITLE.test(job.title.trim())) return 'junk/generic title';
