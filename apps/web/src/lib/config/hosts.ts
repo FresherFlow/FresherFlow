@@ -7,7 +7,9 @@ export function handleHostRouting(req: NextRequest) {
     const normalizedHost = hostname.toLowerCase();
     const { PUBLIC_WEB_HOST, ADMIN_WEB_HOST, USER_LOGIN_HOST } = resolveHosts(req);
     const hostRole = getHostRole(normalizedHost, req);
-    if (hostRole === 'other') {
+    // Ensure admin.* hosts always route to the admin area regardless of other role checks
+    const isAdminHost = normalizedHost.startsWith('admin.');
+    if (hostRole === 'other' && !isAdminHost) {
         return null;
     }
 
@@ -37,8 +39,8 @@ export function handleHostRouting(req: NextRequest) {
         return res;
     }
 
-    // 1. Admin Host handling
-    if (hostRole === 'admin') {
+    // 1. Admin Host handling — always route admin.* hosts to /admin prefix
+    if (hostRole === 'admin' || isAdminHost) {
         if (pathname === '/admin-manifest.json') {
             return NextResponse.next();
         }
