@@ -51,6 +51,27 @@ describe('buildSocialCaption', () => {
         );
     });
 
+    it('collapses a duplicate location and drops the shared country', () => {
+        const text = buildSocialCaption(
+            {
+                company: 'Twin Health',
+                title: 'Data Analyst',
+                locations: ['Bengaluru, Karnataka, India', 'Bengaluru'],
+                applyLink: 'https://boards.greenhouse.io/twinhealth/jobs/99999',
+            },
+            'linkedin',
+            'Workday',
+        );
+        expect(text).toBe(
+            'Twin Health is hiring Data Analyst.\n\n' +
+                'Bengaluru, Karnataka · Apply on Workday:\n' +
+                'https://boards.greenhouse.io/twinhealth/jobs/99999\n\n' +
+                'Know someone looking? Tag them below.',
+        );
+        expect(text).not.toContain(' / Bengaluru');
+        expect(text).not.toContain(', India');
+    });
+
     it('fits X within budget with the apply link last', () => {
         const text = buildSocialCaption(
             { title: 'Software Engineer Trainee', company: 'Cisco', locations: ['Bangalore'], applyLink: 'https://careers.cisco.com/j/1' },

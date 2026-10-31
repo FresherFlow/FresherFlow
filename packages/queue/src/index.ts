@@ -1,8 +1,9 @@
 import { Queue, ConnectionOptions, Job, UnrecoverableError } from 'bullmq';
 import type { RedisOptions } from 'ioredis';
-import { redis } from '@fresherflow/database';
+import { prisma, redis } from '@fresherflow/database';
 import { env } from '@fresherflow/utils';
 import { logger } from '@fresherflow/utils';
+import { buildLinkedInCard } from '@fresherflow/utils';
 import { processEmailJob } from './processors/email.processor';
 import { processCronJob } from './processors/cron.processor';
 import { processPushJob } from './processors/push.processor';
@@ -296,6 +297,54 @@ export interface ScheduledSocialJobData {
     text: string;
 }
 
+async function fetchOgMetadata(url: string): Promise<{ title?: string; description?: string; image?: string }> {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+                'Accept': 'text/html,application/xhtml+xml'
+            },
+            signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!response.ok) return {};
+        const html = await response.text();
+
+        const getMetaTag = (html: string, property: string) => {
+            const patterns = [
+                new RegExp(`<meta[^>]+(?:property|name)=["']${property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]+content=["']([^"']+)["']`, 'i'),
+                new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`, 'i'),
+            ];
+            for (const re of patterns) {
+                const m = html.match(re);
+                if (m) return m[1];
+            }
+            return null;
+        };
+
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        let title = getMetaTag(html, 'og:title') || getMetaTag(html, 'twitter:title') || (titleMatch ? titleMatch[1] : null);
+        let description = getMetaTag(html, 'og:description') || getMetaTag(html, 'twitter:description') || getMetaTag(html, 'description');
+        let image = getMetaTag(html, 'og:image') || getMetaTag(html, 'twitter:image') || getMetaTag(html, 'image');
+
+        if (title) title = title.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+        if (description) description = description.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+        if (image && image.startsWith('/')) {
+            try {
+                const urlObj = new URL(url);
+                image = `${urlObj.protocol}//${urlObj.host}${image}`;
+            } catch {
+                // Malformed page URL; leave the relative image path as-is.
+            }
+        }
+        return { title: title || undefined, description: description || undefined, image: image || undefined };
+    } catch {
+        return {};
+    }
+}
+
 // ─── Scheduled social post processor ─────────────────────────────────────────
 async function processScheduledSocialJob(platform: string, text: string): Promise<void> {
     if (platform === 'telegram') {
@@ -309,7 +358,43 @@ async function processScheduledSocialJob(platform: string, text: string): Promis
     } else if (platform === 'x') {
         await postToX(text);
     } else if (platform === 'linkedin') {
-        await postToLinkedIn(text, true);
+        const urlMatch = text.match(/(https?:\/\/[^\s]+|fresherflow\.in[^\s]+)/);
+        let extractedUrl: string | undefined;
+        if (urlMatch) {
+            extractedUrl = urlMatch[0];
+            if (!extractedUrl.startsWith('http')) {
+                extractedUrl = `https://${extractedUrl}`;
+            }
+        }
+        let card;
+        if (extractedUrl) {
+            try {
+                const opp = await prisma.opportunity.findFirst({
+                    where: {
+                        OR: [
+                            { applyLink: extractedUrl },
+                            { sourceLink: extractedUrl },
+                        ],
+                    },
+                    select: { id: true, title: true, company: true, locations: true },
+                });
+                if (opp) {
+                    card = buildLinkedInCard(opp, process.env.R2_CDN_BASE_URL || process.env.CDN_URL || process.env.NEXT_PUBLIC_CDN_URL);
+                } else {
+                    const meta = await fetchOgMetadata(extractedUrl);
+                    if (meta.title || meta.description || meta.image) {
+                        card = {
+                            title: meta.title?.slice(0, 200),
+                            description: meta.description?.slice(0, 300),
+                            thumbnailUrl: meta.image,
+                        };
+                    }
+                }
+            } catch (e) {
+                logger.warn('[social] Failed to build LinkedIn card for scheduled post', { err: (e as Error).message });
+            }
+        }
+        await postToLinkedIn(text, true, card);
     } else {
         throw new Error(`Unknown platform: ${platform}`);
     }

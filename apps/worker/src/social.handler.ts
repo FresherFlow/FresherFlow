@@ -14,6 +14,54 @@ export function isAuthorized(req: IncomingMessage): boolean {
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
+async function fetchOgMetadata(url: string): Promise<{ title?: string; description?: string; image?: string }> {
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const response = await fetch(url, {
+            headers: {
+                'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+                'Accept': 'text/html,application/xhtml+xml'
+            },
+            signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (!response.ok) return {};
+        const html = await response.text();
+
+        const getMetaTag = (html: string, property: string) => {
+            const patterns = [
+                new RegExp(`<meta[^>]+(?:property|name)=["']${property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["'][^>]+content=["']([^"']+)["']`, 'i'),
+                new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}["']`, 'i'),
+            ];
+            for (const re of patterns) {
+                const m = html.match(re);
+                if (m) return m[1];
+            }
+            return null;
+        };
+
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        let title = getMetaTag(html, 'og:title') || getMetaTag(html, 'twitter:title') || (titleMatch ? titleMatch[1] : null);
+        let description = getMetaTag(html, 'og:description') || getMetaTag(html, 'twitter:description') || getMetaTag(html, 'description');
+        let image = getMetaTag(html, 'og:image') || getMetaTag(html, 'twitter:image') || getMetaTag(html, 'image');
+
+        if (title) title = title.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+        if (description) description = description.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+        if (image && image.startsWith('/')) {
+            try {
+                const urlObj = new URL(url);
+                image = `${urlObj.protocol}//${urlObj.host}${image}`;
+            } catch {
+                // Malformed page URL; leave the relative image path as-is.
+            }
+        }
+        return { title: title || undefined, description: description || undefined, image: image || undefined };
+    } catch {
+        return {};
+    }
+}
+
 async function postToBuffer(channelId: string | undefined, text: string): Promise<string> {
     const apiKey = process.env.BUFFER_API_KEY;
     if (!apiKey) {
@@ -41,11 +89,18 @@ async function postToBuffer(channelId: string | undefined, text: string): Promis
     };
 
     if (extractedUrl && channelId === process.env.BUFFER_LINKEDIN_CHANNEL_ID) {
+        const linkAttachment: Record<string, unknown> = { url: extractedUrl };
+        try {
+            const meta = await fetchOgMetadata(extractedUrl);
+            if (meta.title) linkAttachment.title = meta.title.slice(0, 200);
+            if (meta.description) linkAttachment.description = meta.description.slice(0, 300);
+            if (meta.image) linkAttachment.thumbnail = { url: meta.image };
+        } catch {
+            // Metadata is best-effort; post the bare link if the page can't be fetched.
+        }
         input.metadata = {
             linkedin: {
-                linkAttachment: {
-                    url: extractedUrl
-                }
+                linkAttachment
             }
         };
     }

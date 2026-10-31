@@ -1,3 +1,5 @@
+import { formatLocationText } from './opportunity/location.js';
+
 /** Explicit LinkedIn link-card fields. Buffer's LinkAttachmentInput takes
  *  `url: String!` plus nullable title/description/thumbnail — sending them
  *  explicitly beats relying on the scraper. */
@@ -27,14 +29,11 @@ export function buildLinkedInCard(
     const company = opportunity?.company?.trim() ?? '';
     if (!title && !company) return undefined;
 
-    const where = (opportunity?.locations ?? [])
-        .filter((loc) => typeof loc === 'string' && loc.trim())
-        .slice(0, 3)
-        .join(' / ') || 'India';
+    const where = formatLocationText(opportunity?.locations, { max: 3 });
 
     const card: LinkedInCard = {
         title: `${title}${company ? ` @ ${company}` : ''}`.slice(0, 200),
-        description: `${title || 'Opening'}${company ? ` at ${company}` : ''} (${where}). Application link is in the post.`.slice(0, 300),
+        description: `${title || 'Opening'}${company ? ` at ${company}` : ''}${where ? ` (${where})` : ''}. Application link is in the post.`.slice(0, 300),
     };
 
     const base = (cdnBaseUrl ?? '').replace(/\/+$/, '');
@@ -62,9 +61,7 @@ export interface SocialCaptionJob {
 export type SocialCaptionPlatform = 'x' | 'linkedin' | 'telegram' | 'facebook';
 
 function captionLocationText(job: SocialCaptionJob): string {
-    const locs = (job.locations || []).map((l) => String(l).trim()).filter(Boolean);
-    if (locs.length === 0) return '';
-    return locs.slice(0, 2).join(' / ') + (locs.length > 2 ? ' +' : '');
+    return formatLocationText(job.locations, { max: 2 });
 }
 
 function captionHeadline(job: SocialCaptionJob): string {
