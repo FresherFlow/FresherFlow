@@ -1,6 +1,10 @@
 import { LocationDto } from '../base/models/index.js';
 
 import { State, INDIAN_STATES, STATE_ALIASES, getStateForCity } from '@fresherflow/constants';
+import { canonicalCountryName, countryNameFromCode } from './country-name.js';
+
+/** Canonical India name from the shared dataset — the ISO code is the only literal. */
+const INDIA_COUNTRY_NAME = countryNameFromCode('IN');
 
 const usStatesData = State.getStatesOfCountry('US');
 
@@ -130,17 +134,18 @@ function parseIndianLocation(
 
   const last = parts[parts.length - 1].toLowerCase();
 
-  if (last === 'india' || last === 'in') {
+  const trailingCountry = canonicalCountryName(parts[parts.length - 1]);
+  if (trailingCountry && trailingCountry === INDIA_COUNTRY_NAME) {
     if (parts.length === 3) {
       const state = INDIAN_STATE_NAME_BY_ALIAS[parts[1].toLowerCase()];
       if (!state) return null;
-      return { city: parts[0], state, country: 'India' };
+      return { city: parts[0], state, country: INDIA_COUNTRY_NAME ?? undefined };
     }
     if (parts.length === 2) {
       const cityState = getStateForCity(parts[0]);
       return cityState
-        ? { city: parts[0], state: cityState, country: 'India' }
-        : { city: parts[0], country: 'India' };
+        ? { city: parts[0], state: cityState, country: INDIA_COUNTRY_NAME ?? undefined }
+        : { city: parts[0], country: INDIA_COUNTRY_NAME ?? undefined };
     }
     return null;
   }
@@ -305,12 +310,13 @@ function normalizeUsState(value: string): string | null {
   return US_STATE_NAME_TO_CODE[value.trim().toLowerCase()] ?? null;
 }
 
+/**
+ * Canonical country name for a country-only label, resolved from the shared
+ * `country-state-city` dataset (name or ISO code). Returns `null` when the
+ * label is not a country.
+ */
 function normalizeCountryOnly(value: string): string | null {
-  const normalized = value.trim().toLowerCase().replace(/\./g, '');
-  if (['united states', 'united states of america', 'usa', 'us'].includes(normalized)) {
-    return 'United States';
-  }
-  return null;
+  return canonicalCountryName(value);
 }
 
 function mergeWorkFromHomeType(

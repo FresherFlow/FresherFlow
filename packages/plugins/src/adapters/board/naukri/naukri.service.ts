@@ -6,8 +6,13 @@ import {
 } from '../../../base/models/index.js';
 import {
   createHttpClient, NaukriException, markdownConverter, extractEmails, randomSleep,
+  countryNameFromCode,
 } from '../../../common/index.js';
 import { NAUKRI_HEADERS } from './naukri.constants.js';
+
+/** Canonical India name from the shared dataset — the ISO code is the only literal. */
+const INDIA_COUNTRY_NAME = countryNameFromCode('IN');
+const INDIA_DESCRIPTION_SUFFIX = INDIA_COUNTRY_NAME ? ` opportunity in ${INDIA_COUNTRY_NAME}` : '';
 
 export class NaukriService implements IScraper {
   private readonly baseUrl = 'https://www.naukri.com/jobapi/v3/search';
@@ -122,9 +127,9 @@ export class NaukriService implements IScraper {
                   id: `nk-${Math.abs(this.hashCode(jobUrl))}`,
                   title: jobItem.title,
                   companyName: jobItem.hiringOrganization?.name || undefined,
-                  location: new LocationDto({ city: jobItem.jobLocation?.address?.addressLocality || 'India', country: Country.INDIA }),
+                  location: new LocationDto({ city: jobItem.jobLocation?.address?.addressLocality || INDIA_COUNTRY_NAME, country: Country.INDIA }),
                   jobUrl,
-                  description: jobItem.description || `${jobItem.title} opportunity in India`,
+                  description: jobItem.description || `${jobItem.title}${INDIA_DESCRIPTION_SUFFIX}`,
                   datePosted: jobItem.datePosted || new Date().toISOString().split('T')[0],
                   isRemote: false,
                   site: Site.NAUKRI,

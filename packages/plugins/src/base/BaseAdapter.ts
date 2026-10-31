@@ -164,16 +164,8 @@ export function extractEmails(text?: string | null): string[] {
 }
 
 // ─── ISO country code → full name ─────────────────────────────────────────────
-
-export const COUNTRY_CODE_MAP: Record<string, string> = {
-    IN: 'India', US: 'United States', GB: 'United Kingdom', SG: 'Singapore',
-    DE: 'Germany', AU: 'Australia', CA: 'Canada', FR: 'France', NL: 'Netherlands',
-    PL: 'Poland', IE: 'Ireland', JP: 'Japan', CN: 'China', AE: 'UAE',
-    MY: 'Malaysia', PH: 'Philippines', VN: 'Vietnam', TH: 'Thailand',
-    KR: 'South Korea', TW: 'Taiwan', BR: 'Brazil', MX: 'Mexico',
-    ES: 'Spain', IT: 'Italy', SE: 'Sweden', HK: 'Hong Kong',
-};
-
+// Lives in `common/country-name.ts`, where names come from the shared country
+// dataset. Nothing in the repo imported the old `COUNTRY_CODE_MAP` table.
 
 export interface LocationDto {
   country?: string;
@@ -184,11 +176,6 @@ export interface LocationDto {
 
 export const randomSleep = (minMs = 500, maxMs = 1500): Promise<void> =>
   sleep(Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs);
-
-export function regionNameFromCode(code?: string | null): string | undefined {
-  if (!code) return undefined;
-  return COUNTRY_CODE_MAP[code.toUpperCase()] ?? code;
-}
 
 export function parseLocationList(locations?: string[]): { location: LocationDto | null; remoteMentioned: boolean; workFromHomeType: string | null } {
   if (!locations || locations.length === 0) return { location: null, remoteMentioned: false, workFromHomeType: null };

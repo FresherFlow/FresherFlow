@@ -1,3 +1,5 @@
+import { Country } from '@fresherflow/constants';
+
 const REGION_CODE_RE = /^[A-Za-z]{2}$/;
 
 let cachedDisplayNames: Intl.DisplayNames | null | undefined;
@@ -43,4 +45,59 @@ export function regionNameFromCode(
   } catch {
     return null;
   }
+}
+
+/**
+ * Canonical country names from the shared `country-state-city` dataset
+ * (re-exported by `@fresherflow/constants`), keyed by lowercase name and
+ * lowercase ISO code. No country name is written in this module.
+ */
+const COUNTRY_NAME_BY_KEY = new Map<string, string>();
+for (const country of Country.getAllCountries()) {
+  COUNTRY_NAME_BY_KEY.set(countryKey(country.name), country.name);
+  COUNTRY_NAME_BY_KEY.set(countryKey(country.isoCode), country.name);
+}
+
+/** Case/diacritic/period-insensitive key used for dataset lookups. */
+function countryKey(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(/\p{M}/gu, '')
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Resolve a country code (or a dataset country name) to the canonical name from
+ * the dataset, e.g. `"IN"` -> `"India"`, `"U.S."` -> `"United States"`.
+ *
+ * Falls back to the runtime CLDR table ({@link regionNameFromCode}) for codes
+ * the dataset does not carry. Returns `null` when nothing resolves.
+ */
+export function countryNameFromCode(
+  code: string | null | undefined,
+): string | null {
+  if (!code) return null;
+  const key = countryKey(code);
+  if (!key) return null;
+  return COUNTRY_NAME_BY_KEY.get(key) ?? regionNameFromCode(code.trim());
+}
+
+/**
+ * Resolve a whole country-only label (`"India"`, `"IN"`, `"U.S."`) to the
+ * canonical dataset name, or `null` when the label is not a country.
+ *
+ * Unlike {@link countryNameFromCode} there is no CLDR fallback: callers use
+ * this to decide whether a label *is* a country, so an unknown token must stay
+ * unresolved rather than being guessed.
+ */
+export function canonicalCountryName(
+  value: string | null | undefined,
+): string | null {
+  if (!value) return null;
+  const key = countryKey(value);
+  if (!key) return null;
+  return COUNTRY_NAME_BY_KEY.get(key) ?? null;
 }
