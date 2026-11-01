@@ -1,8 +1,9 @@
 import prisma from '../../database/prisma';
 import { Prisma } from '@prisma/client';
 import { OpportunityStatus, RecruitmentMethod, Sector, EmploymentType } from '@fresherflow/types';
-import { logger, getCompanySlug as deriveCompanySlug } from '@fresherflow/utils';
+import { logger, getCompanySlug as deriveCompanySlug, normalizeCompanyName } from '@fresherflow/utils';
 import { StorageService } from '../platform/storage.service';
+import { CompanyDirectoryService, type CompanyDirectoryEntry } from './companyDirectory.service';
 
 export class FeedGeneratorService {
     private static readonly companySlugMap = new Map<string, string>();
@@ -441,6 +442,11 @@ export class FeedGeneratorService {
      * companies.json — the company directory the web filters read.
      * Derived from live opportunities so db mode needs no CDN artifact.
      * Shape: [{ name, url, logo_url, slug }] (matches CompanyMetadata in web).
+     *
+     * The slug comes from the company's domain, never from the row's name
+     * string, and name variants that resolve to the same domain collapse into
+     * one entry. This used to call `getCompanySlug(name)` with no URL, so every
+     * full regeneration rewrote the directory with name-derived slugs.
      */
     public static async generateCompaniesMetadata() {
         return this.withDbRetry(async () => {
@@ -449,26 +455,8 @@ export class FeedGeneratorService {
                 select: { company: true, companyWebsite: true, companyLogoUrl: true },
             });
 
-            const byName = new Map<string, { name: string; url: string | null; logo_url: string | null; slug: string }>();
-            for (const row of rows) {
-                const name = row.company?.trim();
-                if (!name) continue;
-                const key = name.toLowerCase();
-                const existing = byName.get(key);
-                if (existing) {
-                    if (!existing.url && row.companyWebsite) existing.url = row.companyWebsite.trim();
-                    if (!existing.logo_url && row.companyLogoUrl) existing.logo_url = row.companyLogoUrl.trim();
-                } else {
-                    byName.set(key, {
-                        name,
-                        url: row.companyWebsite?.trim() ?? null,
-                        logo_url: row.companyLogoUrl?.trim() ?? null,
-                        slug: this.getCompanySlug(name),
-                    });
-                }
-            }
-
-            return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+            const previous = await CompanyDirectoryService.load();
+            return CompanyDirectoryService.build(rows, previous).entries;
         });
     }
 
@@ -505,36 +493,48 @@ export class FeedGeneratorService {
             });
 
             const mappedOpportunities = this.mapFeedOpportunities(opportunities as unknown as Record<string, unknown>[]);
-            
+
             interface MappedFeedOpportunity {
                 [key: string]: unknown;
                 company?: string | null;
+                companyWebsite?: string | null;
+                companyLogoUrl?: string | null;
                 isReferral: boolean;
                 referredByUsername?: string;
             }
-            const grouped = new Map<string, MappedFeedOpportunity[]>();
+
+            const rows = (mappedOpportunities as MappedFeedOpportunity[]).map((opp) => ({
+                company: opp.company,
+                companyWebsite: opp.companyWebsite,
+                companyLogoUrl: opp.companyLogoUrl,
+            }));
+            const directory = CompanyDirectoryService.build(rows, await CompanyDirectoryService.load());
+
+            // Group by canonical slug, not by the raw name: one company page per
+            // domain, holding every spelling variant's listings.
+            const grouped = new Map<string, { entry: CompanyDirectoryEntry | null; jobs: MappedFeedOpportunity[] }>();
             for (const opp of mappedOpportunities as MappedFeedOpportunity[]) {
                 if (!opp.company) continue;
-                const key = opp.company.trim();
-                const list = grouped.get(key) || [];
-                list.push(opp);
-                grouped.set(key, list);
-            }
-
-            if (this.companySlugMap.size === 0) {
-                await this.loadCompanySlugMap();
+                const entry = directory.byName.get(normalizeCompanyName(opp.company)) ?? null;
+                const slug = entry?.slug ?? this.getCompanySlug(opp.company, opp.companyWebsite ?? null);
+                if (!slug) continue;
+                const group: { entry: CompanyDirectoryEntry | null; jobs: MappedFeedOpportunity[] } =
+                    grouped.get(slug) ?? { entry, jobs: [] };
+                if (!group.entry && entry) group.entry = entry;
+                group.jobs.push(opp);
+                grouped.set(slug, group);
             }
 
             const shards: Array<{ slug: string; data: Record<string, unknown> }> = [];
-            for (const [company, jobs] of grouped.entries()) {
-                const slug = this.getCompanySlug(company);
+            for (const [slug, group] of grouped.entries()) {
+                const company = group.entry?.name ?? (group.jobs[0]?.company as string);
                 shards.push({
                     slug,
                     data: {
                         company,
                         slug,
-                        opportunities: jobs,
-                        count: jobs.length,
+                        opportunities: group.jobs,
+                        count: group.jobs.length,
                         timestamp: Date.now()
                     }
                 });
@@ -612,11 +612,18 @@ export class FeedGeneratorService {
 
     public static async generateSitemapData() {
         return this.withDbRetry(async () => {
-            const companies = await prisma.opportunity.findMany({
+            // One row per company *domain*, not per company name string: the
+            // sitemap must list `/companies/{slug}` once even when the listings
+            // spell the employer three different ways.
+            const companyRows = await prisma.opportunity.findMany({
                 where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
-                distinct: ['company'],
-                select: { company: true }
+                select: { company: true, companyWebsite: true, companyLogoUrl: true }
             });
+            const companyDirectory = CompanyDirectoryService.build(
+                companyRows,
+                await CompanyDirectoryService.load(),
+            );
+            const companies = companyDirectory.entries;
 
             // Paginate rather than `take: 1000`. A hard cap silently dropped every
             // listing older than the newest 1000 from the sitemap, so those pages
@@ -670,8 +677,8 @@ export class FeedGeneratorService {
 
             return {
                 companies: companies.map(c => ({
-                    name: c.company,
-                    slug: this.getCompanySlug(c.company)
+                    name: c.name,
+                    slug: c.slug
                 })),
                 opportunities: opportunities.map(opp => ({
                     id: opp.id,

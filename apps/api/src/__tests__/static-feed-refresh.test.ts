@@ -65,10 +65,12 @@ const governmentJob = {
     allowedPassoutYears: [],
 };
 
+let opportunityRows: Record<string, unknown>[] = [governmentJob];
+
 vi.mock('../infrastructure/database/prisma', () => ({
     default: {
         opportunity: {
-            findMany: vi.fn(async () => [governmentJob]),
+            findMany: vi.fn(async () => opportunityRows),
         },
     },
 }));
@@ -78,6 +80,7 @@ const uploadedKeys = () => uploadToR2.mock.calls.map((call) => call[0] as string
 describe('StaticFeedService.refresh — automatic publication', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        opportunityRows = [governmentJob];
     });
 
     it('rebuilds the government feed on the default bootstrap target', async () => {
@@ -120,5 +123,63 @@ describe('StaticFeedService.refresh — automatic publication', () => {
         // deleted or archived job must stop resolving from the CDN.
         expect(deleteFromR2).toHaveBeenCalledWith('jobs/stale.json');
         expect(deleteFromR2).not.toHaveBeenCalledWith('jobs/opp-1.json');
+    });
+
+    it('keeps swept and long-expired jobs out of the sitemap', async () => {
+        const now = Date.now();
+        const live = {
+            ...governmentJob,
+            id: 'live-1',
+            slug: 'live-software-engineer',
+            sector: 'PRIVATE',
+            expiresAt: new Date(now + 7 * 24 * 60 * 60 * 1000),
+        };
+        // Still inside the 45-day grace window: the page renders, so the
+        // sitemap may list it.
+        const recentlyExpired = {
+            ...governmentJob,
+            id: 'grace-1',
+            slug: 'grace-database-admin',
+            sector: 'PRIVATE',
+            expiresAt: new Date(now - 24 * 60 * 60 * 1000),
+        };
+        // Archived by the sweeper (`expiredAt`) with no `expiresAt` at all.
+        // The live feed drops it and its job shard is collected, so the
+        // sitemap must drop it too instead of advertising a URL that 500s.
+        const swept = {
+            ...governmentJob,
+            id: 'swept-1',
+            slug: 'swept-old-analyst',
+            sector: 'PRIVATE',
+            expiresAt: null,
+            expiredAt: new Date(now - 2 * 24 * 60 * 60 * 1000),
+        };
+        // Expired well past the grace window.
+        const longExpired = {
+            ...governmentJob,
+            id: 'old-1',
+            slug: 'old-data-entry',
+            sector: 'PRIVATE',
+            expiresAt: new Date(now - 90 * 24 * 60 * 60 * 1000),
+        };
+
+        opportunityRows = [live, recentlyExpired, swept, longExpired];
+
+        const { StaticFeedService } = await import(
+            '../infrastructure/services/opportunity/staticFeed.service'
+        );
+
+        await StaticFeedService.refresh('bootstrap');
+
+        const sitemapCall = uploadToR2.mock.calls.find(
+            (call) => call[0] === 'sitemaps/sitemap-jobs.xml',
+        );
+        expect(sitemapCall).toBeDefined();
+        const xml = String(sitemapCall?.[1]);
+
+        expect(xml).toContain('/jobs/live-software-engineer');
+        expect(xml).toContain('/jobs/grace-database-admin');
+        expect(xml).not.toContain('/jobs/swept-old-analyst');
+        expect(xml).not.toContain('/jobs/old-data-entry');
     });
 });

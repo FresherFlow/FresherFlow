@@ -179,9 +179,19 @@ export class MetadataService {
                     const existingIndex = companies.findIndex(c => c && c.name && c.name.toLowerCase().trim() === targetLower);
                     const newUrl = opportunity.companyWebsite ? opportunity.companyWebsite.trim() : null;
                     const newLogo = opportunity.companyLogoUrl ? opportunity.companyLogoUrl.trim() : null;
+                    const newSlug = getCompanySlug(targetCompany, newUrl);
 
-                    if (existingIndex !== -1) {
-                        const existing = companies[existingIndex];
+                    // Merge by domain slug as well as by name: "PwC India" is
+                    // the same company as the existing `pwc` entry, and a
+                    // second entry would overwrite the same `companies/pwc.json`
+                    // shard while adding a duplicate sitemap URL.
+                    const existingSlugIndex = existingIndex === -1 && newSlug
+                        ? companies.findIndex(c => c && c.slug === newSlug)
+                        : -1;
+                    const mergeIndex = existingIndex !== -1 ? existingIndex : existingSlugIndex;
+
+                    if (mergeIndex !== -1) {
+                        const existing = companies[mergeIndex];
                         if (!existing.slug) {
                             existing.slug = getCompanySlug(existing.name, existing.url || newUrl);
                             updated = true;
@@ -199,7 +209,7 @@ export class MetadataService {
                             name: targetCompany,
                             url: newUrl,
                             logo_url: newLogo,
-                            slug: getCompanySlug(targetCompany, newUrl)
+                            slug: newSlug
                         });
                         updated = true;
                     }

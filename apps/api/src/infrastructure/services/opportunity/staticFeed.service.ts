@@ -2,10 +2,11 @@ import path from 'path';
 import prisma from '../../database/prisma';
 import { OpportunityStatus, RecruitmentMethod, Sector } from '@fresherflow/types';
 import { INDIAN_CITIES } from '@fresherflow/constants';
-import { logger, getCompanySlug } from '@fresherflow/utils';
+import { logger, getCompanySlug, normalizeCompanyName } from '@fresherflow/utils';
 import { getPublicSiteUrl } from '../../../utils/runtimeConfig';
 import { StorageService } from '../platform/storage.service';
 import { FeedGeneratorService } from './feedGenerator.service';
+import { CompanyDirectoryService, type CompanyDirectoryEntry } from './companyDirectory.service';
 import { notifyWebFeedChanged } from './webRevalidation.service';
 
 /**
@@ -246,7 +247,9 @@ export class StaticFeedService {
      */
     private static async uploadCompanySlugHistory(
         opportunities: Array<Record<string, unknown>>,
-        liveCompanyNames: Set<string>
+        liveCompanySlugs: Set<string>,
+        previousDirectory: CompanyDirectoryEntry[],
+        currentByName: Map<string, CompanyDirectoryEntry>,
     ): Promise<void> {
         const aliases: Record<string, string> = {};
         const everLive = new Set<string>();
@@ -310,7 +313,21 @@ export class StaticFeedService {
             }
         }
 
-        for (const name of liveCompanyNames) everLive.add(name);
+        // A slug that changed because the company gained a domain (or its
+        // website was corrected) is the one alias the derivations above cannot
+        // see: the old slug was produced by a different URL or an older
+        // algorithm, so recomputing it yields the new value. Match the previous
+        // directory entry to today's canonical entry by name and record the
+        // hop, or an indexed `/companies/inter` becomes a 404 after the rename.
+        for (const entry of previousDirectory) {
+            const canonical = currentByName.get(normalizeCompanyName(entry.name))?.slug;
+            if (canonical && canonical !== entry.slug) {
+                aliases[entry.slug] = canonical;
+                everLive.add(entry.slug);
+            }
+        }
+
+        for (const slug of liveCompanySlugs) everLive.add(slug);
 
         // Never point a slug at itself - the web resolver follows up to 3 hops
         // and a self-alias is a pointless extra request.
@@ -477,6 +494,22 @@ export class StaticFeedService {
             const activeMapped = allMapped.filter(isBaseLive);
             const indexMapped = activeMapped.filter(hasLiveDrive);
 
+            // One canonical company per domain, shared by the sitemap,
+            // sitemap-data, OG cache and company shards. Deriving the slug from
+            // each row's name string produced one shard per spelling, all with
+            // the same R2 key, so the last upload silently won.
+            const previousCompanyDirectory = await CompanyDirectoryService.load();
+            const companyDirectory = CompanyDirectoryService.build(
+                activeMapped.map((opp) => ({
+                    company: opp.company as string | undefined,
+                    companyWebsite: (opp as { companyWebsite?: string | null }).companyWebsite,
+                    companyLogoUrl: (opp as { companyLogoUrl?: string | null }).companyLogoUrl,
+                })),
+                previousCompanyDirectory,
+            );
+            const companyEntryFor = (name: string): CompanyDirectoryEntry | null =>
+                companyDirectory.byName.get(normalizeCompanyName(name)) ?? null;
+
             // 4. Generate & Upload Master Bootstrap Feed & Daily Date-Based Feeds
             if (target === 'all' || target === 'bootstrap') {
                 const bootstrap = {
@@ -546,13 +579,16 @@ export class StaticFeedService {
             }
 
             // 6. Generate & Upload Expired Feed (Past 45 Days)
+            //
+            // The window is computed once and reused by the sitemap below, so
+            // the expired feed and sitemap membership cannot drift apart.
+            const fortyFiveDaysAgo = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+            const expiredMapped = allMapped.filter(opp => {
+                if (!opp.expiresAt) return false;
+                const exp = new Date(opp.expiresAt as string | Date);
+                return exp <= now && exp > fortyFiveDaysAgo;
+            });
             if (target === 'all' || target === 'expired' || target === 'bootstrap' || target === 'govt') {
-                const fortyFiveDaysAgo = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
-                const expiredMapped = allMapped.filter(opp => {
-                    if (!opp.expiresAt) return false;
-                    const exp = new Date(opp.expiresAt as string | Date);
-                    return exp <= now && exp > fortyFiveDaysAgo;
-                });
                 const expired = {
                     opportunities: expiredMapped,
                     timestamp: Date.now(),
@@ -596,12 +632,17 @@ export class StaticFeedService {
 
             // 10. Generate & Upload Sitemap XML and JSON Data
             if (target === 'all' || target === 'sitemap' || target === 'bootstrap' || target === 'govt') {
-                const fortyFiveDaysAgo = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
-                const sitemapOpps = (allMapped as Record<string, unknown>[]).filter(opp => {
-                    if (!opp.expiresAt) return true;
-                    const exp = new Date(opp.expiresAt as string | Date);
-                    return exp > fortyFiveDaysAgo;
-                });
+                // Sitemap membership is the set of detail pages that actually
+                // render: live rows plus rows still inside the 45-day expired
+                // grace window (the same two sets the feeds publish).
+                //
+                // This used to filter `allMapped` on `expiresAt` alone. Rows
+                // archived by the sweeper (`expiredAt`) or by a secondary
+                // deadline have no `expiresAt`, so they were kept forever and
+                // the sitemap advertised hundreds of jobs the live feed had
+                // already dropped. Their job shards were then garbage
+                // collected, and every one of those URLs answered 500.
+                const sitemapOpps = [...activeMapped, ...expiredMapped] as Record<string, unknown>[];
                 const companiesCounts = new Map<string, number>();
                 sitemapOpps.forEach((opp) => {
                     if (opp.company && typeof opp.company === 'string') {
@@ -643,28 +684,9 @@ export class StaticFeedService {
                     '/app'
                 ];
 
-                // 1. Companies (Active opportunities only, count >= 1 - matches web companies/[slug])
-                const activeCompaniesCounts = new Map<string, number>();
-                activeMapped.forEach((opp) => {
-                    if (opp.company && typeof opp.company === 'string') {
-                        activeCompaniesCounts.set(opp.company, (activeCompaniesCounts.get(opp.company) || 0) + 1);
-                    }
-                });
-                const validCompanies = Array.from(activeCompaniesCounts.entries())
-                    .filter(([_, count]) => count >= 1)
-                    .map(([c]) => c);
-
-                // Website per company name. A company absent from companies.json
-                // must still be slugged from its domain word (`llt.com` -> `llt`)
-                // rather than from its legal name (`llt-india-pvt-ltd`), and the
-                // sitemap and sitemap-data must resolve the same slug the shards do.
-                const activeCompanyWebsite = new Map<string, string>();
-                activeMapped.forEach((opp) => {
-                    const website = (opp as { companyWebsite?: string | null }).companyWebsite;
-                    if (opp.company && typeof opp.company === 'string' && website && !activeCompanyWebsite.has(opp.company)) {
-                        activeCompanyWebsite.set(opp.company, website);
-                    }
-                });
+                // 1. Companies — one entry per domain (built above), shared by
+                // the sitemap, sitemap-data, OG cache and company shards.
+                const validCompanies: CompanyDirectoryEntry[] = companyDirectory.entries;
 
                 // 2. Skills (Active opportunities only, count >= 5 - matches web SKILL_MIN_JOBS = 5 & dynamicParams = false)
                 const activeSkillsCounts = new Map<string, number>();
@@ -807,7 +829,7 @@ export class StaticFeedService {
                 // 2. sitemap-companies.xml
                 let companiesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 companiesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                validCompanies.forEach(c => companiesXml += `  <url><loc>${xmlLoc(baseUrl)}/companies/${xmlLoc(FeedGeneratorService.getCompanySlug(c, activeCompanyWebsite.get(c) || null))}</loc><changefreq>daily</changefreq></url>\n`);
+                validCompanies.forEach(c => companiesXml += `  <url><loc>${xmlLoc(baseUrl)}/companies/${xmlLoc(c.slug)}</loc><changefreq>daily</changefreq></url>\n`);
                 companiesXml += '</urlset>';
 
                 // 3. sitemap-skills.xml
@@ -916,10 +938,7 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 await StorageService.uploadToR2('sitemaps/sitemap-batches.xml', batchesXml, 'application/xml');
 
                 const sitemapData = {
-                    companies: validCompanies.map(name => ({
-                        name,
-                        slug: FeedGeneratorService.getCompanySlug(name, activeCompanyWebsite.get(name) || null)
-                    })),
+                    companies: validCompanies.map(({ name, slug }) => ({ name, slug })),
                     opportunities: sitemapOpps.map(opp => ({
                         id: opp.id,
                         slug: opp.slug,
@@ -962,7 +981,7 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
 
                     // 1. Companies OG
                     for (const company of validCompanies) {
-                        const slug = FeedGeneratorService.getCompanySlug(company);
+                        const slug = company.slug;
                         if (!slug) continue;
                         if (!cache.companies.includes(slug)) {
                             // logger.info(`[StaticFeedService] Generating OG card for company: ${company}`);
@@ -1080,28 +1099,23 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 // 15. Group & Upload Company Shards sequentially (garbage collect references)
                 let companyShardsCount = 0;
                 if (target === 'all' || target === 'companies' || target === 'bootstrap' || target === 'govt') {
-                const groupedCompanies = new Map<string, typeof activeMapped>();
+                const groupedCompanies = new Map<string, { entry: CompanyDirectoryEntry | null; jobs: typeof activeMapped }>();
                 for (const opp of activeMapped) {
                     if (!opp.company) continue;
-                    const key = (opp.company as string).trim();
-                    const list = groupedCompanies.get(key) || [];
-                    list.push(opp);
-                    groupedCompanies.set(key, list);
+                    const entry = companyEntryFor(opp.company as string);
+                    const slug = entry?.slug ?? FeedGeneratorService.getCompanySlug(
+                        opp.company as string,
+                        (opp as { companyWebsite?: string | null }).companyWebsite ?? null,
+                    );
+                    if (!slug) continue;
+                    const group: { entry: CompanyDirectoryEntry | null; jobs: typeof activeMapped } =
+                        groupedCompanies.get(slug) ?? { entry, jobs: [] };
+                    if (!group.entry && entry) group.entry = entry;
+                    group.jobs.push(opp);
+                    groupedCompanies.set(slug, group);
                 }
 
                 companyShardsCount = groupedCompanies.size;
-
-                // The company website decides the slug when the company is not in
-                // companies.json: `llt.com` must produce `llt`, not
-                // `llt-india-pvt-ltd` from the listing's legal name.
-                const slugFor = (company: string, jobs: typeof activeMapped): string => {
-                    let website: string | null = null;
-                    for (const j of jobs) {
-                        const w = j?.companyWebsite;
-                        if (typeof w === 'string' && w) { website = w; break; }
-                    }
-                    return FeedGeneratorService.getCompanySlug(company, website);
-                };
 
                 // Collect what is on the bucket BEFORE writing, so garbage
                 // collection compares against the real prior state. Runs before
@@ -1117,13 +1131,13 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 for (let i = 0; i < shardEntries.length; i += SHARD_BATCH_SIZE) {
                     const chunk = shardEntries.slice(i, i + SHARD_BATCH_SIZE);
                     await Promise.all(
-                        chunk.map(async ([company, jobs]) => {
-                            const slug = slugFor(company, jobs);
+                        chunk.map(async ([slug, group]) => {
+                            const company = group.entry?.name ?? (group.jobs[0]?.company as string);
                             const shardData = {
                                 company,
                                 slug,
-                                opportunities: jobs,
-                                count: jobs.length,
+                                opportunities: group.jobs,
+                                count: group.jobs.length,
                                 timestamp: Date.now()
                             };
                             const body = JSON.stringify(shardData);
@@ -1164,7 +1178,9 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 // crawled page renders an archive instead of a 404.
                 await this.uploadCompanySlugHistory(
                     allMapped as unknown as Array<Record<string, unknown>>,
-                    new Set(groupedCompanies.keys())
+                    new Set(groupedCompanies.keys()),
+                    previousCompanyDirectory,
+                    companyDirectory.byName,
                 );
             }
 
