@@ -20,12 +20,6 @@ apps/mobile/ios/build/
 apps/mobile/ios/Pods/
 apps/mobile/ios/.xcode.env.local
 
-apps/admin-mobile/android/build/
-apps/admin-mobile/android/app/build/
-apps/admin-mobile/android/.gradle/
-apps/admin-mobile/ios/build/
-apps/admin-mobile/ios/Pods/
-
 # Shared Build Outputs (Cloud compiles them via postinstall)
 packages/*/dist/
 packages/*/build/

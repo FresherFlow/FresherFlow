@@ -22,7 +22,7 @@ const EXCLUDE_FILES = new Set(['package-lock.json', 'pnpm-lock.yaml']);
 
 // Folders to show contents for (we'll show 2 levels deep for these)
 const FOLDERS_TO_EXPAND = new Set([
-  'apps/web', 'apps/api', 'apps/mobile', 'apps/admin-mobile',
+  'apps/web', 'apps/api', 'apps/mobile',
   'apps/worker', 'apps/ingestion', 'apps/mcp',
   'packages/database', 'packages/ui', 'packages/utils', 'packages/types',
   'packages/api-client', 'packages/frontend-core', 'packages/parser',
@@ -96,7 +96,6 @@ function main() {
     { name: 'apps/web', path: path.join(root, 'apps', 'web'), fileName: 'web-tree.md' },
     { name: 'apps/api', path: path.join(root, 'apps', 'api'), fileName: 'api-tree.md' },
     { name: 'apps/mobile', path: path.join(root, 'apps', 'mobile'), fileName: 'mobile-tree.md' },
-    { name: 'apps/admin-mobile', path: path.join(root, 'apps', 'admin-mobile'), fileName: 'admin-mobile-tree.md' },
     { name: 'apps/worker', path: path.join(root, 'apps', 'worker'), fileName: 'worker-tree.md' },
     { name: 'apps/ingestion', path: path.join(root, 'apps', 'ingestion'), fileName: 'ingestion-tree.md' },
     { name: 'apps/mcp', path: path.join(root, 'apps', 'mcp'), fileName: 'mcp-tree.md' }

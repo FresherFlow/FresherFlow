@@ -108,9 +108,9 @@ export default [
       "no-empty": "off",
     },
   },
-  // 3. UI Layer (web/mobile/admin)
+  // 3. UI Layer (web/mobile)
   {
-    files: ["apps/web/**/*", "apps/mobile/**/*", "apps/admin-mobile/**/*"],
+    files: ["apps/web/**/*", "apps/mobile/**/*"],
     ignores: ["apps/web/src/app/api/**/*"],
     rules: {
       "no-restricted-imports": [
