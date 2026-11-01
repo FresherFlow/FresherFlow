@@ -1,20 +1,16 @@
 import { logger } from '../logger.js';
-import { config } from '../config.js';
 import { currentAccessToken } from './token.js';
 
 /**
  * The one authenticated HTTP client for the FresherFlow API.
  *
  * The MCP server holds NO business logic and NO database access: every tool is
- * an HTTP call, authenticated with the caller's own OAuth token. There is no
- * service-key path — an MCP connection without a signed-in account cannot do
- * anything, which is the whole point of the surface.
+ * an HTTP call, authenticated with the caller's own OAuth token.
+ * For unauthenticated (public) requests, we use the INTERNAL_API_SECRET.
  *
  * Resource modules in `src/api/` own endpoint paths and payload shapes; this
  * module owns how a request is made and how an upstream failure is reported.
  */
-
-const API_BASE_URL = config.apiBaseUrl;
 
 // The API's CSRF gate rejects any non-safe method without this header. Browsers
 // cannot set it cross-origin, so it does not weaken CSRF. Without it the POST
@@ -56,9 +52,20 @@ async function toSafeApiError(res: Response): Promise<string> {
     }
 }
 
+let apiBaseUrl: string;
+let internalApiSecret: string;
+
+export function setApiBaseUrl(url: string): void {
+    apiBaseUrl = url.replace(/\/$/, '');
+}
+
+export function setInternalApiSecret(secret: string): void {
+    internalApiSecret = secret;
+}
+
 /** One authenticated request. Every API module goes through this. */
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const url = new URL(path, API_BASE_URL);
+    const url = new URL(path, apiBaseUrl);
     // Defense-in-depth: only allow http(s) to the configured API origin.
     if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         throw new Error('Unsupported API protocol');
@@ -68,17 +75,22 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
         Accept: 'application/json',
         'X-Requested-From': FIRST_PARTY_CLIENT_HEADER,
     };
-    // The caller's token is the only credential this client ever sends. A call
-    // that reaches here without one is a bug in the transport, and it must fail
-    // loudly rather than act as a service identity nobody signed in for.
+
+    // Determine auth: user's OAuth token (preferred) or internal service key
     const callerToken = currentAccessToken();
-    if (!callerToken) {
+    if (callerToken) {
+        headers['Authorization'] = `Bearer ${callerToken}`;
+    } else if (internalApiSecret) {
+        // Unauthenticated public path: use service key
+        headers['Authorization'] = `Bearer ${internalApiSecret}`;
+        headers['X-Internal-Api'] = 'true';
+    } else {
         throw new Error(
             'FresherFlow tools need a signed-in account. Ask the user to connect FresherFlow '
             + 'and sign in, then retry.',
         );
     }
-    headers['Authorization'] = `Bearer ${callerToken}`;
+
     if (init.headers) {
         for (const [key, value] of Object.entries(init.headers as Record<string, string>)) {
             headers[key] = value;
@@ -86,15 +98,19 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     }
 
     let res: Response;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10_000);
     try {
         res = await fetch(url, {
             ...init,
             headers,
-            signal: AbortSignal.timeout(10_000),
+            signal: controller.signal,
         });
     } catch {
         logger.error('FresherFlow API unreachable', { path });
         throw new Error('Cannot reach the FresherFlow API. Please try again shortly.');
+    } finally {
+        clearTimeout(timeoutId);
     }
     if (res.status === 404) {
         throw new Error('The requested FresherFlow API endpoint was not found.');

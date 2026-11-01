@@ -1,7 +1,11 @@
 // Minimal structured logger. Kept dependency-free so the MCP server
 // stays lightweight; swap for pino/winston later if needed.
 
-const isDev = process.env.NODE_ENV !== 'production';
+declare global {
+  var NODE_ENV: string | undefined;
+}
+
+const isDev = globalThis.NODE_ENV !== 'production';
 
 function serializeError(error: unknown): unknown {
     if (error instanceof Error) {

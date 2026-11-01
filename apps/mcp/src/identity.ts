@@ -15,7 +15,7 @@ import { logger } from './logger.js';
  * panel changes what their AI client can do on its next request.
  */
 
-export type McpRole = 'moderator' | 'user';
+export type McpRole = 'moderator' | 'user' | 'public';
 
 export interface McpCapabilities {
     browseJobs: boolean;
@@ -45,6 +45,19 @@ const NO_PRIVILEGES: McpCapabilities = {
     submitPublishes: false,
     viewOwnSubmissions: true,
     withdrawOwnSubmission: true,
+    reviewSubmissions: false,
+    approveSubmissions: false,
+    createFullListing: false,
+    editFullListing: false,
+};
+
+/** Public (unauthenticated) capabilities - read only. */
+const PUBLIC_CAPABILITIES: McpCapabilities = {
+    browseJobs: true,
+    submitOpportunity: false,
+    submitPublishes: false,
+    viewOwnSubmissions: false,
+    withdrawOwnSubmission: false,
     reviewSubmissions: false,
     approveSubmissions: false,
     createFullListing: false,
@@ -114,6 +127,17 @@ export async function resolveConnectionIdentity(token: string): Promise<Connecti
     identityCache.set(cacheKey(token), { identity, expiresAt: now + CACHE_TTL_MS });
     logger.info('Resolved MCP identity', { userId: identity.userId, role: identity.role });
     return identity;
+}
+
+/** Public identity for unauthenticated access. */
+export function getPublicIdentity(): ConnectionIdentity {
+    return {
+        userId: 'public',
+        displayName: 'Public (unauthenticated)',
+        username: null,
+        role: 'public',
+        capabilities: PUBLIC_CAPABILITIES,
+    };
 }
 
 /** Test-only: clears the identity cache. */
