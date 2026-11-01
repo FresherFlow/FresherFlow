@@ -20,6 +20,13 @@
  *                  the route's ISR period, so one number there turns every visitor and
  *                  crawler into a full page render. Public pages are invalidated by
  *                  tag (see the policy comment in cdnFeed.ts), not by a clock.
+ *   6. unroutedFiles  a Next special file (`page`, `route`, `robots`, `proxy`, …) whose
+ *                  extension is not listed in `pageExtensions` in apps/web/next.config.ts.
+ *                  That option REPLACES Next's defaults instead of extending them, so
+ *                  dropping `ts` silently compiled every `route.ts` out of the build and
+ *                  stopped resolving `src/proxy.ts`: `/api/**` and the `/sitemap*.xml`
+ *                  rewrites pointing at `/api/public/sitemap` answered 404, and host
+ *                  routing, auth gates and SEO headers stopped running, on a green deploy.
  *
  * Usage:
  *   node scripts/check-web-structure.mjs          # report only, always exits 0
@@ -72,6 +79,32 @@ const REVALIDATE_ALLOWLIST = new Map([
 /** `export const revalidate = 60` — the segment config that starts an ISR clock. */
 const NUMERIC_REVALIDATE = /^export\s+const\s+revalidate\s*=\s*(\d+)\s*;?$/m;
 const IMPORT_SPEC = /(?:^|[^.\w])(?:import|export)\s[\s\S]*?from\s+['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:^|[\s;])import\s+['"]([^'"]+)['"]/g;
+
+/**
+ * Files Next routes by name. Only the extensions `walk()` collects are checked, so
+ * conventions that legitimately ship other formats (`icon.svg`) are untouched.
+ */
+const NEXT_SPECIAL_FILE = /^(page|layout|template|route|loading|error|global-error|not-found|default|robots|sitemap|manifest|icon|apple-icon|opengraph-image|twitter-image)\.([cm]?[jt]sx?)$/;
+/** The request proxy (formerly `middleware`) lives beside `app`, and is extension-filtered too. */
+const NEXT_PROXY_FILE = /^apps\/web\/src\/(proxy|middleware)\.([cm]?[jt]sx?)$/;
+const NEXT_CONFIG = join(ROOT, 'apps', 'web', 'next.config.ts');
+const NEXT_DEFAULT_PAGE_EXTENSIONS = ['ts', 'tsx', 'js', 'jsx'];
+
+/**
+ * The `pageExtensions` Next will build with. Absent means Next's defaults; present means
+ * exactly that list, which is why a missing `ts` is a silent, total loss of route handlers.
+ */
+function pageExtensions() {
+    try {
+        const block = readFileSync(NEXT_CONFIG, 'utf8').match(/pageExtensions\s*:\s*\[([\s\S]*?)\]/);
+        if (!block) return NEXT_DEFAULT_PAGE_EXTENSIONS;
+        const listed = [...block[1].matchAll(/['"]([^'"]+)['"]/g)].map((match) => match[1]);
+        return listed.length > 0 ? listed : NEXT_DEFAULT_PAGE_EXTENSIONS;
+    } catch {
+        return NEXT_DEFAULT_PAGE_EXTENSIONS;
+    }
+}
+const PAGE_EXTENSIONS = pageExtensions();
 
 const toPosix = (value) => value.split(sep).join('/');
 const isTestFile = (file) => /\.(test|spec)\.[cm]?[jt]sx?$/.test(file);
@@ -147,7 +180,7 @@ function loadBaseline() {
 }
 
 const files = walk(SRC).filter((file) => !isTestFile(file));
-const findings = { deadShims: [], backEdges: [], routeLeaks: [], uiOutward: [], isrTimers: [] };
+const findings = { deadShims: [], backEdges: [], routeLeaks: [], uiOutward: [], isrTimers: [], unroutedFiles: [] };
 
 for (const file of files) {
     const posix = toPosix(relative(ROOT, file));
@@ -179,6 +212,15 @@ for (const file of files) {
                 `${posix} → revalidate: ${match[1]} on a feed read (this becomes the ISR period of every page that reads it)`,
             );
         }
+    }
+
+    const routedFile = posix.startsWith('apps/web/src/app/')
+        ? posix.split('/').pop().match(NEXT_SPECIAL_FILE)
+        : posix.match(NEXT_PROXY_FILE);
+    if (routedFile && !PAGE_EXTENSIONS.includes(routedFile[2])) {
+        findings.unroutedFiles.push(
+            `${posix} → .${routedFile[2]} is not in pageExtensions (${PAGE_EXTENSIONS.join(', ')}), so Next never routes this file`,
+        );
     }
 
     const body = withoutComments

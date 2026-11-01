@@ -815,6 +815,180 @@ html.ff-smooth {
   border: 1px solid #2a3448;
 }
 
+/* ── Landing: named text styles ──────────────────────────────────────────
+   Every landing string resolves to one of these names rather than a loose
+   size and weight. Sizes land only on Tailwind's default type scale. */
+.ff-h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 600; letter-spacing: -0.025em; }
+.ff-h2 { font-size: 1.875rem; line-height: 2.25rem; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
+.ff-h5 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
+.ff-h6 { font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.ff-title-3 { font-size: 1rem; line-height: 1.5rem; font-weight: 500; }
+.ff-body-1 { font-size: 1rem; line-height: 1.5rem; font-weight: 600; text-wrap: pretty; }
+.ff-body-3 { font-size: 1rem; line-height: 1.5rem; font-weight: 400; text-wrap: pretty; }
+.ff-body-4 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; text-wrap: pretty; }
+.ff-body-6 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 400; text-wrap: pretty; }
+.ff-caption-1 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; }
+.ff-caption-2 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 400; }
+.ff-caption-3 { font-size: 0.75rem; line-height: 1rem; font-weight: 600; }
+
+@media (min-width: 640px) {
+  .ff-h1 { font-size: 3.75rem; line-height: 1; }
+  .ff-h2 { font-size: 3rem; line-height: 1; }
+}
+
+/* Running copy holds a readable measure — roughly 65 characters. */
+.ff-measure { max-width: 65ch; }
+
+/* Hero gradient — left to right across the text only, never the background.
+   Semantic ink, so light and dark resolve without raw hex. */
+.ff-hero-gradient {
+  background-image: linear-gradient(to right, var(--color-foreground), var(--color-muted-foreground));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Raised surface — the border goes all the way around, never one side. */
+.ff-surface {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-card-foreground);
+}
+
+/* Buttons. 48px floor, 8px/12px interior padding, three state groups. */
+.ff-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  transition:
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 300ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ff-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-ring);
+}
+.ff-btn:active { transform: scale(0.98); }
+.ff-btn-primary { background: var(--color-foreground); color: var(--color-background); }
+.ff-btn-secondary { background: transparent; color: var(--color-foreground); border-color: var(--color-border); }
+.ff-btn-onink { background: var(--color-background); color: var(--color-foreground); }
+.ff-btn-onink-outline { background: transparent; color: var(--color-background); border-color: currentColor; }
+@media (hover: hover) and (pointer: fine) {
+  .ff-btn-primary:hover,
+  .ff-btn-onink:hover { opacity: 0.88; }
+  .ff-btn-secondary:hover { border-color: var(--color-foreground); }
+  .ff-btn-onink-outline:hover { opacity: 0.7; }
+}
+
+/* Hero feed — the board itself, held in a paper column. */
+.ff-feed {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+}
+.ff-feed-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-muted-foreground);
+}
+.ff-feed-total { color: var(--color-foreground); }
+.ff-feed-list { margin: 0; padding: 0; list-style: none; }
+.ff-feed-row { border-bottom: 1px solid var(--color-border); }
+.ff-feed-row:last-child { border-bottom: 0; }
+.ff-feed-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'title time'
+    'place place';
+  gap: 4px 16px;
+  padding: 16px 20px;
+  transition: background-color 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ff-feed-title {
+  grid-area: title;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.ff-feed-time {
+  grid-area: time;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--color-muted-foreground);
+}
+.ff-feed-place {
+  grid-area: place;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--color-muted-foreground);
+}
+.ff-feed-link:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--color-ring);
+}
+@media (hover: hover) and (pointer: fine) {
+  .ff-feed-link:hover { background: var(--color-accent); }
+}
+
+/* One orchestrated load sequence: the offer rises, the board follows, the
+   rows print in top to bottom. Nothing else on the page enters on scroll. */
+@keyframes ff-rise {
+  from { opacity: 0; transform: translateY(20px); }
+}
+@keyframes ff-print {
+  from { opacity: 0; transform: translateY(8px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ff-load { animation: ff-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+  .ff-feed { animation: ff-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both; }
+  .ff-feed-row {
+    animation: ff-print 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--ff-row-delay, 0ms);
+  }
+}
+
+/* Tagline reveal. Words render at full colour by default, so a page with no
+   JS still reads correctly; the muted state is armed by the component only
+   when it is about to run the sequence. */
+.tagline-word {
+  display: inline-block;
+  margin-right: 0.28em;
+  color: var(--color-foreground);
+  transition: color 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.tagline-armed .tagline-word {
+  color: color-mix(in oklab, var(--color-foreground) 30%, transparent);
+}
+.tagline-armed .tagline-word.is-on {
+  color: var(--color-foreground);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tagline-word { transition: none; }
+}
+
 /* Nav action buttons — mock .btn / .btn-ghost / .btn-sm */
 .ff-nav-btn {
   display: inline-flex;

@@ -1,4 +1,4 @@
-import { slugify } from '@fresherflow/utils/slugify';
+import { getCompanySlug as resolveCompanySlug } from '@fresherflow/utils/slugify';
 
 export function formatAllowedPassoutYears(years?: string[] | null): string {
     if (!years || years.length === 0) return 'Any';
@@ -30,37 +30,13 @@ export function capitalizeSkill(skill: string | null | undefined): string {
 }
 
 /**
- * Registrable names that belong to the *platform*, not the employer. A listing
- * hosted at `boards.greenhouse.io/northwind` told us the host was the employer,
- * so the link resolved to `/companies/greenhouse` — a slug no company can have.
- */
-const ATS_HOST_TOKENS = new Set([
-    'greenhouse', 'job-boards', 'boards', 'lever', 'myworkdayjobs', 'workday',
-    'zohorecruit', 'smartrecruiters', 'breezy', 'recruitee', 'freshteam',
-    'jobvite', 'catsone', 'talentlyft',
-]);
-
-/**
- * Best-effort company slug from a listing's website, for `/companies/{slug}`.
+ * Company slug for `/companies/{slug}`, from the listing's website.
  *
- * NOTE: the route resolves the slug through `CompanySlugger`, built from the
- * companies directory, whose slugs are `item.slug || slugify(item.name)`. With no
- * directory to consult here, the fallback has to be the same one: when the host
- * tells us nothing usable, slugify the company name.
+ * Delegates to the shared resolver so the web and the API cannot disagree:
+ * the slug is the company's domain word (`llt.com` -> `llt`), and the name is
+ * only slugified when the URL says nothing usable. A local copy of this logic
+ * used to treat ATS platforms as employers and disagreed with the directory.
  */
 export function getCompanySlug(companyWebsite?: string | null, companyName?: string): string {
-    if (companyWebsite) {
-        try {
-            const raw = companyWebsite.trim();
-            const withProtocol = raw.startsWith('http') ? raw : `https://${raw}`;
-            const hostname = new URL(withProtocol).hostname
-                .toLowerCase()
-                .replace(/^www\d*\./i, '')
-                .replace(/^(careers|jobs|talent|work|apply|hr|global|about|recruitment|candidate)\./i, '');
-            const parts = hostname.split('.');
-            const main = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
-            if (main && main.length > 1 && !ATS_HOST_TOKENS.has(main)) return main;
-        } catch {}
-    }
-    return slugify(companyName || '');
+    return resolveCompanySlug(companyName || '', companyWebsite || null);
 }

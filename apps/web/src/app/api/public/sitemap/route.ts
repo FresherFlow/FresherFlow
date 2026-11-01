@@ -7,8 +7,14 @@ export const dynamic = 'force-dynamic';
 
 async function serveSitemap(request: NextRequest) {
     try {
-        const { searchParams } = new URL(request.url);
-        const file = searchParams.get('file');
+        // The rewrite from `/sitemap*.xml` names the file in `?file=`, but a
+        // rewritten route handler is handed the *public* request URL, so that
+        // query is not visible here — in `next dev` it is dropped entirely and
+        // every sitemap answered 400. Fall back to the requested filename,
+        // which is the same value the rewrite was built from. Both carriers go
+        // through the same validation below.
+        const requestUrl = new URL(request.url);
+        const file = requestUrl.searchParams.get('file') ?? requestUrl.pathname.split('/').pop() ?? null;
 
         if (!file || !/^sitemap(-[a-zA-Z0-9-_]+)?\.xml$/.test(file)) {
             return new NextResponse('Invalid sitemap file', { status: 400 });

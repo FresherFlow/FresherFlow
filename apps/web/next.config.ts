@@ -123,7 +123,14 @@ const nextConfig: NextConfig = {
   // component that renders a markdown string. It must sit on the Next config
   // itself: passing it through `withSentryConfig`'s options object is silently
   // ignored, which left /docs/* unrouted.
-  pageExtensions: ["tsx", "mdx", "jsx"],
+  //
+  // `ts` and `js` are the rest of Next's default set and must stay listed.
+  // Setting this option *replaces* the defaults, it does not extend them, and
+  // every route handler in this app is `route.ts`. Listing only `tsx` compiled
+  // pages and left all 28 `route.ts` files out of the build, so `/api/**` and
+  // the `/sitemap*.xml` rewrite that points at `/api/public/sitemap` answered
+  // 404 while still building green.
+  pageExtensions: ["ts", "tsx", "js", "jsx", "mdx"],
 
   // `standalone` is needed for Docker/Vercel production only — it
   // adds a full copy of node_modules to .next/standalone and slows

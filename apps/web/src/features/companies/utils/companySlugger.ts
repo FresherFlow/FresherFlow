@@ -1,5 +1,16 @@
-import { slugify } from '@fresherflow/utils/slugify';
+import { getCompanySlug, resolveCompanyDomain, slugify } from '@fresherflow/utils/slugify';
 
+/**
+ * Resolves a listing to its canonical company slug.
+ *
+ * The API owns the slug: `companies.json`, `companies/{slug}.json` and
+ * `sitemap-companies.xml` are all written from `CompanyDirectoryService`, whose
+ * identity is the company's domain. This class must agree with it, so every
+ * fallback delegates to the same `getCompanySlug`/`resolveCompanyDomain`
+ * helpers. A local reimplementation here is how the web once produced
+ * `/companies/greenhouse` for a `boards.greenhouse.io` listing while the API
+ * wrote the employer's slug.
+ */
 export class CompanySlugger {
     private nameToCanonicalSlug = new Map<string, string>();
     private domainToCanonicalSlug = new Map<string, string>();
@@ -10,12 +21,12 @@ export class CompanySlugger {
             if (!item.name) continue;
             const canonicalSlug = item.slug || slugify(item.name);
             this.nameToCanonicalSlug.set(item.name.toLowerCase().trim(), canonicalSlug);
-            
-            if (item.url) {
-                try {
-                    const hostname = new URL(item.url).hostname.toLowerCase().replace(/^www\./, '');
-                    this.domainToCanonicalSlug.set(hostname, canonicalSlug);
-                } catch {}
+
+            // Only real employer domains are indexed. An ATS host would map
+            // every customer of that platform onto one company.
+            const domain = resolveCompanyDomain(item.url);
+            if (domain && !domain.isAts) {
+                this.domainToCanonicalSlug.set(domain.registrable, canonicalSlug);
             }
 
             if (!this.slugToCanonicalName.has(canonicalSlug)) {
@@ -29,66 +40,68 @@ export class CompanySlugger {
     }
 
     /**
-     * Resolves a listing to its canonical company slug.
+     * Order matters and is deliberately directory-first: a crawled
+     * `/companies/{slug}` must not move because a logo provider changed the
+     * domain it serves.
      *
-     * Order matters and is deliberately directory-first. The API slugs
-     * companies from companies.json (feedGenerator.service.ts), so a resolver
-     * that disagrees here puts a second live URL on a company page. Clearbit
-     * logo derivation used to run FIRST, which meant a logo swap silently
-     * moved a crawled /companies/{slug} to a slug nothing else knew about. It
-     * is now the last resort before the bare name slug.
+     *  1. exact name in companies.json — the canonical slug the API publishes
+     *  2. the listing's domain, matched against the directory's domains
+     *  3. an ATS URL, whose employer token is itself the canonical slug
+     *  4. the domain implied by the logo
+     *  5. the shared name/domain resolver — never a bare name slugify
      */
     getSlug(opp: { company?: string | null; companyWebsite?: string | null; companyLogoUrl?: string | null }): string | null {
         if (!opp.company) return null;
-        
-        let slug: string | null | undefined = null;
 
-        // 1. Exact name match in companies.json - the same canonical slug the
-        //    API writes its shards and sitemap under.
-        slug = this.nameToCanonicalSlug.get(opp.company.toLowerCase().trim());
+        let slug = this.nameToCanonicalSlug.get(opp.company.toLowerCase().trim()) ?? null;
 
-        // 2. Match by website domain against known companies.json domains
-        if (!slug && opp.companyWebsite) {
-            try {
-                const hostname = new URL(opp.companyWebsite).hostname.toLowerCase().replace(/^www\./, '');
-                slug = this.domainToCanonicalSlug.get(hostname);
-                if (!slug) {
-                    for (const [knownDomain, knownSlug] of this.domainToCanonicalSlug.entries()) {
-                        if (hostname === knownDomain || hostname.endsWith(`.${knownDomain}`)) {
-                            slug = knownSlug;
-                            break;
-                        }
-                    }
-                }
-            } catch {}
+        const domain = resolveCompanyDomain(opp.companyWebsite);
+        if (!slug && domain) {
+            if (domain.isAts) {
+                slug = domain.slug;
+            } else {
+                slug = this.domainToCanonicalSlug.get(domain.registrable)
+                    ?? this.matchParentDomain(domain.registrable)
+                    ?? null;
+            }
         }
 
-        // 3. Logo domain word. Weak identity - a logo provider can change the
-        //    domain it serves - so it only runs for a company the directory
-        //    has never heard of.
-        if (!slug && opp.companyLogoUrl && opp.companyLogoUrl.includes('clearbit.com/')) {
-            try {
-                const domainMatch = opp.companyLogoUrl.split('clearbit.com/')[1]?.split('?')[0]?.split('/')[0];
-                if (domainMatch) {
-                    const parts = domainMatch.toLowerCase().replace(/^www\./, '').split('.');
-                    if (parts.length >= 2) {
-                        let word = parts[parts.length - 2];
-                        if (['co', 'com', 'org', 'ac', 'net', 'edu', 'in'].includes(word) && parts.length >= 3) {
-                            word = parts[parts.length - 3];
-                        }
-                        slug = word;
-                    } else {
-                        slug = parts[0];
-                    }
-                }
-            } catch {}
+        if (!slug && opp.companyLogoUrl) {
+            const logoDomain = logoUrlDomain(opp.companyLogoUrl);
+            if (logoDomain) slug = resolveCompanyDomain(logoDomain)?.slug ?? null;
         }
 
-        // 4. Last resort: slugify the company name
-        if (!slug) {
-            slug = slugify(opp.company.trim());
-        }
+        return slug || getCompanySlug(opp.company, opp.companyWebsite ?? null) || null;
+    }
 
-        return slug || null;
+    private matchParentDomain(hostname: string): string | undefined {
+        for (const [knownDomain, knownSlug] of this.domainToCanonicalSlug.entries()) {
+            if (hostname === knownDomain || hostname.endsWith(`.${knownDomain}`)) return knownSlug;
+        }
+        return undefined;
+    }
+}
+
+/**
+ * The domain a logo URL points at: `logo.clearbit.com/acme.com`. A hashed asset
+ * path names no company, so it returns null rather than a random segment.
+ */
+function logoUrlDomain(logoUrl: string): string | null {
+    try {
+        const parsed = new URL(logoUrl);
+        const segments = parsed.pathname.split('/').filter(Boolean);
+        if (segments.length === 0) return null;
+
+        const candidate = parsed.hostname.toLowerCase() === 'logo.clearbit.com'
+            ? segments[0]
+            : segments[segments.length - 1];
+
+        const domain = decodeURIComponent(candidate)
+            .replace(/\.(png|jpe?g|webp|svg|gif)$/i, '')
+            .toLowerCase();
+
+        return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(domain) ? domain : null;
+    } catch {
+        return null;
     }
 }

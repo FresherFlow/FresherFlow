@@ -1,99 +1,167 @@
 export const metadata = {
   title: "MCP Server — FresherFlow Docs",
   description:
-    "Connecting an AI client to FresherFlow over MCP: OAuth, the tool list per role, and the listing-write contract.",
+    "Connect your AI client (Claude, Codex, Cursor, ChatGPT) to FresherFlow over MCP. OAuth 2.1, tool list per role, and the listing-write contract.",
 };
 
-# MCP Server Documentation
+# MCP Server
 
-The FresherFlow MCP (Model Context Protocol) server provides a standardized way for AI clients to interact with the platform.
+The FresherFlow MCP (Model Context Protocol) server lets AI clients call FresherFlow tools for finding jobs, submitting opportunities, and managing listings.
 
-## Server Configuration
+**MCP Server URL:** `https://mcp.fresherflow.in/mcp`
 
-The MCP server runs on Express and handles authenticated requests through OAuth 2.1 bearer tokens.
+## Quick Start
 
-### Tool Registration
-
-Tools are registered in `apps/mcp/src/server.ts` and their availability depends on the caller's role:
-
-| Caller | Credential | Available Tools |
-|---|---|---|
-| Signed-in user | OAuth 2.1 bearer | Browse live jobs; submit DRAFT; own submissions |
-| Moderator | OAuth 2.1 + `opportunity.publish` | All user tools + published on submit; full listing writes; moderation |
-| Pipeline scripts | `INTERNAL_API_SECRET` | Full listing writes; no user identity |
-
-### Role Resolution
-
-Role is resolved from the same RBAC grants the admin panel edits, never from client claims. The tool list a connection sees already reflects its role.
-
-### Authentication
-
-- `mcpSurfaceAuth` accepts a bearer token or the service key
-- Never falls back to anonymous
-- MCP server refuses any request without a bearer token
+1. **Connect your AI client** to `https://mcp.fresherflow.in/mcp`
+2. **Complete OAuth login** when prompted (or use an API key for headless)
+3. **Call tools** based on your role
 
 ## Available Tools
 
-### Listing Tools
+| Tool | Public | User | Moderator | Description |
+|------|--------|------|-----------|-------------|
+| `whoami` | ✅ | ✅ | ✅ | Current connection identity, role, capabilities |
+| `get_jobs` | ✅ | ✅ | ✅ | Search live job listings by keyword, city, company, type |
+| `submit_opportunity` | ❌ | ✅ | ✅ | Submit a job (DRAFT for users, PUBLISHED for moderators) |
+| `list_my_submissions` | ❌ | ✅ | ✅ | Your submissions with status |
+| `withdraw_submission` | ❌ | ✅ | ✅ | Withdraw a PENDING_REVIEW submission |
+| `get_listing_schema` | ❌ | ❌ | ✅ | Full field contract for listings |
+| `create_listing` | ❌ | ❌ | ✅ | Create full listing (defaults to PUBLISHED) |
+| `update_listing` | ❌ | ❌ | ✅ | Full replace of a listing |
+| `get_listing` | ❌ | ❌ | ✅ | Read a full listing |
+| `review_queue` | ❌ | ❌ | ✅ | Submissions awaiting review |
+| `approve_submission` | ❌ | ❌ | ✅ | Publish a submission |
+| `reject_submission` | ❌ | ❌ | ✅ | Reject with reason |
 
-| Tool | Description | Requirements |
-|------|-------------|------------|
-| `create_listing` | Create a new job listing | `opportunity.create` or `opportunity.edit` |
-| `submit_opportunity` | Submit an opportunity for publishing | `opportunity.publish` role required |
-| `list_jobs` | List available jobs | Browse access |
-| `get_listing` | Get a specific listing by ID | Read access |
+## Role-Based Access
 
-### Moderation Tools
+| Role | How to Get | What Changes |
+|------|------------|--------------|
+| `public` | No auth | Only `whoami`, `get_jobs` |
+| `user` | Sign in to FresherFlow | Submit drafts, manage own submissions |
+| `moderator` | Admin panel: `opportunity.review` + `opportunity.publish` | Publish on submit, full listing CRUD, moderation |
 
-| Tool | Description | Requirements |
-|------|-------------|------------|
-| `update_listing` | Update an existing listing | `opportunity.edit` role |
-| `publish_listing` | Publish a draft listing | `opportunity.publish` role |
-| `moderate_listing` | Moderate listing status | Moderator role |
+**The tool list a connection sees already reflects its role.** A user never sees moderation tools.
 
-### Submission Tools
+## Authentication
 
-| Tool | Description | Requirements |
-|------|-------------|------------|
-| `submit_opportunity` | Submit opportunity (publishes if role allows) | `opportunity.publish` |
+### OAuth 2.1 (Recommended)
 
-## MCP Session
+The MCP server is an OAuth 2.1 **resource server**; the FresherFlow API is the **authorization server**.
 
-Each connection has a session with:
+1. Client fetches discovery: `GET https://mcp.fresherflow.in/.well-known/oauth-protected-resource`
+2. Client registers via DCR: `POST https://api.fresherflow.in/oauth/register`
+3. Client redirects user: `GET https://api.fresherflow.in/oauth/authorize?...`
+4. User approves on consent screen
+5. Client exchanges code for tokens: `POST https://api.fresherflow.in/oauth/token`
+6. All tool calls include `Authorization: Bearer <access_token>`
 
-- `instructions` block - Context about available tools
-- `tool list` - Which tools are available based on role
-- `connection state` - Authenticated identity
+**PKCE S256 is required.** ChatGPT, Codex, and other clients handle this automatically.
 
-## Error Handling
+### API Key (Headless / CI)
 
-All tools return structured error responses. A tool must never report a listing as live unless the response says `published: true`.
+For environments where OAuth is inconvenient:
 
-## MCP Client Workflow
+1. Create an API key in FresherFlow: **Settings → API Keys**
+2. Send `Authorization: Bearer <api_key>` or `x-api-key: <api_key>` with requests
 
-1. Connect with OAuth 2.1 bearer token
-2. Request tool list - role determines available tools
-3. Call tools based on your role and needs
-4. Verify responses, especially `published` status
+## Connect Your AI Client
 
-## Best Practices
+### Claude Code
 
-- **Never assume tool availability** - always check the tool list for your connection role
-- **Verify published status** - a listing is only live if the response says `published: true`
-- **Respect role boundaries** - moderators have `edit` access, users have `create` access for drafts
-- **Cache the tool list** - after changing input/output schemas, reconnect or refresh discovery
-
-## MCP Surface Auth
-
-```typescript
-// Accepts bearer OR service key, never falls back to anonymous
-mcpSurfaceAuth accepts a bearer *or* the service key and never falls back to anonymous;
-apps/mcp itself refuses any request without a bearer.
+```bash
+claude mcp add --transport http --scope user fresherflow https://mcp.fresherflow.in/mcp
 ```
 
-## Tool Schema Changes
+### Claude Desktop
 
-After changing any `inputSchema` or `outputSchema`:
-- Reconnect a client
-- Re-run `tools/list` before trusting a result
-- Clients validate against the stale schema and reject valid results
+1. Customize → Connectors → Add custom connector
+2. URL: `https://mcp.fresherflow.in/mcp`
+3. Approve login
+
+### Cursor
+
+1. Settings → Tools & Integrations → MCP Tools → New MCP Server
+2. Add to `mcp.json`:
+```json
+{
+  "mcpServers": {
+    "fresherflow": { "url": "https://mcp.fresherflow.in/mcp" }
+  }
+}
+```
+
+### Codex CLI
+
+```bash
+codex mcp add fresherflow --url https://mcp.fresherflow.in/mcp
+```
+
+### Codex Desktop
+
+Settings → Integrations & MCP → Add your own → `https://mcp.fresherflow.in/mcp`
+
+### ChatGPT (Custom Connector)
+
+1. Settings → Connectors → Add custom connector
+2. URL: `https://mcp.fresherflow.in/mcp`
+3. Registration: **Dynamic Client Registration (DCR)**
+4. Base scopes: `mcp`
+
+## Connection Flow
+
+```
+┌─────────────┐     1. GET /.well-known/oauth-protected-resource
+│   Client    │◄────────────────────────────────────────────────
+└──────┬──────┘
+       │ 2. POST /oauth/register (DCR)
+       ▼
+┌─────────────┐     3. GET /oauth/authorize?... (redirects to login)
+│  API (Auth) │◄────────────────────────────────────────────────
+└──────┬──────┘
+       │ 4. User logs in + approves consent screen
+       ▼
+┌─────────────┐     5. POST /oauth/token (code → tokens)
+│   Client    │◄────────────────────────────────────────────────
+└──────┬──────┘
+       │ 6. Tools calls with Authorization: Bearer <token>
+       ▼
+┌─────────────┐
+│ MCP Server  │
+└─────────────┘
+```
+
+## Important Rules
+
+- **Never claim a job is live** unless a tool response says `published: true`
+- `submit_opportunity` from a user creates a **DRAFT** — moderator must publish
+- `submit_opportunity` from a moderator creates **PUBLISHED** — live immediately
+- `update_listing` is a **full replace** — omitted fields are cleared
+- Call `get_listing` after `create_listing`/`update_listing` to verify stored fields
+- Unknown field names in payloads are **silently dropped** — use `get_listing_schema` first
+
+## Rate Limits
+
+| Endpoint | Limit |
+|----------|-------|
+| `/mcp` | 60 req/min per IP |
+| `submit_opportunity` | 60/hr per account |
+| OAuth `/register` | 30/hr per IP |
+| OAuth `/token` | 60/15min per IP |
+| OAuth `/authorize` | 60/15min per IP |
+
+## Error Codes
+
+| Code | Meaning |
+|------|---------|
+| `-32700` | Parse error (invalid JSON) |
+| `-32000` | Rate limit exceeded |
+| `-32001` | Auth required / invalid token |
+| `-32603` | Internal server error |
+
+## Troubleshooting
+
+- **401 on first call** → Normal. Client must follow `resource_metadata` URL and complete OAuth
+- **Tools not found** → Check role via `whoami`. User ≠ Moderator tools
+- **Codex `issuer` error** → Upgrade Codex CLI to ≥0.147.0 or use API key
+- **Auth fails** → Disconnect and reconnect the MCP server in your client

@@ -224,12 +224,19 @@ export default async function OpportunityDetailPage({ params }: Props) {
 
         opportunityData = oppResult;
 
-        // Job not found in CDN feed — return a real 404 so Google doesn't
-        // soft-404 the page (200 with error UI = Soft 404 in GSC).
+        // Job not found in CDN feed. `notFound()` renders the 404 UI and
+        // injects the noindex tag, so Google keeps the page out of results
+        // instead of soft-404ing a 200 that looks like a listing.
+        //
+        // Do not call `unstable_noStore()` here. This route is static
+        // (`revalidate = false`), and opting out of the cache at request time
+        // throws "Page changed from static to dynamic at runtime", which turned
+        // every unknown slug into a 500 that the edge then cached for two
+        // hours. Because `loading.tsx` streams this segment, the status stays
+        // 200 — the documented Next trade-off — but the noindex tag is still
+        // emitted and the 404 UI still renders.
         if (!opportunityData) {
             logRouteResult('/[slug]', '404');
-            const { unstable_noStore } = await import('next/cache');
-            unstable_noStore();
             notFound();
         }
 
