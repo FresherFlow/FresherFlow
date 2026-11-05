@@ -20,9 +20,8 @@ import {
     revokeToken,
 } from '../infrastructure/services/platform/mcpOAuth.service';
 
-/**
- * OAuth 2.1 authorization server for the FresherFlow MCP server.
- *
+/** OAuth 2.1 authorization server for the FresherFlow MCP server.
+
  * ChatGPT and Codex cannot send an API key or a custom header to an MCP
  * connector, so this is the only way a caller on that surface gets an identity
  * (developers.openai.com/plugins/build/auth). The MCP server (`apps/mcp`) is the
@@ -31,6 +30,7 @@ import {
  * Endpoint map:
  *   GET  /.well-known/oauth-protected-resource   resource metadata (also served by apps/mcp)
  *   GET  /.well-known/oauth-authorization-server authorization server metadata
+ *   GET  /.well-known/openid-configuration         OpenID Connect configuration
  *   POST /oauth/register                         dynamic client registration
  *   GET  /oauth/authorize                        start consent (session cookie required)
  *   POST /oauth/authorize                        approve or deny, then redirect with a code
@@ -86,16 +86,14 @@ function escapeHtml(value: string): string {
         .replace(/'/g, '&#39;');
 }
 
-/**
- * Secret for the consent form token. Falls back through the server's existing
+/** Secret for the consent form token. Falls back through the server's existing
  * secrets so a deployment that already runs the API needs no new variable.
  */
 function consentSecret(): string {
     return process.env.OAUTH_CONSENT_SECRET || process.env.JWT_ACCESS_SECRET || process.env.INTERNAL_API_SECRET || '';
 }
 
-/**
- * Stateless CSRF token for the consent form: an HMAC over the exact
+/** Stateless CSRF token for the consent form: an HMAC over the exact
  * authorization request. A cross-site page cannot mint one, and because it is
  * bound to the parameters it cannot be replayed against a different request.
  */
@@ -161,6 +159,31 @@ router.get('/.well-known/oauth-authorization-server', (_req: Request, res: Respo
         code_challenge_methods_supported: ['S256'],
         // Required for the RFC 9207 `iss` parameter we return on every
         // authorization response.
+        authorization_response_iss_parameter_supported: true,
+    });
+});
+
+/** OpenID Connect configuration endpoint.
+ *
+ * This is required for OpenID support in MCP clients (ChatGPT, Claude, etc.).
+ * It advertises the OIDC features supported by this authorization server.
+ * See: https://openid.net/specs/open-connect-core-1_0.html#ProviderConfig
+ */
+router.get('/.well-known/openid-configuration', (_req: Request, res: Response) => {
+    const issuer = getApiPublicUrl();
+    res.json({
+        issuer,
+        authorization_endpoint: `${issuer}/oauth/authorize`,
+        token_endpoint: `${issuer}/oauth/token`,
+        revocation_endpoint: `${issuer}/oauth/revoke`,
+        scopes_supported: [MCP_OAUTH_SCOPE],
+        jwks_uri: `${issuer}/.well-known/jwks`,
+        // The following are required for basic OIDC support:
+        response_types_supported: ['code'],
+        grant_types_supported: ['authorization_code', 'refresh_token'],
+        // PKCE is required for public clients (ChatGPT uses DCR with PKCE).
+        code_challenge_methods_supported: ['S256'],
+        // Required for the RFC 9207 `iss` parameter.
         authorization_response_iss_parameter_supported: true,
     });
 });
@@ -252,8 +275,7 @@ async function validateAuthorizeRequest(params: AuthorizeParams): Promise<{ clie
     return { clientName: client.clientName || 'An AI assistant' };
 }
 
-/**
- * GET /oauth/authorize — the entry point the AI client opens in a browser.
+/** GET /oauth/authorize — the entry point the AI client opens in a browser.
  *
  * Unauthenticated callers are sent to the web login with this exact URL as
  * `next`, so the consent screen is reached again after signing in.
@@ -345,8 +367,7 @@ router.get('/oauth/authorize', authorizeLimiter, async (req: Request, res: Respo
 </main></body></html>`);
 });
 
-/**
- * POST /oauth/authorize — the consent decision.
+/** POST /oauth/authorize — the consent decision.
  *
  * Reached only from the form above. Its CSRF defence is the HMAC token bound to
  * the exact request parameters, which is why this one path is exempted from the

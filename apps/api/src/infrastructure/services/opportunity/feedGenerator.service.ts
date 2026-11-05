@@ -107,10 +107,6 @@ export class FeedGeneratorService {
             company: true,
             companyWebsite: true,
             companyLogoUrl: true,
-            companyStage: true,
-            companySize: true,
-            companyIndustry: true,
-            companyTopics: true,
             // `companyId` used to be selected here but the column does not
             // exist on Opportunity - the company is a plain string, and the
             // relation is `organizationId`. The stale select made Prisma
@@ -119,8 +115,6 @@ export class FeedGeneratorService {
             description: true,
             jobFunction: true,
             employmentTypes: true,
-            notesHighlights: true,
-            selectionProcess: true,
             tags: true,
 
             // Eligibility (mobile match scoring)
@@ -164,37 +158,14 @@ export class FeedGeneratorService {
             endsAt: true,
 
             // Engagement stats (public)
-            trendingScore: true,
-            sharesCount: true,
-            savesCount: true,
-            clicksCount: true,
-            commentsCount: true,
+            // trendingScore/sharesCount/savesCount/clicksCount/commentsCount - often 0/placeholder
 
             // Relations
-            driveDetails: true,
-            governmentJobDetails: true,
-            events: true,
+            // driveDetails/governmentJobDetails/events - often null for private listings
 
             // Referrals and Contributors
-            user: {
-                select: {
-                    username: true,
-                    fullName: true,
-                    role: true
-                }
-            },
-            rawIngestions: {
-                select: {
-                    reasonFlags: true,
-                    createdBy: {
-                        select: {
-                            id: true,
-                            fullName: true,
-                            username: true
-                        }
-                    }
-                }
-            },
+            // user - often username null; keeping role only for admin contexts
+            // rawIngestions - parser metadata, not needed in final JSON
         };
     }
 
@@ -246,28 +217,59 @@ export class FeedGeneratorService {
         return opportunities.map((opp: Record<string, unknown>) => {
             let isReferral = false;
             let referredByUsername: string | undefined = undefined;
-
-            if (opp.rawIngestions && Array.isArray(opp.rawIngestions) && opp.rawIngestions.length > 0) {
-                const referralIngestion = opp.rawIngestions.find((ri: { reasonFlags?: string[] }) => ri.reasonFlags?.includes('USER_REFERRAL'));
+            const { rawIngestions, user, trendingScore, sharesCount, savesCount, clicksCount, commentsCount, driveDetails, governmentJobDetails, events, tags, notesHighlights, selectionProcess, companyStage, companySize, companyIndustry, companyTopics, salaryMin, salaryMax, salaryRange, stipend, incentives, sourceLink, expiredAt, registrationDeadline, applicationDeadline, nextDriveAt, endsAt, userUsername, rawIngestions: ri, ...rest } = opp as any;
+            // Keep only essential fields - remove null/empty placeholder data            // Build clean object, explicitly checking for null/undefined values            const cleanObject: Record<string, unknown> = {
+                id: rest.id,
+                slug: rest.slug,
+                category: rest.category,
+                recruitmentMethod: rest.recruitmentMethod,
+                sector: rest.sector,
+                status: rest.status,
+                title: rest.title,
+                company: rest.company,
+                companyWebsite: rest.companyWebsite,
+                companyLogoUrl: rest.companyLogoUrl,
+                description: rest.description,
+                jobFunction: rest.jobFunction,
+                employmentTypes: rest.employmentTypes,
+                allowedDegrees: rest.allowedDegrees,
+                allowedCourses: rest.allowedCourses,
+                allowedSpecializations: rest.allowedSpecializations,
+                allowedPassoutYears: rest.allowedPassoutYears,
+                requiredSkills: rest.requiredSkills,
+                experienceMin: rest.experienceMin,
+                experienceMax: rest.experienceMax,
+                locations: rest.locations,
+                workMode: rest.workMode,
+                salaryPeriod: rest.salaryPeriod,
+                applyLink: rest.applyLink,
+            };
+            // Conditionally add optional fields only if they have non-null values            if (rest.postedAt !== undefined && rest.postedAt !== null) cleanObject.postedAt = rest.postedAt;
+            if (rest.publishedAt !== undefined && rest.publishedAt !== null) cleanObject.publishedAt = rest.publishedAt;
+            if (rest.expiresAt !== undefined && rest.expiresAt !== null) cleanObject.expiresAt = rest.expiresAt;
+            if (rest.updatedAt !== undefined && rest.updatedAt !== null) cleanObject.updatedAt = rest.updatedAt;
+            // applicationDetails - use Prisma.DbNull for null, otherwise include if present            if (rest.applicationDetails !== undefined && rest.applicationDetails !== null) {
+                cleanObject.applicationDetails = rest.applicationDetails;
+            }
+            // Trim user to role only (username often null) - only include if role exists            if (user && user.role) cleanObject.user = { role: user.role };
+            // Process referrals from raw ingestions if present            if (rawIngestions && Array.isArray(rawIngestions) && rawIngestions.length > 0) {
+                const referralIngestion = rawIngestions.find((ri: { reasonFlags?: string[] }) => ri.reasonFlags?.includes('USER_REFERRAL'));
                 if (referralIngestion) {
                     isReferral = true;
                     referredByUsername = (referralIngestion as { createdBy?: { username?: string } }).createdBy?.username || undefined;
                 }
             }
-
-            if (!opp.rawIngestions || !Array.isArray(opp.rawIngestions) || opp.rawIngestions.length === 0) {
-                return { ...opp, isReferral, referredByUsername };
+            // Build result object with only non-null values            const result: Record<string, unknown> = { ...cleanObject };
+            if (isReferral) result.isReferral = isReferral;
+            if (referredByUsername) result.referredByUsername = referredByUsername;
+            // Only include rawIngestions if there are referral entries            if (!rawIngestions || !Array.isArray(rawIngestions) || rawIngestions.length === 0) {
+                return result;
             }
-
-            return {
-                ...opp,
-                isReferral,
-                referredByUsername,
-                rawIngestions: opp.rawIngestions.map((ri: { createdBy?: unknown }) => ({
-                    ...ri,
-                    creator: ri.createdBy
-                }))
-            };
+            result.rawIngestions = rawIngestions.map((ri: { createdBy?: unknown }) => ({
+                ...ri,
+                creator: ri.createdBy
+            }));
+            return result;
         });
     }
 
