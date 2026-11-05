@@ -90,9 +90,12 @@ function unauthorized(env: Env, message: string): Response {
   );
 }
 
-// OAuth discovery, served on the MCP host so a client that starts at this origin
-// finds it. The API serves the same documents; `resource` and `issuer` must stay
-// byte-identical between the two.
+// Protected-resource metadata, served on the MCP host so a client that starts
+// here finds it. Only the resource document is ours: an authorization-server
+// document served from this origin would have to declare `issuer` as this host,
+// and RFC 8414 §3.3 makes any other value a hard failure (opencode rejects the
+// connection with "Issuer mismatch"). The API publishes that document at its
+// own origin, and `authorization_servers` below points clients there.
 function oauthProtectedResourceResponse(env: Env): Response {
   const { apiBaseUrl, mcpPublicUrl, siteUrl } = getUrls(env);
   return jsonResponse({
@@ -101,23 +104,6 @@ function oauthProtectedResourceResponse(env: Env): Response {
     scopes_supported: ['mcp'],
     bearer_methods_supported: ['header'],
     resource_documentation: `${siteUrl}/account?tab=connected`,
-  });
-}
-
-function oauthAuthorizationServerResponse(env: Env): Response {
-  const { apiBaseUrl } = getUrls(env);
-  return jsonResponse({
-    issuer: apiBaseUrl,
-    authorization_endpoint: `${apiBaseUrl}/oauth/authorize`,
-    token_endpoint: `${apiBaseUrl}/oauth/token`,
-    registration_endpoint: `${apiBaseUrl}/oauth/register`,
-    revocation_endpoint: `${apiBaseUrl}/oauth/revoke`,
-    scopes_supported: ['mcp'],
-    response_types_supported: ['code'],
-    grant_types_supported: ['authorization_code', 'refresh_token'],
-    token_endpoint_auth_methods_supported: ['none'],
-    code_challenge_methods_supported: ['S256'],
-    authorization_response_iss_parameter_supported: true,
   });
 }
 
@@ -133,9 +119,6 @@ const handler: ExportedHandler<Env> = {
     // served at /mcp.
     if (url.pathname.startsWith('/.well-known/oauth-protected-resource')) {
       return oauthProtectedResourceResponse(env);
-    }
-    if (url.pathname.startsWith('/.well-known/oauth-authorization-server')) {
-      return oauthAuthorizationServerResponse(env);
     }
     if (url.pathname === '/health') {
       return jsonResponse({ ok: true, service: 'fresherflow-mcp' });
