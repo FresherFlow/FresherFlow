@@ -264,8 +264,16 @@ async function validateAuthorizeRequest(params: AuthorizeParams): Promise<{ clie
         throw new OAuthError(400, 'invalid_request', 'code_challenge is required (PKCE S256)');
     }
     const resource = getMcpPublicUrl();
-    if (resource && params.resource && params.resource !== resource) {
-        throw new OAuthError(400, 'invalid_target', 'resource does not match this authorization server');
+    if (resource && params.resource) {
+        let paramsOrigin: string;
+        try {
+            paramsOrigin = new URL(params.resource).origin;
+        } catch {
+            throw new OAuthError(400, 'invalid_target', 'resource does not match this authorization server');
+        }
+        if (paramsOrigin !== resource) {
+            throw new OAuthError(400, 'invalid_target', 'resource does not match this authorization server');
+        }
     }
     const client = await getClient(params.clientId);
     if (!client) {
