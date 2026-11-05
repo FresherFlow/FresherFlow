@@ -7,10 +7,10 @@
   "vars": {
     "FRESHERFLOW_API_URL": "https://api.fresherflow.in",
     "PUBLIC_SITE_URL": "https://fresherflow.in",
-    "MCP_PUBLIC_URL": "https://mcp.fresherflow.in"
+    "MCP_PUBLIC_URL": "https://mcp.fresherflow.in",
   },
   "routes": [{ "pattern": "mcp.fresherflow.in", "custom_domain": true }],
   "observability": {
-    "enabled": true
-  }
+    "enabled": true,
+  },
 }

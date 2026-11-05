@@ -68,9 +68,15 @@ function getUrls(env: Env) {
   };
 }
 
-/** The 401 that tells an MCP client where to send the user to sign in. */
+/**
+ * The 401 that tells an MCP client where to send the user to sign in.
+ *
+ * The metadata is served by this Worker, not by the API: RFC 9728 puts the
+ * protected-resource document on the resource server, and pointing at the API
+ * means discovery fails whenever the API's own origin config is incomplete.
+ */
 function unauthorized(env: Env, message: string): Response {
-  const { apiBaseUrl } = getUrls(env);
+  const { mcpPublicUrl } = getUrls(env);
   return jsonResponse(
     {
       jsonrpc: '2.0',
@@ -79,7 +85,7 @@ function unauthorized(env: Env, message: string): Response {
     },
     401,
     {
-      'WWW-Authenticate': `Bearer resource_metadata="${apiBaseUrl}/.well-known/oauth-protected-resource"`,
+      'WWW-Authenticate': `Bearer resource_metadata="${mcpPublicUrl}/.well-known/oauth-protected-resource"`,
     },
   );
 }

@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { ConnectionIdentity } from './identity.js';
 import { registerSubmitOpportunity } from './tools/submit-opportunity.js';
 import { registerGetListingSchema } from './tools/get-listing-schema.js';
+import { registerGetListingTemplate } from './tools/get-listing-template.js';
 import { registerCreateListing } from './tools/create-listing.js';
 import { registerUpdateListing } from './tools/update-listing.js';
 import { registerGetListing } from './tools/get-listing.js';
@@ -74,7 +75,7 @@ function buildInstructions(identity: ConnectionIdentity): string {
 
   const listingWorkflow = [
     'Workflow for a full listing:',
-    '  1. Call get_listing_schema and build the payload from the contract it returns. Never guess field names — unknown keys are dropped without warning.',
+    '  1. Call get_listing_template with the kind of listing (JOB, INTERNSHIP or WALKIN) and fill that payload from the posting. Then call get_listing_schema for the enum vocabularies. Never guess field names — the admin form\'s type / walkInDetails / salaryAmount are not API fields and are dropped without warning.',
     '  2. Call create_listing.',
     '  3. Call get_listing to confirm the fields actually stored. A successful write response only proves the API accepted the request.',
     '',
@@ -139,6 +140,7 @@ export function createFresherFlowMcpServer(identity: ConnectionIdentity): McpSer
   // Full listing writes (moderator or admin)
   if (identity.capabilities.createFullListing || identity.capabilities.editFullListing) {
     registerGetListingSchema(server);
+    registerGetListingTemplate(server);
     registerCreateListing(server);
     registerUpdateListing(server);
     registerGetListing(server);

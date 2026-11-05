@@ -5,7 +5,7 @@ import { logger } from './logger.js';
  * Who this MCP connection is acting as, and what that account may do.
  *
  * ChatGPT and Claude pick tools from the list the server advertises, so the
- * role has to be known *before* the tool list is built. `transport.ts` resolves
+ * role has to be known *before* the tool list is built. `worker.ts` resolves
  * it once per HTTP request and hands it to `createFresherFlowMcpServer`, which
  * registers only the tools that role may actually use.
  *

@@ -31,12 +31,22 @@ calls one function from `src/api/`.
 | `src/api/submissions.ts` | submit, own submissions, withdraw, review queue and decisions |
 | `src/tools/*.ts` | one file per tool: its schema, description, annotations, and handler |
 | `src/schemas.ts` | zod input/output for `submit_opportunity`; limits mirror the API's `mcpSubmitOpportunitySchema` |
+| `src/templates/listingTemplates.ts` | API-shaped `create_listing` payloads and the content rules, served by `get_listing_template` |
+| `templates/listing-templates.md` | the admin paste-JSON reference, verbatim, and how it differs from the API contract |
 | `src/config.ts` | env: API base URL, public site URL, port |
 | `src/logger.ts` | structured logs |
 | `package.json`, `tsconfig.json`, `eslint.config.mjs` | build, types, lint |
 | `README.md` | this file |
 
 `/health` is a liveness check for the deployed Worker. It is not an MCP feature.
+
+`get_listing_template` is the local one: it makes no API call, because the
+payload skeleton and the filling rules are ours. It exists because the admin
+form's paste-JSON dialect (`type`, `walkInDetails`, `salaryAmount`) and the
+API's write contract (`category`, `driveDetails`, `salaryRange`) look alike and
+are not — the closed `opportunitySchema` drops the admin keys with no error, so
+a copied admin payload publishes a walk-in with no venue. The verbatim admin
+reference is kept in `templates/listing-templates.md`.
 
 ## Tools
 
@@ -48,6 +58,7 @@ calls one function from `src/api/`.
 | `list_my_submissions` | `GET /api/internal/mcp/submissions` | signed in; own rows | every account | `readOnlyHint: true` |
 | `withdraw_submission` | `POST /api/internal/mcp/submissions/:id/withdraw` | signed in; own `PENDING_REVIEW` rows | every account | `destructiveHint: true` |
 | `get_listing_schema` | `GET /api/internal/mcp/schema` | `opportunity.review` | moderator | `readOnlyHint: true` |
+| `get_listing_template` | local: `src/templates/listingTemplates.ts` | `opportunity.review` | moderator | `readOnlyHint: true` |
 | `create_listing` | `POST /api/internal/mcp/listings` | `opportunity.create` or `opportunity.edit` | moderator | `readOnlyHint: false` |
 | `update_listing` | `PUT /api/internal/mcp/listings/:id` | `opportunity.edit` | moderator | `readOnlyHint: false` |
 | `get_listing` | `GET /api/internal/mcp/listings/:id` | `opportunity.review` | moderator | `readOnlyHint: true` |
@@ -74,7 +85,7 @@ identity can only come from an authorization-code + PKCE flow.
 
 - Every request to `/mcp` must carry `Authorization: Bearer <token>`. Without
   one the request is rejected with `401` and
-  `WWW-Authenticate: Bearer resource_metadata="<api>/.well-known/oauth-protected-resource"`,
+  `WWW-Authenticate: Bearer resource_metadata="<mcp>/.well-known/oauth-protected-resource"`,
   which is how a client discovers where to send the user to sign in.
 - The caller's token travels with the request through `AsyncLocalStorage`
   (`apiClient.ts`), so every API call a tool makes is authenticated as that
