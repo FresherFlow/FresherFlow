@@ -85,7 +85,7 @@ function unauthorized(env: Env, message: string): Response {
     },
     401,
     {
-      'WWW-Authenticate': `Bearer resource_metadata="${mcpPublicUrl}/.well-known/oauth-protected-resource"`,
+      'WWW-Authenticate': `Bearer resource_metadata="${mcpPublicUrl}/.well-known/oauth-protected-resource/mcp", scope="mcp"`,
     },
   );
 }
@@ -99,7 +99,7 @@ function unauthorized(env: Env, message: string): Response {
 function oauthProtectedResourceResponse(env: Env): Response {
   const { apiBaseUrl, mcpPublicUrl, siteUrl } = getUrls(env);
   return jsonResponse({
-    resource: mcpPublicUrl,
+    resource: `${mcpPublicUrl}/mcp`,
     authorization_servers: [apiBaseUrl],
     scopes_supported: ['mcp'],
     bearer_methods_supported: ['header'],
