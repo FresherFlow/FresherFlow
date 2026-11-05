@@ -26,27 +26,15 @@ const SERVER_VERSION = '1.2.0';
  */
 function buildInstructions(identity: ConnectionIdentity): string {
   const moderator = identity.role === 'moderator';
-  const isPublic = identity.role === 'public';
   const who = identity.username ? `@${identity.username}` : identity.displayName;
 
   const intro = [
     'FresherFlow lists fresher jobs, internships and walk-in drives in India.',
     '',
-    isPublic
-      ? 'This is a public (unauthenticated) connection. You can browse live jobs but cannot submit or manage listings.'
-      : 'Every call on this connection is made as the FresherFlow account it signed in with. There is no anonymous or shared-service path: if a tool refuses, the account is missing the permission, and reconnecting will not change that.',
+    'Every call on this connection is made as the FresherFlow account it signed in with. There is no anonymous or shared-service path: if a tool refuses, the account is missing the permission, and reconnecting will not change that.',
   ].join('\n');
 
-  const roleBlock = isPublic
-    ? [
-        `You are connected as ${who} — public access (not signed in).`,
-        '',
-        'As a public connection:',
-        '  - get_jobs — search the live listings by text, city, company or type.',
-        '  - whoami — confirms this is a public connection.',
-        '  - You CANNOT submit, create, edit, or manage listings. Sign in to unlock those tools.',
-      ].join('\n')
-    : moderator
+  const roleBlock = moderator
     ? [
         `You are connected as ${who} — a FresherFlow moderator.`,
         '',
@@ -93,17 +81,13 @@ function buildInstructions(identity: ConnectionIdentity): string {
     'To change an existing listing, call get_listing first: update_listing replaces the whole listing, so anything you leave out is cleared.',
   ].join('\n');
 
-  if (isPublic) {
-    return [intro, roleBlock, reading].join('\n\n');
-  }
-
   return [intro, roleBlock, reading, submitting, own, ...(moderator ? [listingWorkflow] : [])].join('\n\n');
 }
 
 /**
  * Build a fresh MCP server for one authenticated caller.
  *
- * A new instance is created per HTTP request (see `transport.ts`), which is why
+ * A new instance is created per HTTP request (see `worker.ts`), which is why
  * the tool list can be role-filtered without any session state: a moderator's
  * connection sees the moderation and listing-editing tools, a normal account's
  * connection does not see them at all.
@@ -135,33 +119,29 @@ export function createFresherFlowMcpServer(identity: ConnectionIdentity): McpSer
     },
   );
 
-  const isPublic = identity.role === 'public';
   const moderator = identity.role === 'moderator';
 
-  // Public tools (available to everyone, including unauthenticated)
+  // Every tool runs as the signed-in caller. The API re-checks each permission,
+  // so this filtered list is usability, not the security boundary.
   registerWhoami(server);
   registerGetJobs(server);
+  registerSubmitOpportunity(server);
+  registerListMySubmissions(server);
+  registerWithdrawSubmission(server);
 
-  if (!isPublic) {
-    // Authenticated user tools
-    registerSubmitOpportunity(server);
-    registerListMySubmissions(server);
-    registerWithdrawSubmission(server);
+  // Moderator tools
+  if (moderator) {
+    registerReviewQueue(server);
+    registerApproveSubmission(server);
+    registerRejectSubmission(server);
+  }
 
-    // Moderator tools
-    if (moderator) {
-      registerReviewQueue(server);
-      registerApproveSubmission(server);
-      registerRejectSubmission(server);
-    }
-
-    // Full listing writes (moderator or admin)
-    if (identity.capabilities.createFullListing || identity.capabilities.editFullListing) {
-      registerGetListingSchema(server);
-      registerCreateListing(server);
-      registerUpdateListing(server);
-      registerGetListing(server);
-    }
+  // Full listing writes (moderator or admin)
+  if (identity.capabilities.createFullListing || identity.capabilities.editFullListing) {
+    registerGetListingSchema(server);
+    registerCreateListing(server);
+    registerUpdateListing(server);
+    registerGetListing(server);
   }
 
   return server;

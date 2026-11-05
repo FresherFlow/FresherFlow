@@ -11,6 +11,6 @@
     "types": ["@cloudflare/workers-types"],
     "noEmit": true
   },
-  "include": ["src/**/*", "wrangler.jsonc"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

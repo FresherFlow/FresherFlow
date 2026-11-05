@@ -1,17 +1,27 @@
-import type { ExecutionContext } from '@cloudflare/workers-types';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { createFresherFlowMcpServer } from './server';
-import { resolveConnectionIdentity, getPublicIdentity } from './identity';
-import { runWithAccessToken } from './http/token';
-import { setApiBaseUrl, setInternalApiSecret } from './http/client';
-import { logger } from './logger';
+import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { createFresherFlowMcpServer } from './server.js';
+import { resolveConnectionIdentity } from './identity.js';
+import { bearerFromHeaders, runWithAccessToken } from './http/token.js';
+import { setApiBaseUrl } from './http/client.js';
+import { logger } from './logger.js';
+
+/**
+ * Cloudflare Workers entry point for the FresherFlow MCP server.
+ *
+ * Stateless: one transport and one `McpServer` per request. Nothing has to
+ * survive between requests, because the tool list is built from the caller's
+ * role on each request. That is also why this needs no Durable Object.
+ *
+ * Every request must carry an OAuth 2.1 bearer token. There is no anonymous
+ * tier and the Worker holds no service key: a request without a bearer is
+ * answered with a 401 challenge pointing at the API's protected-resource
+ * metadata, which is how ChatGPT/Claude start the sign-in flow.
+ */
 
 interface Env {
   FRESHERFLOW_API_URL: string;
   PUBLIC_SITE_URL: string;
   MCP_PUBLIC_URL: string;
-  INTERNAL_API_SECRET: string;
 }
 
 const MCP_CORS_HEADERS = {
@@ -22,6 +32,8 @@ const MCP_CORS_HEADERS = {
   'Access-Control-Max-Age': '86400',
 } as const;
 
+// Best-effort per-isolate limiter. Workers scale out, so this bounds abuse of a
+// single isolate rather than acting as a global quota.
 const RATE_LIMIT = { windowMs: 60_000, max: 60 };
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
 
@@ -37,25 +49,44 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
-function corsHeaders(): Record<string, string> {
-  return { ...MCP_CORS_HEADERS, 'Content-Type': 'application/json' };
-}
-
 function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders(), ...extraHeaders },
+    headers: { ...MCP_CORS_HEADERS, 'Content-Type': 'application/json', ...extraHeaders },
   });
 }
 
-function getUrls(env: Env) {
-  const apiBaseUrl = env.FRESHERFLOW_API_URL.replace(/\/$/, '');
-  const mcpPublicUrl = env.MCP_PUBLIC_URL.replace(/\/$/, '');
-  const siteUrl = env.PUBLIC_SITE_URL.replace(/\/$/, '');
-  return { apiBaseUrl, mcpPublicUrl, siteUrl };
+function trimUrl(value: string | undefined): string {
+  return (value ?? '').replace(/\/$/, '');
 }
 
-// OAuth Discovery Endpoints (for ChatGPT/Claude MCP connector auto-discovery)
+function getUrls(env: Env) {
+  return {
+    apiBaseUrl: trimUrl(env.FRESHERFLOW_API_URL),
+    mcpPublicUrl: trimUrl(env.MCP_PUBLIC_URL),
+    siteUrl: trimUrl(env.PUBLIC_SITE_URL),
+  };
+}
+
+/** The 401 that tells an MCP client where to send the user to sign in. */
+function unauthorized(env: Env, message: string): Response {
+  const { apiBaseUrl } = getUrls(env);
+  return jsonResponse(
+    {
+      jsonrpc: '2.0',
+      error: { code: -32001, message },
+      id: null,
+    },
+    401,
+    {
+      'WWW-Authenticate': `Bearer resource_metadata="${apiBaseUrl}/.well-known/oauth-protected-resource"`,
+    },
+  );
+}
+
+// OAuth discovery, served on the MCP host so a client that starts at this origin
+// finds it. The API serves the same documents; `resource` and `issuer` must stay
+// byte-identical between the two.
 function oauthProtectedResourceResponse(env: Env): Response {
   const { apiBaseUrl, mcpPublicUrl, siteUrl } = getUrls(env);
   return jsonResponse({
@@ -84,106 +115,93 @@ function oauthAuthorizationServerResponse(env: Env): Response {
   });
 }
 
-async function handleMcpRequest(request: Request, server: McpServer): Promise<Response> {
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
-
-  let responseBody: string | null = null;
-  let responseStatus = 200;
-  const responseHeaders = new Headers();
-
-  const mockResponse = {
-    setHeader: (name: string, value: string) => responseHeaders.set(name, value),
-    getHeader: (name: string) => responseHeaders.get(name),
-    removeHeader: (name: string) => responseHeaders.delete(name),
-    writeHead: (status: number, headers?: Record<string, string>) => {
-      responseStatus = status;
-      if (headers) Object.entries(headers).forEach(([k, v]) => responseHeaders.set(k, v));
-    },
-    write: (chunk: string) => { responseBody = (responseBody ?? '') + chunk; },
-    end: (chunk?: string) => { if (chunk) responseBody = (responseBody ?? '') + chunk; },
-    statusCode: 200,
-    headersSent: false,
-  } as unknown as Response & { statusCode: number; headersSent: boolean };
-
-  await server.connect(transport);
-  await transport.handleRequest(request, mockResponse, await request.json());
-
-  return new Response(responseBody, { status: responseStatus, headers: responseHeaders });
-}
-
-const handler = {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const __ctx = _ctx;
-
-    const { apiBaseUrl } = getUrls(env);
-    setApiBaseUrl(apiBaseUrl);
-    setInternalApiSecret(env.INTERNAL_API_SECRET);
+const handler: ExportedHandler<Env> = {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: MCP_CORS_HEADERS });
     }
 
-    const url = new URL(request.url);
-
-    // OAuth Discovery Endpoints (MCP connector auto-discovery)
-    if (url.pathname === '/.well-known/oauth-protected-resource') {
+    // Both the bare and the path-suffixed metadata URLs are valid for a resource
+    // served at /mcp.
+    if (url.pathname.startsWith('/.well-known/oauth-protected-resource')) {
       return oauthProtectedResourceResponse(env);
     }
-    if (url.pathname === '/.well-known/oauth-authorization-server') {
+    if (url.pathname.startsWith('/.well-known/oauth-authorization-server')) {
       return oauthAuthorizationServerResponse(env);
     }
-
+    if (url.pathname === '/health') {
+      return jsonResponse({ ok: true, service: 'fresherflow-mcp' });
+    }
     if (url.pathname !== '/mcp') {
-      if (url.pathname === '/health') {
-        return jsonResponse({ ok: true, service: 'fresherflow-mcp' });
-      }
       return jsonResponse({ error: 'Not Found' }, 404);
     }
 
+    const { apiBaseUrl } = getUrls(env);
+    if (!apiBaseUrl) {
+      logger.error('FRESHERFLOW_API_URL is not configured');
+      return jsonResponse({ error: 'MCP is not configured' }, 500);
+    }
+    setApiBaseUrl(apiBaseUrl);
+
     const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
     if (!checkRateLimit(ip)) {
-      return jsonResponse({
-        jsonrpc: '2.0',
-        error: { code: -32000, message: 'Rate limit exceeded, slow down.' },
-        id: null,
-      }, 429);
+      return jsonResponse(
+        {
+          jsonrpc: '2.0',
+          error: { code: -32000, message: 'Rate limit exceeded, slow down.' },
+          id: null,
+        },
+        429,
+      );
     }
 
-    const authHeader = request.headers.get('Authorization');
-    const hasAuth = authHeader?.startsWith('Bearer ');
+    const token = bearerFromHeaders(request.headers);
+    if (!token) {
+      return unauthorized(
+        env,
+        'Sign in to FresherFlow to use this MCP server. Connect the server again and approve access.',
+      );
+    }
 
     try {
-      if (hasAuth) {
-        // Authenticated path: user's OAuth token
-        const accessToken = authHeader!.slice(7);
-        return await runWithAccessToken(accessToken, async () => {
-          const identity = await resolveConnectionIdentity(accessToken);
-          const server = createFresherFlowMcpServer(identity);
-          return await handleMcpRequest(request, server);
+      return await runWithAccessToken(token, async () => {
+        // Resolving identity inside the token scope means every API call a tool
+        // makes is authenticated as this caller, and cannot observe another
+        // request's token.
+        const identity = await resolveConnectionIdentity(token);
+        const server = createFresherFlowMcpServer(identity);
+        const transport = new WebStandardStreamableHTTPServerTransport({
+          // Stateless: no session id, no resumability, no Durable Object.
+          sessionIdGenerator: undefined,
+          // JSON responses instead of an SSE stream: a Worker has no long-lived
+          // socket to keep open, and every tool call is a single round trip.
+          enableJsonResponse: true,
         });
-      } else {
-        // Unauthenticated path: public tools only (service key)
-        const publicIdentity = getPublicIdentity();
-        const server = createFresherFlowMcpServer(publicIdentity);
-        return await handleMcpRequest(request, server);
-      }
+        await server.connect(transport);
+        return await transport.handleRequest(request);
+      });
     } catch (error) {
       logger.error('MCP request failed', { error });
       const message = error instanceof Error ? error.message : 'Internal server error';
-      const unusable = /signed-in|access token|not active/i.test(message);
-      return jsonResponse({
-        jsonrpc: '2.0',
-        error: {
-          code: unusable ? -32001 : -32603,
-          message: unusable
-            ? 'This FresherFlow connection could not confirm the signed-in account. Disconnect and reconnect FresherFlow, then sign in again.'
-            : 'Internal server error',
+      const unusable = /signed-in|access token|not active|rejected/i.test(message);
+      if (unusable) {
+        return unauthorized(
+          env,
+          'This FresherFlow connection could not confirm the signed-in account. Disconnect and reconnect FresherFlow, then sign in again.',
+        );
+      }
+      return jsonResponse(
+        {
+          jsonrpc: '2.0',
+          error: { code: -32603, message: 'Internal server error' },
+          id: null,
         },
-        id: null,
-      }, unusable ? 401 : 500);
+        500,
+      );
     }
   },
-} satisfies ExportedHandler<Env>;
+};
 
 export default handler;

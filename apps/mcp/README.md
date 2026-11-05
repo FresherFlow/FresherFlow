@@ -20,8 +20,7 @@ calls one function from `src/api/`.
 
 | File | Purpose |
 |---|---|
-| `src/index.ts` | process entry: `/health` (Render health check), JSON body parsing, mounts the MCP router |
-| `src/transport.ts` | the MCP endpoint: rate limit, CORS, the OAuth 401 challenge, stateless streamable HTTP (`POST`/`GET`/`DELETE`) |
+| `src/worker.ts` | Worker entry: `/health`, the OAuth discovery documents, the 401 challenge, rate limit, and the stateless streamable-HTTP endpoint |
 | `src/identity.ts` | resolves the OAuth caller into `moderator` / `user` plus capabilities, cached for 60s |
 | `src/server.ts` | builds a per-connection `McpServer`: role-specific instructions, and only the tools that role may use |
 | `src/http/token.ts` | the per-request access token (AsyncLocalStorage) and bearer parsing |
@@ -37,8 +36,7 @@ calls one function from `src/api/`.
 | `package.json`, `tsconfig.json`, `eslint.config.mjs` | build, types, lint |
 | `README.md` | this file |
 
-`/health` exists only because `render.yaml` sets `healthCheckPath: /health`.
-It is not an MCP feature.
+`/health` is a liveness check for the deployed Worker. It is not an MCP feature.
 
 ## Tools
 
@@ -123,14 +121,18 @@ is deliberately not exposed here.
 ## Run
 
 ```bash
-FRESHERFLOW_API_URL=http://localhost:5000 pnpm --filter fresherflow-mcp dev
+pnpm --filter fresherflow-mcp dev
 ```
+
+`wrangler dev` serves the Worker on `http://localhost:8787` using the vars in
+`apps/mcp/wrangler.jsonc`. To point it at a local API instead, run
+`pnpm --filter fresherflow-mcp dev --var FRESHERFLOW_API_URL:http://localhost:5000`.
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `FRESHERFLOW_API_URL` | `http://localhost:5000` | Existing FresherFlow API base URL |
+| `FRESHERFLOW_API_URL` | `https://api.fresherflow.in` | Existing FresherFlow API base URL |
 | `PUBLIC_SITE_URL` | `https://fresherflow.in` | Public site URL, used in tool descriptions |
-| `PORT` / `MCP_PORT` | `5002` | Listen port |
+| `MCP_PUBLIC_URL` | `https://mcp.fresherflow.in` | This server's public origin; must equal the API's `MCP_PUBLIC_URL` |
 No service key is configured on purpose: every call this process makes is
 authenticated as the connected user, and a shared secret here would be a second,
 unattributable identity any connected account could borrow.
@@ -170,6 +172,28 @@ every metadata document, because OpenAI hosts compare it exactly.
 
 ## Deploy
 
-Declared in `render.yaml` as `fresherflow-mcp` (build and start use pnpm). Set
-`FRESHERFLOW_API_URL` and `PUBLIC_SITE_URL` in the dashboard; `render.yaml`
-leaves `FRESHERFLOW_API_URL` unsynced because the host is per-environment.
+Runs on Cloudflare Workers. `apps/mcp/wrangler.jsonc` is the whole deployment
+config, and wrangler finds it by itself because the `deploy` script runs with
+`apps/mcp` as its working directory.
+
+Cloudflare Workers Builds settings:
+
+| Field | Value |
+|---|---|
+| Root directory | `/` |
+| Build command | `pnpm install --frozen-lockfile --filter=fresherflow-mcp` |
+| Deploy command | `pnpm --filter fresherflow-mcp run deploy` |
+
+The `run` is load-bearing: `pnpm --filter fresherflow-mcp deploy` is pnpm's own
+`deploy` command, which expects a target directory and dies with
+`ERR_PNPM_INVALID_DEPLOY_TARGET` before the package script is reached.
+
+There are no secrets to set. The three vars are plain `vars` in
+`wrangler.jsonc`, and the Worker deliberately holds no service key. The
+`custom_domain` route publishes it at `https://mcp.fresherflow.in`, which must
+match the API's `MCP_PUBLIC_URL` exactly or the two OAuth metadata documents
+disagree and clients refuse the connection.
+
+The transport is stateless — one server and transport per request, JSON
+responses, no session id — which is why this needs no Durable Object. The
+identity cache is a per-isolate optimisation only; nothing outlives a request.

@@ -5,8 +5,8 @@ import { currentAccessToken } from './token.js';
  * The one authenticated HTTP client for the FresherFlow API.
  *
  * The MCP server holds NO business logic and NO database access: every tool is
- * an HTTP call, authenticated with the caller's own OAuth token.
- * For unauthenticated (public) requests, we use the INTERNAL_API_SECRET.
+ * an HTTP call, authenticated with the caller's own OAuth token. This process
+ * holds no service key, so it cannot act as an unattributable identity.
  *
  * Resource modules in `src/api/` own endpoint paths and payload shapes; this
  * module owns how a request is made and how an upstream failure is reported.
@@ -53,14 +53,9 @@ async function toSafeApiError(res: Response): Promise<string> {
 }
 
 let apiBaseUrl: string;
-let internalApiSecret: string;
 
 export function setApiBaseUrl(url: string): void {
     apiBaseUrl = url.replace(/\/$/, '');
-}
-
-export function setInternalApiSecret(secret: string): void {
-    internalApiSecret = secret;
 }
 
 /** One authenticated request. Every API module goes through this. */
@@ -76,20 +71,15 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
         'X-Requested-From': FIRST_PARTY_CLIENT_HEADER,
     };
 
-    // Determine auth: user's OAuth token (preferred) or internal service key
+    // The only credential this server ever holds is the caller's own token.
     const callerToken = currentAccessToken();
-    if (callerToken) {
-        headers['Authorization'] = `Bearer ${callerToken}`;
-    } else if (internalApiSecret) {
-        // Unauthenticated public path: use service key
-        headers['Authorization'] = `Bearer ${internalApiSecret}`;
-        headers['X-Internal-Api'] = 'true';
-    } else {
+    if (!callerToken) {
         throw new Error(
             'FresherFlow tools need a signed-in account. Ask the user to connect FresherFlow '
             + 'and sign in, then retry.',
         );
     }
+    headers['Authorization'] = `Bearer ${callerToken}`;
 
     if (init.headers) {
         for (const [key, value] of Object.entries(init.headers as Record<string, string>)) {
