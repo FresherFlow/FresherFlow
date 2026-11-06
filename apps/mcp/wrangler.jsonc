@@ -4,6 +4,10 @@
   "main": "src/worker.ts",
   "compatibility_date": "2024-12-01",
   "compatibility_flags": ["nodejs_compat"],
+  // These three must match the API's and the web's values exactly: an OAuth
+  // client compares the issuer and the resource identifier as strings, so a
+  // mismatch is a failed connection, never a retry that recovers.
+  // MCP_PUBLIC_URL must equal the API's MCP_PUBLIC_URL.
   "vars": {
     "FRESHERFLOW_API_URL": "https://api.fresherflow.in",
     "PUBLIC_SITE_URL": "https://fresherflow.in",

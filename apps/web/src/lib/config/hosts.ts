@@ -88,8 +88,11 @@ export function handleHostRouting(req: NextRequest) {
 
     // 4. Public Host handling (fresherflow.in)
     if (hostRole === 'public') {
-        // fresherflow.in + PRIVATE route or AUTH route -> 308 app.fresherflow.in
-        if (isUserPath(pathname) || isAuthPath(pathname)) {
+        // fresherflow.in + PRIVATE route or AUTH route -> 308 the login host.
+        // Never redirect to ourselves: in a single-domain deployment the login
+        // host IS the public host, and an unconditional redirect here is a
+        // self-inflicted 308 loop that looks like "login reloads forever".
+        if ((isUserPath(pathname) || isAuthPath(pathname)) && USER_LOGIN_HOST !== normalizedHost) {
             return NextResponse.redirect(
                 `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`,
                 308

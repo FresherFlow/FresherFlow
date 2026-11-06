@@ -118,36 +118,46 @@ export function getHostRole(hostname: string, request: NextRequest) {
     return 'other' as const;
 }
 
+/**
+ * One canonical name per value, with older names accepted as fallbacks.
+ *
+ * Five hosts were being read through ten different `||` chains, which is what
+ * made this config unreadable. `.env.example` lists the canonical set: the
+ * server-only names. The `NEXT_PUBLIC_` twins stay readable here so an existing
+ * deployment keeps working, but nothing new should use them — host routing only
+ * ever runs in the proxy, on the server.
+ */
+function firstEnv(...names: string[]): string {
+    for (const name of names) {
+        const value = process.env[name];
+        if (value && value.trim()) return value;
+    }
+    return '';
+}
+
 export function resolveHosts(request: NextRequest) {
     const requestHost = request.nextUrl.hostname.toLowerCase();
 
     const envPublicHost = normalizeHost(
-        process.env.PUBLIC_WEB_HOST || process.env.NEXT_PUBLIC_PUBLIC_WEB_HOST || process.env.NEXT_PUBLIC_SITE_URL,
+        firstEnv('PUBLIC_WEB_HOST', 'NEXT_PUBLIC_PUBLIC_WEB_HOST', 'NEXT_PUBLIC_SITE_URL'),
         ''
     );
-    const envAppHost = normalizeHost(
-        process.env.APP_WEB_HOST || process.env.NEXT_PUBLIC_APP_WEB_HOST,
-        ''
-    );
-    const envAdminHost = normalizeHost(
-        process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST,
-        ''
-    );
-    const envLoginHost = normalizeHost(
-        process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST,
-        ''
-    );
-    const envJoinHost = normalizeHost(
-        process.env.JOIN_WEB_HOST || process.env.NEXT_PUBLIC_JOIN_WEB_HOST,
-        ''
-    );
+    const envAppHost = normalizeHost(firstEnv('APP_WEB_HOST', 'NEXT_PUBLIC_APP_WEB_HOST'), '');
+    const envAdminHost = normalizeHost(firstEnv('ADMIN_WEB_HOST', 'NEXT_PUBLIC_ADMIN_WEB_HOST'), '');
+    const envLoginHost = normalizeHost(firstEnv('USER_LOGIN_HOST', 'NEXT_PUBLIC_USER_LOGIN_HOST'), '');
+    const envJoinHost = normalizeHost(firstEnv('JOIN_WEB_HOST', 'NEXT_PUBLIC_JOIN_WEB_HOST'), '');
 
     const derived = deriveSiblingHosts(requestHost);
 
     const PUBLIC_WEB_HOST = isRealHost(envPublicHost) ? envPublicHost : derived.publicHost;
     const APP_WEB_HOST = isRealHost(envAppHost) ? envAppHost : derived.appHost;
     const ADMIN_WEB_HOST = isRealHost(envAdminHost) ? envAdminHost : derived.adminHost;
-    const USER_LOGIN_HOST = isRealHost(envLoginHost) ? envLoginHost : APP_WEB_HOST;
+    // Sign-in lives on the public host unless an app host actually exists.
+    // Defaulting to app.<domain> sent visitors to a host that is not deployed in
+    // a single-domain setup, and to a 308 loop when both names resolve together.
+    const USER_LOGIN_HOST = isRealHost(envLoginHost)
+        ? envLoginHost
+        : (isRealHost(envAppHost) ? APP_WEB_HOST : PUBLIC_WEB_HOST);
     const JOIN_WEB_HOST = isRealHost(envJoinHost) ? envJoinHost : derived.joinHost;
 
     return {

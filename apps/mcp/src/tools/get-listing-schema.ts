@@ -39,6 +39,11 @@ export function registerGetListingSchema(server: McpServer): void {
         },
         async () => {
             const result = await getListingSchema();
+            // `rules.required` comes from the API, not from this tool's own
+            // contract. A shape change upstream must degrade to an empty list
+            // rather than crash the handler on `.join`, which would report the
+            // schema tool as broken while the schema itself was fine.
+            const required = Array.isArray(result.rules.required) ? result.rules.required : [];
             return {
                 structuredContent: result,
                 content: [
@@ -46,7 +51,7 @@ export function registerGetListingSchema(server: McpServer): void {
                         type: 'text' as const,
                         text:
                             `Listing contract: ${Object.keys(result.enums).length} enum vocabularies. `
-                            + `Required fields: ${(result.rules.required as string[]).join(', ')}. `
+                            + `Required fields: ${required.join(', ')}. `
                             + 'Build the payload from the schema, then call create_listing.',
                     },
                 ],

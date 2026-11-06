@@ -54,6 +54,32 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
+      - key: API_URL
+        value: https://api.fresherflow.in
+      - key: MCP_PUBLIC_URL
+        value: https://mcp.fresherflow.in
+      # ── Web origin and session cookie ───────────────────────────────────
+      # getCookieDomain() derives `.fresherflow.in` from PUBLIC_FRONTEND_URL,
+      # and AUTH_COOKIE_DOMAIN states it outright. This pair is what lets the
+      # web host and api.fresherflow.in share one session: without it the MCP
+      # sign-in handoff loops between /login and /oauth/authorize, and every
+      # protected web route bounces back to /login. The API logs an explicit
+      # "[auth] No cookie domain resolved" error at boot when both are missing.
+      - key: PUBLIC_FRONTEND_URL
+        value: https://fresherflow.in
+      # FRONTEND_URL is the name the CORS origin allowlist (src/index.ts), the
+      # alert/email links and the static-feed base URL read. Same origin, second
+      # name: if only one of the two is set, the browser is blocked by CORS even
+      # though the cookie domain is right.
+      - key: FRONTEND_URL
+        value: https://fresherflow.in
+      - key: AUTH_COOKIE_DOMAIN
+        value: .fresherflow.in
+      # Service key for pipeline scripts and the CSRF machine allowlist. The
+      # MCP OAuth path does not use it. Set in the dashboard, and paste the
+      # same value into the pipeline environment.
+      - key: INTERNAL_API_SECRET
+        sync: false
     buildFilter:
       paths:
         - apps/api/**

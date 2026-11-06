@@ -64,11 +64,18 @@ export function handleAuth(req: NextRequest) {
         // user still has no username, otherwise /dashboard and /choose-username loop forever.
         const loggedIn = hasServerIssuedSessionCookie(req);
         const isExpiredFlow = req.nextUrl.searchParams.has('expired') || req.nextUrl.searchParams.has('logout');
-        if (loggedIn && !isExpiredFlow) {
+        // Only bounce to an in-app destination. This gate sees cookie *presence*,
+        // not validity, so bouncing to an absolute target — the API's
+        // /oauth/authorize URL from the MCP connect flow — meant a stale session
+        // cookie sent the browser to /oauth/authorize, which sent it back here,
+        // forever. For that destination the login screen validates the session
+        // against the API and navigates itself (`LoginForm.navigateAfterLogin`).
+        const redirectParam = req.nextUrl.searchParams.get('redirect');
+        const isOffSiteDestination = Boolean(redirectParam && /^https?:\/\//i.test(redirectParam));
+        if (loggedIn && !isExpiredFlow && !isOffSiteDestination) {
             // Preserve the intent the visitor arrived with instead of always dumping them on /dashboard:
             // a username claim (/signup?username=... , invite links) or a post-auth destination.
             const usernamePrefill = req.nextUrl.searchParams.get('username');
-            const redirectParam = req.nextUrl.searchParams.get('redirect');
             const destination = usernamePrefill
                 ? `/choose-username?username=${encodeURIComponent(usernamePrefill)}`
                 : redirectParam && isSafeInternalRedirect(redirectParam)

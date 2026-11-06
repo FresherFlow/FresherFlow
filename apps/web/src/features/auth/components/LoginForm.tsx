@@ -51,6 +51,14 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     const { sendOtp, verifyOtp, loginWithGoogle, user, isLoading, refreshUser } = useAuth();
     const searchParams = useSearchParams();
 
+    // The API's OAuth handoff appends `expired` when it could not confirm the
+    // session. That must stop auto-navigation, not just the proxy's bounce: the
+    // cached session that makes `user` truthy is the same session the API just
+    // rejected, so navigating again ping-pongs /login <-> /oauth/authorize and
+    // the page reloads forever. An explicit sign-in still proceeds, because the
+    // OTP and Google handlers call navigateAfterLogin directly.
+    const expiredFlow = searchParams.get('expired') === 'true';
+
     // username claim state — same as choose-username but inside same shell (no separate page) — mandatory like Twitter, no skip
     const [username, setUsername] = useState('');
     const [isChecking, setIsChecking] = useState(false);
@@ -160,11 +168,11 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
 
     useEffect(() => {
         const isLoggingOut = typeof window !== 'undefined' && (window as any).__isLoggingOut;
-        if (user && !isLoading && !isLoggingOut && step === 'email') {
+        if (user && !isLoading && !isLoggingOut && step === 'email' && !expiredFlow) {
             // if no username, navigateAfterLogin will switch to username step internally
             navigateAfterLogin();
         }
-    }, [user, isLoading, navigateAfterLogin, step]);
+    }, [user, isLoading, navigateAfterLogin, step, expiredFlow]);
 
     const handleGoogleSignIn = useCallback(async () => {
         setIsProcessing(true);

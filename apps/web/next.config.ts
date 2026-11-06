@@ -107,6 +107,26 @@ function resolveDevApiOrigin(): string {
 }
 
 const DEV_API_ORIGIN = resolveDevApiOrigin();
+
+/**
+ * The API origin the browser bundle gets, read from the environment and never
+ * hardcoded. The login screen compares the OAuth return URL against this origin,
+ * so the deployment has to provide it.
+ */
+const PUBLIC_API_ORIGIN =
+  process.env.NEXT_PUBLIC_API_URL?.trim()
+  || process.env.API_URL?.trim()
+  || "";
+
+if (IS_PRODUCTION && !PUBLIC_API_ORIGIN) {
+  // A warning, not a throw: CI builds this app without the variable, and the
+  // deploy environment is the place that must supply it.
+  console.warn(
+    "[next.config] Neither NEXT_PUBLIC_API_URL nor API_URL is set. The browser bundle "
+    + "will have no API origin, and the login screen will reject the OAuth return URL. "
+    + "Set NEXT_PUBLIC_API_URL in the deployment environment."
+  );
+}
 const ADMIN_HOST = resolveHost(
   process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST,
   IS_PRODUCTION ? "" : "localhost"
@@ -119,6 +139,10 @@ const APP_ORIGIN = resolveWebOrigin(
 );
 
 const nextConfig: NextConfig = {
+  // Inlined into the client bundle at build time when the environment provides
+  // it. Omitted otherwise: no origin is baked into the source.
+  ...(PUBLIC_API_ORIGIN ? { env: { NEXT_PUBLIC_API_URL: PUBLIC_API_ORIGIN } } : {}),
+
   // `.mdx` is here so the documentation route can be a page file rather than a
   // component that renders a markdown string. It must sit on the Next config
   // itself: passing it through `withSentryConfig`'s options object is silently

@@ -662,6 +662,24 @@ const server = app.listen(PORT, () => {
     logger.info(`Frontend URL: ${process.env.FRONTEND_URL}`);
     logger.info(`Sentry: ${process.env.SENTRY_DSN ? 'Enabled' : 'Disabled'}`);
 
+    // A missing cookie domain is not fatal to the API, but it silently splits
+    // the session between the web host and this API host: the web proxy never
+    // sees the API's cookies, so protected routes bounce to /login and the MCP
+    // handoff loops between /login and /oauth/authorize. Say it once at boot
+    // instead of letting users discover it.
+    if (process.env.NODE_ENV === 'production') {
+        void import('./utils/runtimeConfig').then(({ getCookieDomain }) => {
+            if (!getCookieDomain()) {
+                logger.error(
+                    '[auth] No cookie domain resolved. Set AUTH_COOKIE_DOMAIN to your registrable domain, '
+                    + 'dot-prefixed, or set PUBLIC_FRONTEND_URL. Without it the web app and the API do not share the session '
+                    + 'cookie, so MCP sign-in loops between /login and /oauth/authorize and every protected '
+                    + 'web route bounces back to /login.',
+                );
+            }
+        });
+    }
+
     // Start background services asynchronously
     initializeBackgroundServices().catch((err) => {
         logger.error('Failed to initialize background services', err);

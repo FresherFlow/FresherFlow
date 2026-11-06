@@ -37,6 +37,12 @@ When uncertain:
 
 Prefer complete solutions over superficial answers.
 
+## Reference projects
+
+`.files/repos/` holds vendored reference implementations that are in this worktree but not in this repo's build: `open-seo` (OAuth 2.1 MCP server, Cloudflare Worker, docs site) and `bluesky-social-app` (Expo/React Native shell). Read them before designing an MCP, OAuth, docs or app-shell feature this repo already needs a pattern for.
+
+Why agents miss them: no instruction file names these directories, so a session that starts from the app being edited never opens them, and the vendored `AGENTS.md` files inside them are not loaded. Name the reference explicitly — `read_files` and `glob` work inside `.files/repos/`.
+
 ## Project shape
 
 FresherFlow is a production job and walk-in opportunity platform.
@@ -121,13 +127,13 @@ Two traps in this area:
 
 ## MCP server
 
-`apps/mcp` is a thin Express server over the API. It holds no business logic and no database access; every tool is an HTTP call.
+`apps/mcp` is a thin Cloudflare Worker over the API. It holds no business logic and no database access; every tool is an HTTP call.
 
 | Concern | Where |
 |---|---|
 | Tool registration and the session `instructions` block | `apps/mcp/src/server.ts` |
 | One file per tool | `apps/mcp/src/tools/*.ts` |
-| HTTP transport, OAuth bearer gate | `apps/mcp/src/transport.ts` |
+| Worker entry: OAuth bearer gate, 401 challenge, stateless transport | `apps/mcp/src/worker.ts` |
 | Caller role → which tools exist (cached briefly) | `apps/mcp/src/identity.ts` |
 | The one authenticated API fetch and error mapping | `apps/mcp/src/http/client.ts` |
 | API calls, one module per surface | `apps/mcp/src/api/{identity,jobs,listings,submissions}.ts` |
@@ -143,7 +149,7 @@ Every MCP caller is authenticated through the app. There is no anonymous tier, a
 | Moderator via AI client | OAuth 2.1 bearer + `opportunity.publish` | the above, **published on submit**; full listing writes; moderation |
 | Pipeline scripts (direct to the API) | `INTERNAL_API_SECRET` | full listing writes; no user identity |
 
-Role is resolved from the same RBAC grants the admin panel edits (`apps/api/src/application/mcp/identity.ts`), never from a client claim. `apps/mcp/src/transport.ts` resolves it per request, so the tool list a connection sees already reflects its role.
+Role is resolved from the same RBAC grants the admin panel edits (`apps/api/src/application/mcp/identity.ts`), never from a client claim. `apps/mcp/src/worker.ts` resolves it per request, so the tool list a connection sees already reflects its role.
 
 `mcpSurfaceAuth` accepts a bearer *or* the service key and never falls back to anonymous; `apps/mcp` itself refuses any request without a bearer. Listing writes need `opportunity.create` **or** `opportunity.edit` (moderators hold `edit`), so the listing tools bypass the admin router rather than impersonating a super admin.
 
@@ -199,7 +205,7 @@ CDN and R2 URLs must use signed URL helpers. Do not expose raw private R2 object
 
 Caching mistakes can publish stale or private data. Treat cache changes as production-risk changes.
 
-- Public feed and category pages may use Incremental Static Regeneration (ISR) with bounded `revalidate`
+- Public feed and category pages carry **no** ISR timer: `export const revalidate = false`. A publish busts a feed tag and the next request regenerates that page once. A numeric `revalidate` on a page — or on a feed `fetch` in `apps/web/src/lib/api/cdnFeed.ts` — becomes the route's ISR period, so every visitor and crawler pays for a full render. Public pages self-heal through the worker's version-gated tag sweep, not through a clock. The only allowlisted exception is `/u/[username]` (300s), because profiles have no invalidation channel
 - Auth, profile, dashboard, admin, saved jobs, alerts, and user-specific reads use `no-store`
 - High-cardinality routes must not trigger broad tag invalidation
 - Feed fetches must not use `no-store` unless debugging locally

@@ -1,7 +1,12 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import prisma from '../infrastructure/database/prisma';
-import { verifyAccessToken as verifySessionToken } from '@fresherflow/utils';
+import {
+    hashRefreshToken,
+    verifyAccessToken as verifySessionToken,
+    verifyRefreshToken,
+} from '@fresherflow/utils';
+import type { User } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { createRateLimiter } from '../middleware/rateLimit';
@@ -19,6 +24,7 @@ import {
     revokeConnection,
     revokeToken,
 } from '../infrastructure/services/platform/mcpOAuth.service';
+import { setAuthCookies } from './auth';
 
 /** OAuth 2.1 authorization server for the FresherFlow MCP server.
 
@@ -126,6 +132,55 @@ function str(value: unknown): string {
     return typeof value === 'string' ? value.trim() : '';
 }
 
+/**
+ * The signed-in user behind this consent request.
+ *
+ * `readSessionUserId` alone is not enough. The access token lives 15 minutes
+ * and the session lives 90 days, so a visitor who is still signed in to the
+ * website arrives here with only a `refreshToken`. Bouncing those users to
+ * /login was the start of the loop: the web app's gate only checks that a
+ * session cookie *exists*, so it sent them straight back to this endpoint,
+ * which bounced them to /login again — an infinite browser ping-pong instead of
+ * a consent screen.
+ *
+ * So an expired access token is rotated here exactly like
+ * `POST /api/auth/refresh`: the presented refresh token is revoked, a fresh
+ * pair is set on this response, and the redirect that follows already carries a
+ * working session.
+ */
+async function resolveSessionUserId(req: Request, res: Response): Promise<string | null> {
+    const direct = readSessionUserId(req);
+    if (direct) return direct;
+
+    const refreshToken = typeof req.cookies?.refreshToken === 'string' ? req.cookies.refreshToken : '';
+    if (!refreshToken) return null;
+
+    try {
+        const userId = verifyRefreshToken(refreshToken);
+        if (!userId) return null;
+
+        const tokenHash = hashRefreshToken(refreshToken);
+        const live = await prisma.refreshToken.findFirst({
+            where: { tokenHash, userId, revokedAt: null, expiresAt: { gt: new Date() } },
+            select: { id: true },
+        });
+        if (!live) return null;
+
+        const account = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, status: true },
+        });
+        if (!account || account.status !== 'ACTIVE') return null;
+
+        await prisma.refreshToken.update({ where: { id: live.id }, data: { revokedAt: new Date() } });
+        // Reuses the one place that knows the cookie name, domain and lifetime.
+        await setAuthCookies(account as unknown as User, res);
+        return userId;
+    } catch {
+        return null;
+    }
+}
+
 // ─── Discovery ───────────────────────────────────────────────────────────────
 
 router.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
@@ -135,7 +190,11 @@ router.get('/.well-known/oauth-protected-resource', (_req: Request, res: Respons
         return;
     }
     res.json({
-        resource,
+        // Must match the document apps/mcp serves for the same resource:
+        // RFC 9728 identifies the resource by URL, and a client that compares
+        // `/mcp` against a bare origin treats the token as issued for another
+        // resource and starts authorization again.
+        resource: `${resource}/mcp`,
         authorization_servers: [getApiPublicUrl()],
         scopes_supported: [MCP_OAUTH_SCOPE],
         bearer_methods_supported: ['header'],
@@ -177,7 +236,9 @@ router.get('/.well-known/openid-configuration', (_req: Request, res: Response) =
         token_endpoint: `${issuer}/oauth/token`,
         revocation_endpoint: `${issuer}/oauth/revoke`,
         scopes_supported: [MCP_OAUTH_SCOPE],
-        jwks_uri: `${issuer}/.well-known/jwks`,
+        // No `jwks_uri`: tokens on this surface are opaque and stored hashed,
+        // so there is no key set to publish. Advertising a key endpoint that
+        // does not exist makes an OIDC client fail discovery and retry.
         // The following are required for basic OIDC support:
         response_types_supported: ['code'],
         grant_types_supported: ['authorization_code', 'refresh_token'],
@@ -225,6 +286,8 @@ interface AuthorizeParams {
     state: string;
     scope: string;
     resource: string;
+    /** Set on the second pass, after the browser has already signed in once. */
+    retry: boolean;
 }
 
 function readAuthorizeParams(source: Request['query'] | Record<string, unknown>): AuthorizeParams {
@@ -237,7 +300,70 @@ function readAuthorizeParams(source: Request['query'] | Record<string, unknown>)
         state: get('state'),
         scope: get('scope') || MCP_OAUTH_SCOPE,
         resource: get('resource'),
+        retry: get('oauth_retry') === '1',
     };
+}
+
+/**
+ * Where to send the browser to sign in, carrying the authorization request so
+ * the consent screen is reached again afterwards.
+ *
+ * `expired=true` is the loop-breaker. The web proxy treats an auth entry page
+ * with that flag as "show the form" even when a session cookie exists, because
+ * the proxy can only see that a cookie is present, not whether it is still
+ * valid. Without it, a dead cookie bounces /login -> here -> /login forever.
+ */
+function loginRedirectUrl(params: AuthorizeParams, hadStaleSession: boolean): string {
+    const authorizeUrl = new URL(`${getApiPublicUrl()}/oauth/authorize`);
+    authorizeUrl.searchParams.set('response_type', 'code');
+    authorizeUrl.searchParams.set('client_id', params.clientId);
+    authorizeUrl.searchParams.set('redirect_uri', params.redirectUri);
+    authorizeUrl.searchParams.set('code_challenge', params.codeChallenge);
+    if (params.state) authorizeUrl.searchParams.set('state', params.state);
+    if (params.scope) authorizeUrl.searchParams.set('scope', params.scope);
+    if (params.resource) authorizeUrl.searchParams.set('resource', params.resource);
+    // Marks the return leg. A second failure renders `sessionLostPage` instead
+    // of redirecting, which is what ends the /login <-> /oauth/authorize loop.
+    authorizeUrl.searchParams.set('oauth_retry', '1');
+
+    // The public host, which always exists. A deployment that separates login
+    // onto another host forwards this one 308 hop through its proxy; a
+    // single-domain deployment lands on /login directly.
+    const loginUrl = new URL(`${getPublicSiteUrl()}/login`);
+    loginUrl.searchParams.set('redirect', authorizeUrl.toString());
+    if (hadStaleSession) loginUrl.searchParams.set('expired', 'true');
+    return loginUrl.toString();
+}
+
+/**
+ * Shown when the OAuth handoff returns without a session after one sign-in.
+ *
+ * One more redirect is what causes the endless reload: the API cannot see the
+ * cookie the web app wrote, so it bounces to /login, which bounces back here.
+ * Nothing can be fixed by repeating that, and only the user can act, so this
+ * page says what is actually wrong and offers one way out.
+ */
+function sessionLostPage(): string {
+    const signInUrl = new URL(`${getPublicSiteUrl()}/login`);
+    signInUrl.searchParams.set('expired', 'true');
+    return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in to connect FresherFlow</title>
+<style>
+ body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#0b0b0f;color:#f5f5f7}
+ main{max-width:30rem;padding:2rem;border:1px solid #26262e;border-radius:1rem;background:#131319}
+ h1{font-size:1.25rem;margin:0 0 .5rem}
+ p{line-height:1.5;color:#c7c7d1}
+ a{display:inline-block;margin-top:1.25rem;padding:.75rem 1rem;border-radius:.75rem;background:#2563eb;color:#fff;text-decoration:none;font-weight:600}
+ .muted{font-size:.85rem;color:#8b8b98}
+</style></head>
+<body><main>
+ <h1>This browser is not signed in to FresherFlow</h1>
+ <p>Signing in did not reach the FresherFlow API, so the connection cannot be approved.</p>
+ <p class="muted">Sign in on the website, then return to your AI client and start the FresherFlow connection again. If it still fails, your browser is not sending the session cookie to the API.</p>
+ <a href="${escapeHtml(signInUrl.toString())}">Sign in to FresherFlow</a>
+</main></body></html>`;
 }
 
 function redirectWithError(res: Response, redirectUri: string, state: string, error: string, description: string): void {
@@ -302,17 +428,22 @@ router.get('/oauth/authorize', authorizeLimiter, async (req: Request, res: Respo
         return;
     }
 
-    const userId = readSessionUserId(req);
+    const userId = await resolveSessionUserId(req, res);
     if (!userId) {
-        const selfUrl = new URL(`${getApiPublicUrl()}/oauth/authorize`);
-        for (const [key, value] of Object.entries(req.query as Record<string, string>)) {
-            selfUrl.searchParams.set(key, String(value));
+        // The browser has already been through sign-in for this exact
+        // authorization request (`oauth_retry=1`). Redirecting again is the
+        // reload loop users report as "login keeps refreshing", so stop and
+        // explain instead of bouncing a second time.
+        if (params.retry) {
+            res.status(401).type('html').send(sessionLostPage());
+            return;
         }
         // `redirect`, not `next`: that is the parameter the web login actually
         // reads (features/auth/components/LoginForm.tsx). The origin check in
         // isSafeInternalRedirect allows this one absolute URL because it is this
         // API's own origin.
-        res.redirect(`${getPublicSiteUrl()}/login?redirect=${encodeURIComponent(selfUrl.toString())}`);
+        const hadStaleSession = Boolean(req.cookies?.accessToken || req.cookies?.refreshToken);
+        res.redirect(loginRedirectUrl(params, hadStaleSession));
         return;
     }
 
@@ -354,7 +485,7 @@ router.get('/oauth/authorize', authorizeLimiter, async (req: Request, res: Respo
  <p><strong>${escapeHtml(clientName)}</strong> is asking to act as <strong>${who}</strong>.</p>
  <p>It will be able to:</p>
  <ul>
-  <li>Add jobs as you, and publish them</li>
+  <li>Add jobs as you (moderators publish on submit; everyone else submits a draft for review)</li>
   <li>See the listings and submissions you own</li>
   <li>Withdraw a submission you made</li>
  </ul>
@@ -391,6 +522,7 @@ router.post('/oauth/authorize', authorizeLimiter, express.urlencoded({ extended:
         state: str(body.state),
         scope: str(body.scope) || MCP_OAUTH_SCOPE,
         resource: str(body.resource),
+        retry: false,
     };
     const presentedToken = str(body.consent_token);
 
@@ -415,9 +547,13 @@ router.post('/oauth/authorize', authorizeLimiter, express.urlencoded({ extended:
         return;
     }
 
-    const userId = readSessionUserId(req);
+    const userId = await resolveSessionUserId(req, res);
     if (!userId) {
-        sendOAuthError(res, new OAuthError(401, 'access_denied', 'Sign in before approving this connection'));
+        // The consent page outlived the session it was rendered with. Send the
+        // browser back through sign-in rather than leaving it on a dead 401
+        // page it cannot act on.
+        const hadStaleSession = Boolean(req.cookies?.accessToken || req.cookies?.refreshToken);
+        res.redirect(loginRedirectUrl(params, hadStaleSession));
         return;
     }
 

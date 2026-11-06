@@ -56,15 +56,29 @@ function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, 
   });
 }
 
-function trimUrl(value: string | undefined): string {
-  return (value ?? '').replace(/\/$/, '');
+/**
+ * An origin, never a path.
+ *
+ * OAuth clients compare the issuer and the advertised endpoints exactly. A
+ * trailing slash or a stray path here makes the discovery documents disagree
+ * with the API's, and the connector re-authorizes in a loop instead of failing
+ * once with a clear reason.
+ */
+function originOf(value: string | undefined): string {
+  const raw = (value ?? '').trim();
+  if (!raw) return '';
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return raw.replace(/\/+$/, '');
+  }
 }
 
 function getUrls(env: Env) {
   return {
-    apiBaseUrl: trimUrl(env.FRESHERFLOW_API_URL),
-    mcpPublicUrl: trimUrl(env.MCP_PUBLIC_URL),
-    siteUrl: trimUrl(env.PUBLIC_SITE_URL),
+    apiBaseUrl: originOf(env.FRESHERFLOW_API_URL),
+    mcpPublicUrl: originOf(env.MCP_PUBLIC_URL),
+    siteUrl: originOf(env.PUBLIC_SITE_URL),
   };
 }
 
