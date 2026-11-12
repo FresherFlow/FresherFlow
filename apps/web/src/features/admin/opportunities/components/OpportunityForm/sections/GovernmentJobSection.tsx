@@ -33,7 +33,7 @@ function GovtSubSection({
             <div className="rounded-xl border border-border/60 bg-card">
                 <CollapsibleTrigger className="block w-full text-left">
                     <span className="flex w-full items-center gap-2.5 rounded-xl px-4 py-3 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring group-data-[state=open]/govt:rounded-t-xl">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-bold text-primary">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-bold text-primary">
                             {number}
                         </span>
                         <span className="text-sm font-semibold text-foreground">{title}</span>

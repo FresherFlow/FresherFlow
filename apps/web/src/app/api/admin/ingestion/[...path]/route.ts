@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
 import { withAdminAuth } from '@/lib/server/adminAuth';
-
-const INGESTION_SERVICE_URL = process.env.INGESTION_SERVICE_URL || 'http://localhost:3005';
-const INGESTION_SECRET = process.env.INGESTION_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || '';
+import { INGESTION_URL, INGESTION_SECRET } from '@/lib/server/env';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // Allow 5 minutes for crawler jobs
@@ -14,7 +12,7 @@ async function proxyRequest(req: NextRequest, { params }: { params: Promise<{ pa
     const url = new URL(req.url);
     const searchParams = url.searchParams.toString();
     
-    const targetUrl = `${INGESTION_SERVICE_URL}/${urlPath}${searchParams ? `?${searchParams}` : ''}`;
+    const targetUrl = `${INGESTION_URL}/${urlPath}${searchParams ? `?${searchParams}` : ''}`;
     
     try {
         const body = req.method !== 'GET' && req.method !== 'HEAD' ? await req.text() : undefined;

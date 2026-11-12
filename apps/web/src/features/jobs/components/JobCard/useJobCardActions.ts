@@ -103,9 +103,17 @@ export function useJobCardActions({
         [allSkills, effectiveSearchQuery]
     );
 
-    const locationInfo = isDrive
+    // `parseOpportunityLocation` treats an empty location list as "Remote".
+    // That is a claim the listing never made, so a listing with no stated
+    // location renders no location at all. A genuine remote listing carries
+    // either a location entry or a work mode, and still reads Remote.
+    const hasStatedLocation = (job.locations || []).some((entry) => Boolean(entry && entry.trim()));
+    const parsedLocation = isDrive
         ? { shortLabel: 'PAN India', fullLabel: 'PAN India' }
         : parseOpportunityLocation(job.locations);
+    const locationInfo = hasStatedLocation
+        ? parsedLocation
+        : { shortLabel: '', fullLabel: '' };
 
     const jobPath = getOpportunityPathFromItem(job);
 
@@ -132,6 +140,8 @@ export function useJobCardActions({
             : '');
 
     const postedLabel = getPostedLabel(job);
+    /** A listing with neither link cannot be applied to; the button says so. */
+    const canApply = Boolean(job.applyLink || job.companyWebsite);
 
     const handleSaveClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -201,6 +211,7 @@ export function useJobCardActions({
         shareUrl,
         directionsUrl,
         postedLabel,
+        canApply,
         handleSaveClick,
         handleApplyClick,
         handleCardClick,

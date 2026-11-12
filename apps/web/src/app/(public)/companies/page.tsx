@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/feedServer';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import CompaniesDirectoryClient from '@/features/companies/components/CompaniesDirectoryClient';
 import CompaniesTabsClient from '@/features/companies/components/CompaniesTabsClient';
 import { buildCompanyDirectory } from '@/features/companies/utils/companyDirectory';
 
-// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
 // which marks the feed tags stale, and the next request regenerates this
 // page once. A worker sweep re-sends those tags if that call was lost.

@@ -2,7 +2,7 @@ import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
-import { Suspense } from 'react';
+import { Suspense, cache } from 'react';
 import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
 import { OpportunityDetailSkeleton, FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
@@ -15,7 +15,7 @@ import {
     getTypeHubPath,
     ExtendedOpportunity
 } from '@/features/jobs/domain/opportunitySeo';
-import { fetchGovernmentFeed, fetchFeedIndex, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
+import { fetchGovernmentFeed, fetchFeedIndex, fetchCompaniesMetadata } from '@/lib/api/feedServer';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
 import { getJobDiscussionForSeo } from '@/features/jobs/domain/jobDiscussionSeo';
@@ -27,6 +27,7 @@ import {
     boardCanonicalSlug,
     assertRegistryJobSlugCollision,
     TaxonomyRegistry,
+    ResolvedTaxonomy,
 } from '@/features/jobs/domain/taxonomy';
 import { TopicBoardPage } from '@/features/jobs/components/TopicBoardPage';
 
@@ -38,7 +39,7 @@ function isNextNavigationError(err: unknown): boolean {
     return digest === 'NEXT_HTTP_ERROR_FALLBACK;404' || digest.startsWith('NEXT_REDIRECT');
 }
 
-const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined', 'login', 'jobs', 'saved', 'tracker']);
+const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined', 'login', 'jobs', 'saved', 'tracker', 'api', 'graphql', 'wp-content', 'wp-includes', 'wp-json', 'server-status', 'phpinfo', 'test', 'setup', 'install', 'config', 'backup', 'db', 'sql', 'manager', 'console', 'jenkins', 'actuator', 'health', 'metrics', 'swagger', 'swagger-ui', 'openapi', 'rest', 'docs', '.env', '.git']);
 
 function isInvalidSlug(slug: string): boolean {
     const lower = slug.toLowerCase();
@@ -68,7 +69,7 @@ function getJobSlugs(
 }
 
 /** One feed pass builds the board registry; registry slugs ∩ job slugs = ∅ asserted at build. */
-async function loadTaxonomyRegistry(): Promise<TaxonomyRegistry | null> {
+const loadTaxonomyRegistry = cache(async (): Promise<TaxonomyRegistry | null> => {
     try {
         const feed = await fetchFeedIndex();
         const registry = buildTaxonomyRegistry(feed?.opportunities || []);
@@ -80,7 +81,7 @@ async function loadTaxonomyRegistry(): Promise<TaxonomyRegistry | null> {
         }
         return null;
     }
-}
+});
 
 function boardTitle(resolved: NonNullable<ReturnType<typeof resolveTaxonomySlug>>): string {
     switch (resolved.kind) {
@@ -104,11 +105,24 @@ function boardDescription(resolved: NonNullable<ReturnType<typeof resolveTaxonom
     }
 }
 
+/**
+ * Shared board job filtering, memoised per-request via React.cache().
+ * Both generateMetadata and the body branch filter the same feed with the
+ * same resolved taxonomy — this helper dedups the O(n) CPU work so it runs
+ * once per request instead of twice.
+ */
+const getBoardJobs = cache(
+    (registry: TaxonomyRegistry, resolved: ResolvedTaxonomy, jobs: Opportunity[]): { boardJobs: Opportunity[]; liveCount: number } => {
+        const boardJobs = jobs.filter((opp) => matchTaxonomy(opp, resolved));
+        return { boardJobs, liveCount: boardJobs.length };
+    },
+);
+
 type Props = {
     params: Promise<{ slug: string }>;
 };
 
-// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
 // which marks the feed tags stale, and the next request regenerates this
 // page once. A worker sweep re-sends those tags if that call was lost.
@@ -143,7 +157,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
         if (resolved) {
             const feed = await fetchFeedIndex();
-            const liveCount = (feed?.opportunities || []).filter((opp) => matchTaxonomy(opp, resolved)).length;
+            const { liveCount } = getBoardJobs(registry!, resolved, feed?.opportunities || []);
             return {
                 title: boardTitle(resolved),
                 description: boardDescription(resolved),
@@ -190,8 +204,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
     if (resolved) {
         // Board pages render card data only — lightweight index suffices.
         const feed = await fetchFeedIndex();
-        const allJobs = feed?.opportunities || [];
-        const boardJobs = allJobs.filter(opp => matchTaxonomy(opp, resolved));
+        const { boardJobs } = getBoardJobs(registry!, resolved, feed?.opportunities || []);
 
         // Boards never 404: a resolving board slug is provably not a job
         // (build-time collision assertion), so zero live matches is an empty
@@ -214,6 +227,10 @@ export default async function OpportunityDetailPage({ params }: Props) {
     let opportunityData: ExtendedOpportunity | null = null;
     let relatedOpportunitiesData: Opportunity[] = [];
     let validDirectoryLinks = { validSkills: new Set<string>(), validLocations: new Set<string>() };
+    // Discussion structured data: start the Firebase RTDB read as early as
+    // possible so it runs in parallel with the remaining server work
+    // (companies metadata, related opportunities). Awaited below at render time.
+    let seoDiscussionPromise: ReturnType<typeof getJobDiscussionForSeo> | null = null;
 
     try {
         // Parallelize opportunity details and lightweight feed index fetching
@@ -224,19 +241,26 @@ export default async function OpportunityDetailPage({ params }: Props) {
 
         opportunityData = oppResult;
 
+        // Kick off the discussion read now that we have the opportunity id.
+        // It runs concurrently with fetchCompaniesMetadata() and the related
+        // opportunities work further down in this try block.
+        seoDiscussionPromise = opportunityData && !getExpiryState(opportunityData).isExpired
+            ? getJobDiscussionForSeo(opportunityData.id)
+            : null;
+
         // Job not found in CDN feed. `notFound()` renders the 404 UI and
         // injects the noindex tag, so Google keeps the page out of results
         // instead of soft-404ing a 200 that looks like a listing.
         //
-        // Do not call `unstable_noStore()` here. This route is static
-        // (`revalidate = false`), and opting out of the cache at request time
-        // throws "Page changed from static to dynamic at runtime", which turned
-        // every unknown slug into a 500 that the edge then cached for two
-        // hours. Because `loading.tsx` streams this segment, the status stays
-        // 200 — the documented Next trade-off — but the noindex tag is still
-        // emitted and the 404 UI still renders.
+        // Opt out of the ISR cache before 404-ing: with `revalidate = false`
+        // and `dynamicParams = true`, every bot-invented slug would otherwise
+        // get an ISR write cached under that bogus URL — unbounded cache
+        // entries. `unstable_noStore()` mirrors companies/[slug]/page.tsx and
+        // keeps bogus slugs out of the ISR write path entirely.
         if (!opportunityData) {
             logRouteResult('/[slug]', '404');
+            const { unstable_noStore } = await import('next/cache');
+            unstable_noStore();
             notFound();
         }
 
@@ -285,9 +309,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
     // component whose static HTML is just a skeleton.
     // Discussion structured data: read only for a live listing whose index says
     // the thread has comments. Null leaves the JSON-LD exactly as before.
-    const seoDiscussion = opportunityData && !getExpiryState(opportunityData).isExpired
-        ? await getJobDiscussionForSeo(opportunityData.id)
-        : null;
+    const seoDiscussion = await seoDiscussionPromise;
 
     const detailHeading = opportunityData ? (
         <div className="w-full max-w-4xl mx-auto px-4 pt-4 sr-only">

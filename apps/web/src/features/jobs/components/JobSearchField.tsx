@@ -58,7 +58,8 @@ export function JobSearchField({
                 placeholder={placeholder}
                 aria-label={ariaLabel}
                 className={cn(
-                    'h-10 w-full rounded-xs border border-border bg-card pl-9 text-xs text-foreground',
+                    // 16px on mobile only: iOS zooms the page when a focused field is smaller.
+                    'h-10 w-full rounded-xs border border-border bg-card pl-9 text-base sm:text-xs text-foreground',
                     'placeholder:text-muted-foreground/60',
                     'focus:outline-none focus:ring-1 focus:ring-primary',
                     // Reserve the right gutter for the clear button so text never

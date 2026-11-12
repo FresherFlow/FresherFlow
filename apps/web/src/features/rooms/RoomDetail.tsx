@@ -163,7 +163,7 @@ export function RoomDetail({ slug }: { slug: string }) {
             <div className="rounded-2xl border border-border bg-card p-6 space-y-3">
                 <div className="flex items-start justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg font-bold text-primary">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-lg font-bold text-primary">
                             {roomBadgeText}
                         </div>
                         <div className="min-w-0">

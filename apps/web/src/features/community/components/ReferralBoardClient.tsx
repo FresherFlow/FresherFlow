@@ -13,7 +13,7 @@ import { formatRelativeTime } from '@/lib/utils/relativeTime';
 
 const STATUS_STYLES: Record<string, string> = {
     OPEN: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-    FULFILLED: 'bg-primary/10 text-primary',
+    FULFILLED: 'bg-accent text-accent-foreground',
     CLOSED: 'bg-muted/40 text-muted-foreground',
 };
 
@@ -157,22 +157,22 @@ export function ReferralBoardClient() {
                             placeholder="Company (e.g. Zoho) *"
                             required
                             maxLength={120}
-                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50"
                         />
                         <input
                             value={role}
                             onChange={(e) => setRole(e.target.value)}
                             placeholder="Role (optional)"
                             maxLength={120}
-                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50"
                         />
                         <textarea
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="Anything else? (batch, location, why...)"
+                            placeholder="Anything else? (batch, location, why…)"
                             maxLength={1000}
                             rows={2}
-                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
+                            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50"
                         />
                         <button
                             type="submit"
@@ -237,7 +237,7 @@ export function ReferralBoardClient() {
                                 <button
                                     type="button"
                                     onClick={() => void updateStatus(req.id, ReferralRequestStatus.FULFILLED)}
-                                    className="rounded-lg px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
+                                    className="rounded-lg px-2.5 py-1 text-xs font-semibold text-primary hover:bg-muted transition-colors"
                                 >
                                      Fulfilled
                                 </button>
@@ -254,7 +254,7 @@ export function ReferralBoardClient() {
                             <button
                                 type="button"
                                 onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
-                                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-muted"
                             >
                                 {expandedId === req.id ? 'Hide' : 'Respond'}
                             </button>
@@ -297,14 +297,14 @@ export function ReferralBoardClient() {
                                         placeholder="I can refer — here's what you need…"
                                         rows={2}
                                         maxLength={1000}
-                                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
+                                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50"
                                     />
                                     <input
                                         value={replyHandle}
                                         onChange={(e) => setReplyHandle(e.target.value)}
                                         placeholder="Contact handle (email / Telegram / LinkedIn)"
                                         maxLength={200}
-                                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50"
+                                        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50"
                                     />
                                     <button
                                         type="button"

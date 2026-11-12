@@ -83,7 +83,10 @@ const WORK_MODES = [
 const pillBase =
     'h-8 px-3.5 rounded-full text-sm font-medium flex items-center gap-1.5 whitespace-nowrap select-none cursor-pointer outline-none transition-colors duration-150';
 const pillIdle = 'text-foreground hover:bg-muted';
-const pillActive = 'bg-primary/10 text-primary font-semibold';
+// Selected = the active surface and its own ink, never a tint of the navy.
+// In dark mode `accent` is near-white, so pairing it with `primary` would put
+// navy on white; `accent-foreground` is the token that flips with it.
+const pillActive = 'bg-accent text-accent-foreground font-semibold';
 
 export function JobsFilterBar({
     filters,
@@ -245,7 +248,7 @@ export function JobsFilterBar({
     const rowCls =
         'w-full text-left px-2.5 py-1.5 rounded-md text-sm font-medium transition-all flex items-center gap-2 cursor-pointer outline-none select-none text-foreground hover:bg-muted';
     const searchBoxCls =
-        'w-full h-8 pl-7 pr-2.5 rounded-md border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20';
+        'w-full h-8 pl-7 pr-2.5 rounded-md border border-border bg-background text-base sm:text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20';
     const sectionTitleCls = 'px-0.5 pt-2 pb-0.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70';
 
     const Check = ({ on }: { on: boolean }) => (

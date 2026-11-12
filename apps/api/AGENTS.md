@@ -151,7 +151,7 @@ Queue payloads must be serializable, typed, and small. Store large data in the d
 | `R2_ACCESS_KEY_ID` | Cloudflare R2 |
 | `R2_SECRET_ACCESS_KEY` | Cloudflare R2 |
 | `R2_BUCKET_NAME` | Cloudflare R2 |
-| `CDN_SIGN_KEY` | CDN signed URL generation |
+| `CDN_SIGNATURE_SECRET` | CDN signed URL generation (the edge worker reads this name) |
 | `TELEGRAM_BOT_TOKEN` | Optional Telegram notifications |
 
 Never commit env files or service account dumps.

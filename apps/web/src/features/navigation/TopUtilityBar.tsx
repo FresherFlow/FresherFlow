@@ -38,13 +38,13 @@ export function TopUtilityBar() {
                 <div className="flex items-center gap-2">
                     <Link
                         href="/jobs?tab=for-you"
-                        className="auth-user-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0"
+                        className="auth-user-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0"
                     >
                         Dashboard
                     </Link>
                     <Link
                         href="/register"
-                        className="auth-guest-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0"
+                        className="auth-guest-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0"
                     >
                         Create Profile
                     </Link>
@@ -62,7 +62,7 @@ export function TopUtilityBar() {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-95 hover:border-primary/40 cursor-pointer focus:outline-none">
+                                <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition duration-150 ease-out active:scale-[0.97] hover:border-primary/40 motion-reduce:transform-none cursor-pointer focus:outline-none">
                                     {initialLetter}
                                 </button>
                             </DropdownMenuTrigger>
@@ -70,7 +70,7 @@ export function TopUtilityBar() {
                                 <DropdownMenuLabel>
                                     <div className="flex flex-col space-y-1">
                                         <p className="text-sm font-medium leading-none truncate">{user?.fullName || user?.username || 'User'}</p>
-                                        <p className="text-xs leading-none text-muted-foreground truncate">{user?.email || 'Loading...'}</p>
+                                        <p className="text-xs leading-none text-muted-foreground truncate">{user?.email || 'Loading…'}</p>
                                     </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
@@ -94,7 +94,7 @@ export function TopUtilityBar() {
                     <div className="auth-guest-only flex items-center gap-2">
                         <Link
                             href="/login"
-                            className="px-3 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-all duration-150 ease-out active:scale-95 shrink-0"
+                            className="px-3 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition duration-150 ease-out active:scale-[0.97] shrink-0 motion-reduce:transform-none"
                         >
                             Log in
                         </Link>

@@ -199,7 +199,7 @@ Use `server-only` boundaries for helpers that read cookies, headers, or server e
 |---|---|
 | Server-side API calls | `src/lib/api/server-client.ts` |
 | Client-side API calls | hooks in `src/hooks/` or wrappers in `src/lib/api/` |
-| Opportunity feed | `src/lib/api/cdnFeed.ts` |
+| Opportunity feed | `src/lib/api/feedServer.ts` (server), `src/lib/api/feedClient.ts` (client), `src/lib/api/cdnSigning.ts` (URL signing) |
 | Logos | `src/features/companies/components/CompanyLogo.tsx` and CDN helpers |
 | Shared types | `packages/types` |
 | Shared business rules | Root [`AGENTS.md`](../../AGENTS.md) |
@@ -210,7 +210,7 @@ Never add raw `fetch` calls in UI components when an API client wrapper exists.
 
 Treat cache behavior as production behavior.
 
-- Public feed and category routes may use bounded `revalidate`
+- Public feed routes carry no `revalidate` timer (root `AGENTS.md` → ISR and caching policy). The app-specific enforcement is `pnpm --filter fresherflow-web check:structure`: its `isrTimers` check fails on a numeric `revalidate` in `src/app/(public)/**` or on a feed read in `src/lib/api/feedServer.ts`, with `/u/[username]` (300s) as the single allowlisted exception
 - User-specific routes use `no-store`: dashboard, profile, saved jobs, alerts, settings, admin
 - CDN feed fetches must not use `no-store` in production paths
 - High-cardinality routes must avoid broad tag invalidation
@@ -277,7 +277,10 @@ Client code may read only `NEXT_PUBLIC_*`. Server code may read server-only env 
 | `src/features/auth/components/ProfileGate.tsx` | AuthGate and UsernameGate components |
 | `src/lib/auth/AuthContext.tsx` | Auth provider, session management, Firebase sync |
 | `src/lib/api/server-client.ts` | Server API client and cache policy |
-| `src/lib/api/cdnFeed.ts` | CDN bootstrap feed access |
+| `src/lib/api/feedServer.ts` | Server-side CDN feed fetchers |
+| `src/lib/api/feedClient.ts` | Client-side feed hydration |
+| `src/lib/api/cdnSigning.ts` | CDN URL signing |
+| `src/lib/api/feedCache.ts` | Shared fetch helpers and cache policy |
 | `src/lib/api/client.ts` | Client API exports |
 | `src/features/jobs/` | Feed, filters, cards, detail UI (canonical jobs home; see ownership test) |
 | `src/features/dashboard/hooks/` | Dashboard-specific Firebase hooks |
@@ -338,6 +341,7 @@ Also verify:
 - Loading, error, and empty states render where data is fetched
 - Feed pages use CDN helpers and bounded cache settings
 - SEO metadata does not expose unpublished or admin-only data
+- `pnpm --filter fresherflow-web check:structure:gate` stays green: its `unroutedFiles` check fails when a `page` / `route` / `robots` / `proxy` file uses an extension missing from `pageExtensions` in `next.config.ts` — that option replaces Next's defaults, so an omitted `ts` drops every route handler and stops resolving `src/proxy.ts` while the deploy still goes green
 
 <!-- BEGIN:nextjs-agent-rules -->
 

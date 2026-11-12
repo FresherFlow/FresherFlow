@@ -87,7 +87,7 @@ const TYPE_META: Record<ContributeType, { title: string; description: string }> 
 };
 
 const inputClass =
-    'min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30';
+    'min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30';
 
 // ONE field-height rule: every text control is 44px (h-11). Inputs get it
 // from the Input primitive (ui/Input.tsx h-11); textareas get it here via

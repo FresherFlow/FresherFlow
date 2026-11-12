@@ -128,7 +128,7 @@ export function NavMegaMenu({
 
             {/* Panel — flush under the header bar, never covering it */}
             <div
-                className={`fixed left-0 right-0 z-50 border-b border-border bg-background shadow-lg shadow-black/[0.06] transition-all duration-150 ease-out ${
+                className={`fixed left-0 right-0 z-50 border-b border-border bg-background shadow-lg shadow-black/[0.06] transition-[opacity,transform] duration-150 ease-out ${
                     open ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                 }`}
                 style={{ top: panelTop }}

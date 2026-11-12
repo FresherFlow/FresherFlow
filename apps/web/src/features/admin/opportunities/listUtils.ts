@@ -76,7 +76,7 @@ export const getPublicOpportunityHref = (opp: PublicOpportunityRef) => {
 
 export const getPublicOpportunityUrl = (opp: PublicOpportunityRef) => {
     // NEXT_PUBLIC_* vars are available in the client bundle; SITE_URL is server-only so may be empty
-    const envOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || SITE_URL;
+    const envOrigin = process.env.NEXT_PUBLIC_SITE_URL || SITE_URL;
     // Fallback: infer from admin window origin (e.g. https://admin.fresherflow.in -> https://fresherflow.in)
     const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
     const inferredOrigin = browserOrigin.replace('://admin.', '://');

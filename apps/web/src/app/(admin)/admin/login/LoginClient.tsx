@@ -263,7 +263,7 @@ export default function AdminLoginPage() {
                 <div className="flex flex-col items-center gap-3 text-center">
                     <div
                         aria-hidden
-                        className="flex size-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10"
+                        className="flex size-12 items-center justify-center rounded-xl border border-primary/20 bg-muted"
                     >
                         <ShieldCheckIcon className="size-6 text-primary" />
                     </div>

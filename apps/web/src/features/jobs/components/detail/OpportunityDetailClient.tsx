@@ -150,7 +150,7 @@ export default function OpportunityDetailClient({
                         <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Listing Not Found</span>
                     </div>
                     <div className="space-y-2 max-w-md">
-                        <h2 className="text-2xl font-extrabold text-foreground leading-tight md:text-3xl">
+                        <h2 className="text-2xl font-extrabold text-foreground leading-snug md:text-3xl">
                             This opportunity has moved or expired.
                         </h2>
                         <p className="text-muted-foreground text-sm leading-relaxed">
@@ -382,7 +382,7 @@ export default function OpportunityDetailClient({
                                                 disabled={isUpdatingAction}
                                                 className={cn(
                                                     "h-8 rounded-lg border text-xs font-bold transition-all",
-                                                    isActive ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/20 border-border text-muted-foreground hover:bg-muted/40",
+                                                    isActive ? "bg-accent text-accent-foreground border-border" : "bg-muted/20 border-border text-muted-foreground hover:bg-muted/40",
                                                     isUpdatingAction && "opacity-50 cursor-not-allowed"
                                                 )}
                                             >

@@ -155,7 +155,7 @@ export function NotificationsDropdown({ className }: { className?: string }) {
                             Notifications
                         </span>
                         {unreadCount > 0 ? (
-                            <span className="px-2 py-0.5 text-xs font-extrabold rounded-xs bg-primary/10 text-primary border border-primary/20">
+                            <span className="px-2 py-0.5 text-xs font-extrabold rounded-xs bg-muted text-foreground border border-primary/20">
                                 {unreadCount} unread
                             </span>
                         ) : (

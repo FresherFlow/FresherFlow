@@ -188,7 +188,7 @@ export function SuggestInput({
                             <button
                                 type="button"
                                 onClick={() => pick(trimmed, true)}
-                                className="w-full text-left px-2.5 py-1.5 rounded-md text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                                className="w-full text-left px-2.5 py-1.5 rounded-md text-sm font-medium text-primary transition-colors hover:bg-muted"
                             >
                                 Add “{trimmed}” as new
                             </button>

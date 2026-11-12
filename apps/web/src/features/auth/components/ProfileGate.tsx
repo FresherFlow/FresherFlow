@@ -40,7 +40,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!mounted || (isLoading && !user)) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center">
-                <LoadingScreen message="Loading..." fullScreen={false} className="z-40" />
+                <LoadingScreen message="Loading…" fullScreen={false} className="z-40" />
             </div>
         );
     }
@@ -98,7 +98,7 @@ export function UsernameGate({ children }: { children: React.ReactNode }) {
     if (!mounted || (isLoading && !user)) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center">
-                <LoadingScreen message="Loading..." fullScreen={false} className="z-40" />
+                <LoadingScreen message="Loading…" fullScreen={false} className="z-40" />
             </div>
         );
     }

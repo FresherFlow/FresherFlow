@@ -55,9 +55,9 @@ Token flow:
 FresherFlow is a job and walk-in opportunity platform for Indian freshers. The
 interface is a **reading surface for data**, not a brand showcase.
 
-The UI should feel like **warm newsprint with ink on it** — calm, dense,
-legible, trustworthy. A user scanning 90 listings at 9am should feel the page is
-keeping up with them, not asking for attention.
+The UI should feel like **a clean records surface with ink on it** — calm,
+dense, legible, trustworthy. A user scanning 90 listings at 9am should feel the
+page is keeping up with them, not asking for attention.
 
 **What it must not become:**
 
@@ -67,12 +67,13 @@ keeping up with them, not asking for attention.
 - A purple/blue SaaS gradient wash. There is one accent and it is not doing
   decoration.
 
-**The hard truth about differentiation:** warm newsprint is a common default, so
-it earns its place by being *decided*, not by looking pleasant. It is kept
-because it is the established foundation and the whole tonal ladder is built on
-hue 85 — **not** because it sets FresherFlow apart. The product's value is the
-opportunity and community information on the page. Any future palette change
-must clear that bar, not a taste argument.
+**The hard truth about differentiation:** a neutral grey surface is a common
+default, so it earns its place by being *decided*, not by looking pleasant. It
+was adopted on 2026-11-12 in place of the warm newsprint ramp (hue 85,
+`#f4f1ea` page), which read as sepia on every screen. The product's value is the
+opportunity and community information on the page; the palette's job is to stay
+out of its way while looking current. Any future palette change must clear that
+bar, not a taste argument.
 
 ---
 
@@ -94,9 +95,14 @@ are one visual family and reinforce each other.
 an ordinary button. Consequence: `BrandButton`'s `solid` (orange) variant is
 **deprecated** — use `neutral` (navy) for actions.
 
-### Warm newsprint stays
+### Cool neutrals replaced warm newsprint
 
-See §2. Recorded as a choice, not an accident.
+*Decided 2026-11-12.* The page and the whole neutral ladder moved from hue 85
+(cream paper, brown-grey text, tan hairlines) to hue 258 at chroma 0.003–0.008.
+Reason: warm newsprint made light mode read as an archived document rather than
+live listings — wrong signal for a job platform — and brown-on-cream is a
+palette nobody proposed for this product. Navy ink, the action colour and the
+orange brand mark are unchanged; only the neutrals moved.
 
 ### Restrained visual hierarchy
 
@@ -124,7 +130,7 @@ is decided by **how** you use it:
 |---|---|---|
 | `--color-primary` | `oklch(20.6% 0.039 266)` | The navy: ink + action |
 | `--color-foreground` | → `primary` | Body text |
-| `--color-muted-foreground` | `oklch(29.5% 0.034 68)` | Secondary text. 4.9:1 on card, 5.3:1 on muted |
+| `--color-muted-foreground` | `oklch(48% 0.014 258)` | Secondary text. 6.5:1 on card, 6.1:1 on page, 5.9:1 on muted |
 
 `--color-foreground`, `--color-card-foreground`, `--color-popover-foreground`,
 `--color-accent-foreground`, `--color-secondary-foreground`, `--color-ring` and
@@ -143,10 +149,10 @@ Separated by **lightness, not hue**. Use the role names in new code.
 
 | Role token | Alias | Light | Use for |
 |---|---|---|---|
-| `--surface-page` | `background` | `#f4f1ea` | The page plane |
+| `--surface-page` | `background` | `oklch(97.6% 0.003 258)` (`#f6f7f9`) | The page plane |
 | `--surface-raised` | `card` | `oklch(100% 0 0)` | Cards, panels, **the sidebar rail** |
-| `--surface-sunken` | `muted` | `oklch(91.5% 0.005 85)` | Inset panels, skeletons, disabled |
-| `--surface-active` | `accent` | `oklch(89.5% 0.005 85)` | **Selected / hover — the only active fill** |
+| `--surface-sunken` | `muted` | `oklch(96.2% 0.005 258)` | Inset panels, skeletons, disabled |
+| `--surface-active` | `accent` | `oklch(93.6% 0.007 258)` | **Selected / hover — the only active fill** |
 
 Plus `--surface-active-foreground` (→ `accent-foreground`). **Required** with
 `--surface-active`: in dark, `accent` is near-white and so is `foreground`, so
@@ -178,10 +184,10 @@ the same roles:
 
 There is also a `--color-logo-bg` for the logo tile only.
 
-**The neutral ramp is warm throughout** — hue 78–88, chroma 0.004–0.013. Chroma
-was deliberately dropped from `muted`/`accent`/`chip-active`/`dropdown-hover`
-(0.008–0.016 → 0.005): next to the warm page, two warm planes at similar
-lightness read as a mismatch, not hierarchy.
+**The neutral ramp is cool and near-achromatic** — hue 258, chroma 0.003–0.008.
+Chroma stays low on purpose: `muted`, `accent`, `chip-active` and
+`dropdown-hover` are grey, not blue. Two tinted planes at similar lightness read
+as a mismatch, not hierarchy.
 
 **Removed: the second palette.** `globals.css` used to carry `--ff-paper`,
 `--ff-paper-raised`, `--ff-rule`, `--ff-ink`, `--ff-ink-soft`, `--ff-ink-faint`,
@@ -193,27 +199,35 @@ they are a distinct marketing component, not a competing UI palette.
 
 ### 4.3 Lines
 
-`--color-border` and `--color-input` both `oklch(79% 0.013 80)`. One hairline
-tone. Warmth on a hairline reads as intentional.
+`--color-border` and `--color-input` both `oklch(88% 0.008 258)`. One hairline
+tone. A cool hairline on a cool page reads as structure, not as a drawn box.
 
 ### 4.4 Signals — four jobs, one red
 
 | Job | Token | Light |
 |---|---|---|
-| Confirmed live | `signal-live` → `success` | `oklch(61.1% 0.147 154)` |
-| Aging / unconfirmed | `signal-aging` → `warning` | `oklch(75.5% 0.17 64)` |
-| Dead / error / destructive | `signal-dead` → `destructive` | `oklch(63.6% 0.208 25)` |
+| Confirmed live | `signal-live` → `success` | `oklch(52% 0.125 155)` |
+| Aging / unconfirmed | `signal-aging` → `warning` | `oklch(54% 0.125 60)` |
+| Dead / error / destructive | `signal-dead` → `destructive` | `oklch(55% 0.19 25)` |
 | Discussion heat | `signal-heat` | `oklch(60% 0.145 240)` |
 
 `--color-error` and `--color-pin` both alias `--color-destructive`. There is
 **one red**; three near-identical reds previously made "which red?" unanswerable.
+
+**Signal lightness is set by text contrast, not by taste.** These are used as
+label text on the card and on their own 10–15% tints, so each was darkened until
+it cleared 4.5:1 there: success 5.18:1 (4.77 on its tint), warning 5.15:1 (4.62
+on `warning/15`), destructive 5.35:1 (4.91 on `destructive/10`). The previous
+values were amber at 2.27:1 and red at 3.78:1 — unreadable as labels.
 
 `signal-heat` was byte-identical to `--color-brand-telegram`. A semantic token
 and a third-party brand token are different jobs and must never share a value.
 
 ### 4.5 Brand accent
 
-`--color-ff-accent` = `oklch(64.8% 0.22 32)` (≈ `#ff571a`). Marketing surfaces only.
+`--color-ff-accent` = `oklch(64.8% 0.22 32)` (≈ `#ff571a`). Marketing surfaces
+only — against the neutral ladder it now reads as a deliberate brand mark rather
+than as one more warm plane.
 
 **Measured contrast:** paper on accent is **3.2:1** and fails AA at small sizes.
 Navy (`--color-ff-accent-ink`) on accent is **4.97:1** and passes. So every solid
@@ -466,6 +480,22 @@ oklch(from var(--color-primary) l c h / 0.35)                                // 
 ---
 
 ## 14. Changelog
+
+- **2026-11-12 — Landing restructure.** The landing is four blocks: hero,
+  live board, tagline reveal, three rules plus closing action. The job feed
+  moved below the fold because a first-time visitor should read what the site
+  is before a job title; the FAQ moved to `/faq`, the long benefit prose stays
+  on `/about`, and the company strip moved to `/companies`. The footer brand
+  line is now `YOUR CAREER, ONE FLOW.`, matching the hero rather than
+  introducing a second tagline.
+
+- **2026-11-12 — Neutral palette.** Warm newsprint (hue 85) replaced by cool
+  neutrals (hue 258, chroma 0.003–0.008): page `#f4f1ea` → `oklch(97.6% 0.003
+  258)`, borders darkened-warm 79% → cool 88%, secondary text brown-grey →
+  `oklch(48% 0.014 258)`. Signal colours darkened until their small-text pairs
+  pass AA on card and on their own tints. Navy ink, action colour and brand
+  orange unchanged. Measured pairs: ink 16.7:1 on page, 17.9:1 on card; secondary
+  text 6.1/6.5; signals 5.0–5.4:1.
 
 Full migration detail lives in the git history. Batches are independently
 reversible; verify contrast in both modes before starting the next.

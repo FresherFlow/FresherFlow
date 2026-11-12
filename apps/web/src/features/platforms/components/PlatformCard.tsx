@@ -45,7 +45,7 @@ export function PlatformCard({ platform }: PlatformCardProps) {
                             {platform.name}
                         </a>
                         {platform.isRecommended && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide text-primary bg-primary/10 border border-primary/20 shrink-0">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide text-foreground bg-muted border border-primary/20 shrink-0">
                                 <Star className="w-2.5 h-2.5 fill-current" />
                                 Recommended
                             </span>
@@ -84,7 +84,7 @@ export function PlatformCard({ platform }: PlatformCardProps) {
                     {majorTags.slice(0, 4).map(tag => (
                         <span
                             key={tag}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/15"
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-muted text-foreground border border-primary/15"
                         >
                             {tag}
                         </span>

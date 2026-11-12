@@ -12,7 +12,7 @@ interface LoadingScreenProps {
 }
 
 export default function LoadingScreen({
-    message = "Loading...",
+    message = "Loading…",
     fullScreen = true,
     className
 }: LoadingScreenProps) {

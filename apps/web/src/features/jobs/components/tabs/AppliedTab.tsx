@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { useSavedJobs } from '@/features/dashboard/hooks/useSavedJobs';
-import { fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/feedServer';
 import { readFeedCache, getOpportunityFromCache } from '@/lib/cache/opportunitiesFeedCache';
 import { ActionType } from '@fresherflow/types';
 import type { Opportunity } from '@fresherflow/types';

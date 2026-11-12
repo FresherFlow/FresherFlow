@@ -19,7 +19,7 @@ export function PasskeySignIn({
         <div className="flex flex-col items-center gap-4 text-center">
             <div
                 aria-hidden
-                className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary"
+                className="flex size-14 items-center justify-center rounded-full bg-muted text-foreground"
             >
                 <FingerPrintIcon className="size-7" />
             </div>

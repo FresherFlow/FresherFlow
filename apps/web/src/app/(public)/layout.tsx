@@ -10,7 +10,7 @@ import { usePathname } from 'next/navigation';
  * NOT appear under infinite feeds / app screens. The home page renders its
  * own closing stack already, so it is excluded here to avoid a duplicate.
  */
-const FOOTER_PATHS = ['/', '/about', '/blog', '/careers', '/contact', '/privacy', '/terms'];
+const FOOTER_PATHS = ['/', '/about', '/blog', '/careers', '/contact', '/privacy', '/terms', '/faq'];
 
 function SiteFooterGate() {
     const pathname = usePathname() || '/';

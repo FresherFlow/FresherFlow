@@ -1,11 +1,11 @@
 import { Metadata } from 'next';
 import CategoryPage from '@/features/jobs/components/CategoryPage';
-import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/feedServer';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { toOpportunityCardDTO } from '@fresherflow/types';
 import { isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
-// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
 // which marks the feed tags stale, and the next request regenerates this
 // page once. A worker sweep re-sends those tags if that call was lost.

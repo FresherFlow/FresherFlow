@@ -122,21 +122,13 @@ export function LatestJobsList({ jobs }: { jobs: OpportunityCardDTO[] }) {
                     <LatestJobRow key={o.id} job={o} />
                 ))}
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
-                <p className="font-record text-[11px] tracking-[0.02em] text-muted-foreground">
-                    Know something others don&apos;t? Share it.
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4 text-[13px] font-semibold">
+                <p className="font-record text-[11px] font-normal tracking-[0.02em] text-muted-foreground">
+                    Every posting links to the employer&apos;s own page.
                 </p>
-                <div className="flex flex-wrap items-center gap-3 text-[13px] font-semibold">
-                    <Link href="/jobs" className="text-muted-foreground transition-colors hover:text-foreground">
-                        All jobs →
-                    </Link>
-                    <Link
-                        href="/contribute"
-                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-3 py-1.5 text-[var(--color-ff-accent-ink)] transition-transform hover:-translate-y-px active:scale-[0.98]"
-                    >
-                        Contribute
-                    </Link>
-                </div>
+                <Link href="/jobs" className="text-muted-foreground transition-colors hover:text-foreground">
+                    All jobs →
+                </Link>
             </div>
         </CommentCountsProvider>
     );

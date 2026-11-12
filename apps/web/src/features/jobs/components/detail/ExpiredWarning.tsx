@@ -34,7 +34,7 @@ export const ExpiredWarning = ({ opportunityId, opportunityTitle }: ExpiredWarni
                 </p>
                 <Link
                     href={`/community?${params.toString()}`}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-2.5 min-h-11 text-sm font-semibold text-primary transition-colors hover:bg-primary/20"
+                    className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 min-h-11 text-sm font-semibold text-accent-foreground transition-opacity hover:opacity-85"
                 >
                     <ChatBubbleLeftIcon className="w-4 h-4" />
                     Continue Discussion

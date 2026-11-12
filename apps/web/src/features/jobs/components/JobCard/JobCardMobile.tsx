@@ -48,6 +48,7 @@ export function JobCardMobile({
         jobPath,
         directionsUrl,
         postedLabel,
+        canApply,
         handleSaveClick,
         handleApplyClick,
         handleCardClick,
@@ -93,14 +94,17 @@ export function JobCardMobile({
                     className="!w-10 !h-10 shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
-                        {job.normalizedRole || job.title}
+                    <h2
+                        className="text-sm font-semibold text-foreground leading-snug line-clamp-2"
+                        title={job.normalizedRole || job.title}
+                    >
+                        {job.normalizedRole || job.title?.trim() || job.company?.trim() || 'Untitled listing'}
                     </h2>
-                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground" title={job.company} dir="auto">
                         {job.company}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
-                        {locationInfo.shortLabel} · {postedLabel}
+                        {[locationInfo.shortLabel, postedLabel].filter(Boolean).join(' · ')}
                         {atsProvider ? (
                             <>
                                 {' · '}
@@ -163,7 +167,9 @@ export function JobCardMobile({
                         <button
                             type="button"
                             onClick={handleApplyClick}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none"
+                            disabled={!canApply}
+                            title={canApply ? undefined : 'This listing has no application link'}
+                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition duration-150 ease-out motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
                         >
                             Apply
                             <ArrowUpRight className="w-3.5 h-3.5" aria-hidden />

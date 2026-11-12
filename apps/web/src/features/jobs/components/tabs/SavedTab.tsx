@@ -10,7 +10,7 @@ import { JobSearchField } from '@/features/jobs/components/JobSearchField';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
 import { Bookmark } from 'lucide-react';
-import { fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/feedServer';
 import { readFeedCache, getOpportunityFromCache } from '@/lib/cache/opportunitiesFeedCache';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';

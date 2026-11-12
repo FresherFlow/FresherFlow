@@ -25,37 +25,6 @@ const createMDX = require("@next/mdx") as (
 ) => (config: NextConfig) => NextConfig;
 const withMDX = createMDX();
 
-const originalConsoleError = console.error;
-console.error = (...args: any[]) => {
-  for (const arg of args) {
-    if (typeof arg === 'string' && (arg.includes('Failed to proxy') || arg.includes('ECONNREFUSED'))) {
-      return;
-    }
-    if (arg && typeof arg === 'object') {
-      const err = arg as any;
-      if (err.code === 'ECONNREFUSED' || err.message?.includes('ECONNREFUSED')) {
-        return;
-      }
-      if (err.cause && (err.cause.code === 'ENOTFOUND' || err.cause.code === 'ECONNREFUSED' || err.cause.message?.includes('ENOTFOUND') || err.cause.message?.includes('ECONNREFUSED'))) {
-        return;
-      }
-      if (Array.isArray(err.errors) && err.errors.some((e: any) => e.code === 'ECONNREFUSED' || e.message?.includes('ECONNREFUSED'))) {
-        return;
-      }
-    }
-  }
-  originalConsoleError(...args);
-};
-
-const originalConsoleLog = console.log;
-console.log = (...args: any[]) => {
-  for (const arg of args) {
-    if (typeof arg === 'string' && arg.includes('/_next/image') && arg.includes('500')) {
-      return;
-    }
-  }
-  originalConsoleLog(...args);
-};
 function resolveHost(value: string | undefined, fallback: string): string {
   const raw = (value || '').trim();
   if (!raw) return fallback;
@@ -88,7 +57,6 @@ function resolveDevApiOrigin(): string {
   const candidates = [
     process.env.NEXT_PUBLIC_API_URL,
     process.env.API_URL,
-    process.env.INTERNAL_API_URL,
     "http://localhost:5000",
   ];
 
@@ -128,15 +96,14 @@ if (IS_PRODUCTION && !PUBLIC_API_ORIGIN) {
   );
 }
 const ADMIN_HOST = resolveHost(
-  process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST,
+  process.env.ADMIN_WEB_HOST,
   IS_PRODUCTION ? "" : "localhost"
 );
-const APP_ORIGIN = resolveWebOrigin(
-  process.env.NEXT_PUBLIC_APP_WEB_HOST,
-  process.env.APP_WEB_HOST,
-  process.env.NEXT_PUBLIC_APP_URL,
-  process.env.NEXT_PUBLIC_SITE_URL
-);
+/**
+ * The app origin the browser bundle gets, read from the environment and never
+ * hardcoded. It is the public site origin: there is no separate `app.` host.
+ */
+const APP_ORIGIN = resolveWebOrigin(process.env.NEXT_PUBLIC_SITE_URL);
 
 const nextConfig: NextConfig = {
   // Inlined into the client bundle at build time when the environment provides

@@ -71,7 +71,7 @@ export default async function SkillResourcesPage(props: SkillResourcesPageProps)
             </Link>
             
             <div className="flex items-center gap-4 mb-8">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
                     <Award className="w-6 h-6 text-primary" />
                 </div>
                 <div>

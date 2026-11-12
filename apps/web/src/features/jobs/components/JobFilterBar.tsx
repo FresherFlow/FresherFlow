@@ -102,7 +102,7 @@ type DropdownOption =
     | { kind: 'company'; company: string; count: number }
     | { kind: 'role'; role: string };
 
-const pillBase = 'h-8 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-all duration-150 ease-out active:scale-95 whitespace-nowrap select-none cursor-pointer outline-none shrink-0 motion-reduce:transform-none motion-reduce:transition-none';
+const pillBase = 'h-8 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition duration-150 ease-out active:scale-[0.97] whitespace-nowrap select-none cursor-pointer outline-none shrink-0 motion-reduce:transform-none motion-reduce:transition-none';
 const pillDefault = 'text-muted-foreground hover:text-foreground hover:bg-muted';
 const pillOpen = 'bg-muted text-foreground ring-1 ring-border';
 
@@ -562,7 +562,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                     onClick={() => handleSelectOption(options[idx])}
                                     onMouseEnter={() => setActiveIndex(idx)}
                                     className={cn(
-                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center gap-2.5 outline-none select-none text-foreground',
+                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer flex items-center gap-2.5 outline-none select-none text-foreground',
                                         idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                     )}
                                 >
@@ -632,8 +632,8 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                     type="text"
                                     value={locSearch}
                                     onChange={e => setLocSearch(e.target.value)}
-                                    placeholder="Search city or state..."
-                                    className="w-full h-9 px-3 rounded-lg border border-transparent bg-muted/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
+                                    placeholder="Search city or state…"
+                                    className="w-full h-9 px-3 rounded-lg border border-transparent bg-muted/60 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
                                     autoFocus
                                 />
                             </div>
@@ -656,7 +656,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                                     onClick={() => handleSelectOption(options[idx])}
                                                     onMouseEnter={() => setActiveIndex(idx)}
                                                     className={cn(
-                                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                         idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                     )}
                                                 >
@@ -680,7 +680,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                             onClick={() => handleSelectOption(options[idx])}
                                             onMouseEnter={() => setActiveIndex(idx)}
                                             className={cn(
-                                                'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                 idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                             )}
                                         >
@@ -706,7 +706,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                                     onClick={() => handleSelectOption(options[idx])}
                                                     onMouseEnter={() => setActiveIndex(idx)}
                                                     className={cn(
-                                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                         idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                     )}
                                                 >
@@ -753,7 +753,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                         onClick={() => handleSelectOption(options[idx])}
                                         onMouseEnter={() => setActiveIndex(idx)}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                             idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                         )}
                                     >
@@ -787,7 +787,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                         onClick={() => handleSelectOption(options[idx])}
                                         onMouseEnter={() => setActiveIndex(idx)}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                             idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                         )}
                                     >
@@ -833,7 +833,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                     }}
                                     onMouseEnter={() => setActiveIndex(idx)}
                                     className={cn(
-                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
+                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
                                         idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                     )}
                                 >
@@ -876,7 +876,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                         value={roleSearch}
                                         onChange={e => setRoleSearch(e.target.value)}
                                         placeholder="Search roles..."
-                                        className="w-full h-9 px-3 rounded-lg border border-transparent bg-muted/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
+                                        className="w-full h-9 px-3 rounded-lg border border-transparent bg-muted/60 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
                                         onClick={e => e.stopPropagation()}
                                         autoFocus
                                     />
@@ -892,7 +892,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                                 onClick={() => handleSelectOption(options[idx])}
                                                 onMouseEnter={() => setActiveIndex(idx)}
                                                 className={cn(
-                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                     idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
@@ -965,7 +965,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                         value={skillSearch}
                                         onChange={e => setSkillSearch(e.target.value)}
                                         placeholder="Search skills..."
-                                        className="w-full h-9 px-3 rounded-lg border border-transparent bg-muted/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
+                                        className="w-full h-9 px-3 rounded-lg border border-transparent bg-muted/60 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
                                         onClick={e => e.stopPropagation()}
                                         autoFocus
                                     />
@@ -981,7 +981,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                                 onClick={() => handleSelectOption(options[idx])}
                                                 onMouseEnter={() => setActiveIndex(idx)}
                                                 className={cn(
-                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                     idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
@@ -1023,7 +1023,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                         onClick={() => handleSelectOption(options[idx])}
                                         onMouseEnter={() => setActiveIndex(idx)}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                             idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                         )}
                                     >
@@ -1064,7 +1064,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                             onClick={() => handleSelectOption(options[idx])}
                                             onMouseEnter={() => setActiveIndex(idx)}
                                             className={cn(
-                                                'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                 idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                             )}
                                         >
@@ -1107,7 +1107,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                                 onClick={() => handleSelectOption(options[idx])}
                                                 onMouseEnter={() => setActiveIndex(idx)}
                                                 className={cn(
-                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                     idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
@@ -1126,7 +1126,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                                 onClick={() => handleSelectOption(options[idx])}
                                                 onMouseEnter={() => setActiveIndex(idx)}
                                                 className={cn(
-                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                     idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
@@ -1167,7 +1167,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                         value={companySearch}
                                         onChange={e => setCompanySearch(e.target.value)}
                                         placeholder="Search companies..."
-                                        className="w-full h-9 px-3 rounded-lg border border-transparent bg-muted/60 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
+                                        className="w-full h-9 px-3 rounded-lg border border-transparent bg-muted/60 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:bg-muted/80"
                                         onClick={e => e.stopPropagation()}
                                         autoFocus
                                     />
@@ -1183,7 +1183,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                                 onClick={() => handleSelectOption(options[idx])}
                                                 onMouseEnter={() => setActiveIndex(idx)}
                                                 className={cn(
-                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2.5 cursor-pointer outline-none select-none',
                                                     idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >

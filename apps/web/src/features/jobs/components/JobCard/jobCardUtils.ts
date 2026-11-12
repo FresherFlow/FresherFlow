@@ -152,6 +152,12 @@ export function getPostedLabel(job: Opportunity): string | null {
     const days = Math.max(0, Math.floor((Date.now() - postedAt.getTime()) / (24 * 60 * 60 * 1000)));
     if (days === 0) return 'Today';
     if (days === 1) return '1 day ago';
+    // Past a week the day count stops informing anyone, and a listing that was
+    // published a year ago reading "412 days ago" looks current. Switch to the
+    // month it was posted instead.
+    if (days >= 7) {
+        return postedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    }
     return `${days} days ago`;
 }
 
@@ -205,7 +211,10 @@ export function getSalaryLabel(job: Opportunity, isGovernment: boolean, isDrive:
 
 export function getJobTypeLabel(job: Opportunity, isDrive: boolean, isGovernment: boolean): string {
     if (isDrive) return 'Drive';
-    if (isGovernment) return (job as { governmentJobDetails?: { jobCategory?: string[] } }).governmentJobDetails?.jobCategory?.[0] || 'Govt';
+    // The type slot answers "what kind of listing is this" (Job / Intern /
+    // Drive / Walk-in). A government listing used to print its first
+    // `jobCategory` here — "SSC" — which is a recruiting body, not a type.
+    if (isGovernment) return 'Govt';
     if (isInternshipOpportunity(job)) return 'Intern';
     if (isWalkinOpportunity(job)) return 'Walk-in';
     return 'Job';

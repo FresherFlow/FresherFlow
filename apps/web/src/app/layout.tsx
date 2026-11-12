@@ -29,7 +29,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { getHeadInjectionScripts } from '@/features/shell/HeadInjections';
 import { InlineScript } from '@/features/shell/InlineScript';
-import { SITE_URL } from "@/lib/utils/runtimeConfig";
+import { SITE_URL, API_URL } from "@/lib/utils/runtimeConfig";
 import { cn } from "@/ui/cn";
 import { AuthFormDataProvider } from '@/lib/auth/AuthFormDataContext';
 import { ErrorBoundary } from '@/features/shell/ErrorBoundary';
@@ -152,8 +152,8 @@ export default async function RootLayout({
         {/* DNS prefetch and preconnect for faster initial connections */}
         <link rel="preconnect" href="https://cdn.fresherflow.in" />
         <link rel="dns-prefetch" href="https://cdn.fresherflow.in" />
-        <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in'} crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in'} />
+        <link rel="preconnect" href={API_URL || 'https://api.fresherflow.in'} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={API_URL || 'https://api.fresherflow.in'} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_JSON_LD) }}

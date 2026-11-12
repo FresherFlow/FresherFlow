@@ -65,20 +65,24 @@ export function DesktopNav() {
     // Only the landing sits under the marquee (top-7 → top-0 on scroll).
     return (
         <header className={cn(
-            "select-none fixed left-0 right-0 z-50 h-15 items-center bg-background border-b border-border/60 hidden lg:flex transition-all duration-300 ease-out",
-            underMarquee ? 'top-7' : 'top-0'
+            "fixed top-0 left-0 right-0 z-50 h-15 items-center bg-background border-b border-border/60 hidden lg:flex transition-transform duration-300 ease-out motion-reduce:transition-none",
+            // Translate instead of animating `top`: transform is composited,
+            // and this moves on every scroll direction change.
+            underMarquee ? 'translate-y-7' : 'translate-y-0'
         )}>
             <nav className="mx-auto w-full max-w-7xl h-15 flex items-center justify-between gap-4 px-6">
 
                 {/* Brand Left */}
+                {/* The brand always goes home. It used to send a signed-in user
+                    to the For You tab, so the wordmark stopped meaning "the
+                    site" and started meaning "my saved feed". */}
                 <Link
-                    href={resolvedUser && !isAuthRoute ? '/jobs?tab=for-you' : '/'}
+                    href="/"
                     onClick={(event) => {
-                        const targetHref = resolvedUser && !isAuthRoute ? '/jobs?tab=for-you' : '/';
-                        if (pathname === targetHref) event.preventDefault();
+                        if (pathname === '/') event.preventDefault();
                     }}
-                    aria-label="Home"
-                    className="flex items-center gap-2.5 shrink-0 group z-10 active:scale-95 transition-transform duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                    aria-label="FresherFlow home"
+                    className="flex items-center gap-2.5 shrink-0 group z-10 active:scale-[0.97] transition-transform duration-150 ease-out motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
                 >
                     <LogoImage width={28} height={28} className="w-7 h-7 object-contain" />
                     <span className="text-lg font-semibold tracking-wide text-foreground leading-none">
@@ -110,7 +114,7 @@ export function DesktopNav() {
                                 }}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    'px-2 lg:px-2.5 xl:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition-all duration-150 ease-out active:scale-95 relative shrink-0 after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-out after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
+                                    'px-2 lg:px-2.5 xl:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition duration-150 ease-out active:scale-[0.97] relative shrink-0 motion-reduce:transform-none after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-out after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
                                     isActive
                                         ? 'text-foreground after:scale-x-100'
                                         : 'text-muted-foreground hover:text-foreground after:scale-x-0'
@@ -136,14 +140,14 @@ export function DesktopNav() {
                             {resolvedUser ? (
                                 <Link
                                     href="/jobs?tab=for-you"
-                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard
                                 </Link>
                             ) : (
                                 <Link
                                     href="/register"
-                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Create Profile
                                 </Link>
@@ -165,8 +169,8 @@ export function DesktopNav() {
                                     <Link href="/login" className="ff-nav-btn">
                                         Sign in
                                     </Link>
-                                    <Link href="/post" className="ff-nav-btn ff-nav-btn-primary">
-                                        Post
+                                    <Link href="/contribute" className="ff-nav-btn ff-nav-btn-primary">
+                                        Contribute
                                     </Link>
                                 </div>
                             )}

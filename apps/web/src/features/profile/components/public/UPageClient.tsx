@@ -129,7 +129,7 @@ export function UPageClient() {
                                 autoComplete="off"
                                 autoCapitalize="none"
                                 spellCheck={false}
-                                className="block w-full pl-32 pr-4 py-3 bg-card border border-border/80 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 rounded-[2px] text-foreground font-bold text-sm transition-all outline-none placeholder:text-muted-foreground/40"
+                                className="block w-full pl-32 pr-4 py-3 bg-card border border-border/80 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 rounded-[2px] text-foreground font-bold text-base sm:text-sm transition-all outline-none placeholder:text-muted-foreground/40"
                                 maxLength={20}
                             />
                         </div>
@@ -182,7 +182,7 @@ export function UPageClient() {
                             <div className="space-y-1">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <h3 className="text-xl font-extrabold tracking-tight">Krish Sharma</h3>
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold">● Market Ready</span>
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-muted border border-primary/20 text-primary text-xs font-bold">● Market Ready</span>
                                 </div>
                                 <p className="text-sm text-muted-foreground">B.Tech CSE — VTU · 2026 · Bengaluru · Available Immediately</p>
                                 <p className="text-xs font-mono text-primary">fresherflow.in/u/krish_sharma</p>
@@ -303,7 +303,7 @@ export function UPageClient() {
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                                 placeholder="yourname"
-                                className="block w-full pl-32 pr-4 py-3 bg-card border border-border/80 rounded-[2px] text-foreground font-bold text-sm outline-none"
+                                className="block w-full pl-32 pr-4 py-3 bg-card border border-border/80 rounded-[2px] text-foreground font-bold text-base sm:text-sm outline-none"
                                 maxLength={20}
                             />
                         </div>

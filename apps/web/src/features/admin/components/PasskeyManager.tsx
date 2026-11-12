@@ -145,7 +145,7 @@ export default function PasskeyManager() {
                                 className="flex items-center justify-between p-3 border rounded-lg bg-card/50 hover:bg-accent/50 transition-colors"
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-primary/10 p-2 rounded-full">
+                                    <div className="bg-muted p-2 rounded-full">
                                         <Key className="h-4 w-4 text-primary" />
                                     </div>
                                     <div>

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { withRateLimit } from '@/lib/api/rateLimit';
-
-const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
+import { COOKIE_DOMAIN } from '@/lib/server/env';
 
 const COOKIE_OPTIONS = {
     httpOnly: true,

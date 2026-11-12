@@ -5,12 +5,12 @@ import { Button } from '@/ui/Button';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { logRouteResult } from '@/lib/observability';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
-import { fetchFeedIndex, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/feedServer';
 import { getNextWalkinDate, getWalkinDates } from '@/features/jobs/utils/walkinEventUtils';
 import { getDriveDetails, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import type { Opportunity } from '@fresherflow/types';
 
-// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
 // which marks the feed tags stale, and the next request regenerates this
 // page once. A worker sweep re-sends those tags if that call was lost.

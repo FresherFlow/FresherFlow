@@ -4,7 +4,7 @@
   "description": "Job & Walk-in Opportunity Platform - Proper Monorepo",
   "private": true,
   "scripts": {
-    "postinstall": "echo skipping prisma generate",
+    "postinstall": "echo skipping prisma generate && (node scripts/skills-sync.mjs || echo 'skill sync skipped; run pnpm skills:sync')",
     "prune:api": "turbo prune fresherflow-api --docker",
     "prune:web": "turbo prune fresherflow-web --docker",
     "kill:port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5000 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 5000 is free' }\"",

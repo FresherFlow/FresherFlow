@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed } from '@/lib/api/feedServer';
 import { withRateLimit } from '@/lib/api/rateLimit';
 import { withAdminAuth } from '@/lib/server/adminAuth';
 
@@ -13,7 +13,7 @@ async function getBootstrapFeed() {
         }
         return NextResponse.json({ opportunities: [] }, { status: 200 });
     } catch (error) {
-        console.error('Failed to fetch bootstrap feed from API via cdnFeed:', error);
+        console.error('Failed to fetch bootstrap feed from API via feedServer:', error);
         return NextResponse.json({ opportunities: [], error: 'Failed to fetch bootstrap feed' }, { status: 500 });
     }
 }

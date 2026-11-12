@@ -86,7 +86,7 @@ export default function ForYouTab() {
                 <div className="flex flex-wrap items-center gap-3">
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">For You</h1>
                     {hasProfileScores ? (
-                        <span className="inline-flex items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold px-2.5 py-0.5 tabular-nums">
+                        <span className="inline-flex items-center justify-center rounded-full bg-muted border border-primary/20 text-primary text-xs font-bold px-2.5 py-0.5 tabular-nums">
                             {matchCount} of {filteredOpps.length} match you
                         </span>
                     ) : (

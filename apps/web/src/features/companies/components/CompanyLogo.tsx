@@ -146,9 +146,33 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         return null;
     }, [currentSrc]);
 
-    const initials = companyName
-        ? companyName.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
-        : 'C';
+    // Initials are taken per grapheme cluster, not per UTF-16 unit: `w[0]` on
+    // "👩🏽‍💻 Priya Labs" returned half a surrogate pair and rendered as "?".
+    // Words without a letter or digit (emoji-only, punctuation) are skipped so
+    // the chip still shows letters.
+    const initials = useMemo(() => {
+        const words = (companyName || '')
+            .split(/\s+/)
+            .map((word) => word.trim())
+            .filter((word) => /[\p{L}\p{N}]/u.test(word));
+        if (words.length === 0) return 'C';
+
+        const segmenter =
+            typeof Intl !== 'undefined' && 'Segmenter' in Intl
+                ? new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+                : null;
+        const firstGrapheme = (word: string): string => {
+            if (segmenter) {
+                const first = segmenter.segment(word)[Symbol.iterator]().next();
+                return first.done ? '' : first.value.segment;
+            }
+            return Array.from(word)[0] ?? '';
+        };
+
+        const first = firstGrapheme(words[0]);
+        const last = words.length > 1 ? firstGrapheme(words[words.length - 1]) : '';
+        return `${first}${last}`.toUpperCase() || 'C';
+    }, [companyName]);
 
     const handleError = () => {
         if (attemptIndex < candidates.length - 1) {

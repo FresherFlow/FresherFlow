@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import AdminResourcesClient from '@/features/admin/components/AdminResourcesClient';
-import { fetchSkillsMetadata, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
+import { fetchSkillsMetadata, fetchCompaniesMetadata } from '@/lib/api/feedServer';
 
 export const metadata: Metadata = {
     title: { absolute: 'Resources | FresherFlow Admin' },

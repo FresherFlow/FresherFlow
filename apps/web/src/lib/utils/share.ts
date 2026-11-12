@@ -79,7 +79,7 @@ export function getCleanShareUrl(rawUrl: string) {
 export function buildInviteUrl(rawOrigin: string, referralCode: string) {
     try {
         const code = referralCode.toUpperCase();
-        const joinHost = process.env.NEXT_PUBLIC_JOIN_WEB_HOST || process.env.JOIN_WEB_HOST;
+        const joinHost = process.env.NEXT_PUBLIC_JOIN_WEB_HOST;
         if (joinHost) {
             return `https://${joinHost.replace(/^https?:\/\//i, '')}/${code}`;
         }

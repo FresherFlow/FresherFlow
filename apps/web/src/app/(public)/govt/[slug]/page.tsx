@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
 import { Skeleton } from '@/ui/Skeleton';
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
-import { fetchFeedIndex, fetchGovernmentFeed, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex, fetchGovernmentFeed, fetchCompaniesMetadata } from '@/lib/api/feedServer';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { getFeedBadgeLabel, isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { getRelatedOpportunities } from '@/features/jobs/utils/detailUtils';
@@ -17,7 +17,7 @@ import {
     ExtendedOpportunity
 } from '@/features/jobs/domain/opportunitySeo';
 
-// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
 // which marks the feed tags stale, and the next request regenerates this
 // page once. A worker sweep re-sends those tags if that call was lost.

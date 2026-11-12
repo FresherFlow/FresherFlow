@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/feedServer';
 import { getDiscussionConversations } from '@/features/discussions/getDiscussionConversations';
 import DiscussionsClient from '@/features/discussions/DiscussionsClient';
 import type { DiscussionJobMeta } from '@/features/discussions/types';

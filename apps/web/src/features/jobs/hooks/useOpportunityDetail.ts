@@ -13,7 +13,7 @@ import { getRelatedOpportunities } from '@/features/jobs/utils/detailUtils';
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
 import { readFeedCache, saveOpportunityToCache } from '@/lib/cache/opportunitiesFeedCache';
-import { fetchOpportunityDetail } from '@/lib/api/cdnFeed';
+import { fetchOpportunityDetail } from '@/lib/api/feedServer';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 
@@ -98,7 +98,7 @@ export function useOpportunityDetail(
         try {
             // CDN-first single-source-of-truth detail resolver.
             // Shard first (~2.5KB)  -- €” bootstrap (~2MB) is only a fallback now.
-            const { fetchBootstrapFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
+            const { fetchBootstrapFeed, fetchExpiredFeed } = await import('@/lib/api/feedServer');
             let opportunity = await fetchOpportunityDetail(id);
             if (superseded()) return;
 

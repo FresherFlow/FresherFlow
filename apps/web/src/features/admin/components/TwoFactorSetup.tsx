@@ -127,7 +127,7 @@ export default function TwoFactorSetup() {
                         {setupStep === "initial" && (
                             <div className="flex items-center justify-between p-4 border rounded-lg bg-card/50">
                                 <div className="flex items-center gap-3">
-                                    <div className="bg-primary/10 p-2 rounded-full">
+                                    <div className="bg-muted p-2 rounded-full">
                                         <Smartphone className="h-5 w-5 text-primary" />
                                     </div>
                                     <div>

@@ -1,8 +1,11 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -20,29 +23,56 @@
       }
     ],
     "paths": {
-      "@/*": ["src/*"],
-
-      "@repo/domain": ["../../packages/domain/src"],
-      "@repo/domain/*": ["../../packages/domain/src/*"],
-      "@repo/api-client": ["../../packages/api-client/src"],
-      "@repo/api-client/*": ["../../packages/api-client/src/*"],
-      "@repo/utils": ["../../packages/utils/src"],
-      "@repo/utils/*": ["../../packages/utils/src/*"],
-      "@repo/schemas": ["../../packages/schemas"],
-      "@repo/schemas/*": ["../../packages/schemas/*"],
-      "@fresherflow/frontend-core": ["../../packages/frontend-core/src"],
-      "@fresherflow/frontend-core/*": ["../../packages/frontend-core/src/*"],
-"@fresherflow/ui": ["../../packages/ui/src"],
-      "@fresherflow/ui/*": ["../../packages/ui/src/*"]
-    }
+      "@/*": [
+        "src/*"
+      ],
+      "@repo/domain": [
+        "../../packages/domain/src"
+      ],
+      "@repo/domain/*": [
+        "../../packages/domain/src/*"
+      ],
+      "@repo/api-client": [
+        "../../packages/api-client/src"
+      ],
+      "@repo/api-client/*": [
+        "../../packages/api-client/src/*"
+      ],
+      "@repo/utils": [
+        "../../packages/utils/src"
+      ],
+      "@repo/utils/*": [
+        "../../packages/utils/src/*"
+      ],
+      "@repo/schemas": [
+        "../../packages/schemas"
+      ],
+      "@repo/schemas/*": [
+        "../../packages/schemas/*"
+      ],
+      "@fresherflow/frontend-core": [
+        "../../packages/frontend-core/src"
+      ],
+      "@fresherflow/frontend-core/*": [
+        "../../packages/frontend-core/src/*"
+      ],
+      "@fresherflow/ui": [
+        "../../packages/ui/src"
+      ],
+      "@fresherflow/ui/*": [
+        "../../packages/ui/src/*"
+      ]
+    },
+    "target": "ES2017"
   },
-    "include": [
-        "next-env.d.ts",
-        "**/*.ts",
-        "**/*.tsx",
-        ".next/types/**/*.ts",
-        "**/*.mts"
-    ],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "**/*.mts",
+    ".next/dev/types/**/*.ts"
+  ],
   "exclude": [
     "node_modules"
   ]

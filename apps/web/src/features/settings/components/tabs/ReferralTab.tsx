@@ -89,7 +89,7 @@ function BadgeCard({ badge, signups }: { badge: ReferralData['badges'][0]; signu
 function ReferralRow({ referral }: { referral: ReferralData['referrals'][0] }) {
     return (
         <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/20 transition-colors">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary text-xs font-extrabold flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-muted text-foreground text-xs font-extrabold flex items-center justify-center shrink-0">
                 {(referral.fullName || '?')[0]?.toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
@@ -130,7 +130,7 @@ function ReferralPageContent() {
 
     if (!user) return null;
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : (SITE_URL || 'https://app.fresherflow.in');
+    const origin = typeof window !== 'undefined' ? window.location.origin : SITE_URL;
     const shortUrl = data?.referralCode
         ? `${origin}/r/${data.referralCode}`
         : '…';

@@ -36,7 +36,7 @@ export function WalkinDateChip({ opp, className }: { opp: Opportunity; className
                     ? 'bg-destructive/10 text-destructive border-destructive/20'
                     : isTomorrow
                         ? 'bg-warning/10 text-warning border-warning/20'
-                        : 'bg-primary/10 text-primary border-primary/20',
+                        : 'bg-accent text-accent-foreground border-border',
                 className
             )}
         >

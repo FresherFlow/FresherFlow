@@ -55,17 +55,17 @@ function SalaryForm({ onDone, onCreated }: { onDone: () => void; onCreated: () =
         <form onSubmit={submit} className="space-y-3 rounded-2xl border border-border p-4">
             <div className="grid grid-cols-2 gap-3">
                 <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Company *" required maxLength={120}
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50" />
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50" />
                 <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="Role *" required maxLength={120}
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50" />
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50" />
                 <input value={ctcTotal} onChange={(e) => setCtcTotal(e.target.value)} placeholder="CTC in LPA (e.g. 4.5)" inputMode="decimal"
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50" />
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50" />
                 <input value={inHand} onChange={(e) => setInHand(e.target.value)} placeholder="In-hand ₹/month" inputMode="numeric"
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50" />
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50" />
                 <input value={bond} onChange={(e) => setBond(e.target.value)} placeholder="Bond (months)" inputMode="numeric"
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50" />
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50" />
                 <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (variable, bonus…)" maxLength={1000}
-                    className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary/50" />
+                    className="rounded-lg border border-border bg-background px-3 py-2 text-base sm:text-sm outline-none focus:border-primary/50" />
             </div>
             <button type="submit" disabled={submitting}
                 className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">
@@ -228,7 +228,7 @@ export function SalaryReportsClient() {
                                     'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
                                     helpfulIds.has(r.id)
                                         ? 'bg-primary/15 text-primary'
-                                        : 'text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                 )}
                             >
                                 Helpful {r.helpfulCount > 0 ? `(${r.helpfulCount})` : ''}

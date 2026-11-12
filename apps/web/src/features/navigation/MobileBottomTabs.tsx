@@ -114,11 +114,11 @@ export function MobileBottomTabs() {
                             }}
                             aria-current={isActive ? 'page' : undefined}
                             className={cn(
-                                'flex flex-col items-center justify-center flex-1 h-full gap-1 active:scale-95 transition-all duration-150 ease-out',
+                                'flex flex-col items-center justify-center flex-1 h-full gap-1 active:scale-[0.97] transition duration-150 ease-out motion-reduce:transform-none',
                                 isActive ? 'text-primary' : 'text-muted-foreground'
                             )}
                         >
-                            <div className={cn('p-1 rounded-xl', isActive && 'bg-primary/10')}>
+                            <div className={cn('p-1 rounded-xl', isActive && 'bg-muted')}>
                                 {Icon && (
                                     <Icon
                                         className={cn('w-6 h-6', isActive && 'fill-primary/20')}

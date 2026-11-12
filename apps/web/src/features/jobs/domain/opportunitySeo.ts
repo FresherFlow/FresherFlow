@@ -7,7 +7,7 @@ import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getDriveDates, isCampusDriveOpportunity } from '@/features/jobs/domain/driveTimeline';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
-import { fetchBootstrapFeed, fetchExpiredFeed, fetchFeedIndex, fetchGovernmentFeed, fetchOpportunityDetail } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed, fetchExpiredFeed, fetchFeedIndex, fetchGovernmentFeed, fetchOpportunityDetail } from '@/lib/api/feedServer';
 import { slugify } from '@fresherflow/utils/slugify';
 import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 
@@ -116,7 +116,8 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
 // React cache() memoizes this per-request. generateMetadata and the page component
 // both call this function — without cache(), both calls parse the entire bootstrap
 // feed JSON separately. With cache(), the second call is free.
-export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {    try {
+export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {
+    try {
         // 1. Try direct individual static JSON on CDN edge first (ultra-fast, ~2.5KB payload)
         const directJob = await fetchOpportunityDetail(slugOrId);
         if (directJob) {
@@ -125,46 +126,54 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
 
         // 2. Fallback when the individual JSON is missing or cold.
         //
-        //    The index decides whether this is a real listing at all. A slug
-        //    that is not in the index, the government feed or the expired feed
-        //    is a 404 — and a 404 must not download the 1.9 MB bootstrap feed.
-        //    Crawlers invent thousands of slugs, and this used to pull
-        //    bootstrap + government + expired (~2.6 MB) for every one of them.
-        const [index, govtFeed, expiredFeed] = await Promise.all([
-            fetchFeedIndex(),
-            fetchGovernmentFeed(),
-            fetchExpiredFeed(),
-        ]);
-
+        //    fetchOpportunityDetail already fetched the feed index internally
+        //    (feedServer.ts resolves slug -> id from the index), and fetchFeedIndex
+        //    is cache()-wrapped, so this call is free. The index decides whether
+        //    this is a real listing at all — a slug not in the active index,
+        //    the government feed, or the expired feed is a 404, and a 404 must
+        //    not download the 1.9 MB bootstrap feed.
+        const index = await fetchFeedIndex();
         const inActiveFeed = (index?.opportunities ?? []).some(
             (opp) => opp.id === slugOrId || opp.slug === slugOrId,
         );
 
-        // Only a confirmed live listing is worth the full payload: the index
-        // carries card fields, the bootstrap feed carries the description and
-        // apply link the detail page renders.
-        const feed = inActiveFeed ? await fetchBootstrapFeed() : null;
+        if (!inActiveFeed) {
+            // Not in the active feed — only check government and expired feeds.
+            // Fetching both in parallel is cheap; neither is the 1.9 MB bootstrap.
+            const [govtFeed, expiredFeed] = await Promise.all([
+                fetchGovernmentFeed(),
+                fetchExpiredFeed(),
+            ]);
 
-        const oppMap = new Map<string, Opportunity>();
+            const oppMap = new Map<string, Opportunity>();
 
-        // Populate in reverse priority so higher priority overwrites:
-        // Priority: active feed > govtFeed > expiredFeed
-        expiredFeed?.opportunities?.forEach(opp => {
-            if (opp.id) oppMap.set(opp.id, opp);
-            if (opp.slug) oppMap.set(opp.slug, opp);
-        });
+            // Populate in reverse priority so higher priority overwrites:
+            // Priority: govtFeed > expiredFeed
+            expiredFeed?.opportunities?.forEach(opp => {
+                if (opp.id) oppMap.set(opp.id, opp);
+                if (opp.slug) oppMap.set(opp.slug, opp);
+            });
 
-        govtFeed?.opportunities?.forEach(opp => {
-            if (opp.id) oppMap.set(opp.id, opp);
-            if (opp.slug) oppMap.set(opp.slug, opp);
-        });
+            govtFeed?.opportunities?.forEach(opp => {
+                if (opp.id) oppMap.set(opp.id, opp);
+                if (opp.slug) oppMap.set(opp.slug, opp);
+            });
 
-        feed?.opportunities?.forEach(opp => {
-            if (opp.id) oppMap.set(opp.id, opp);
-            if (opp.slug) oppMap.set(opp.slug, opp);
-        });
+            return (oppMap.get(slugOrId) as ExtendedOpportunity) ?? null;
+        }
 
-        return (oppMap.get(slugOrId) as ExtendedOpportunity) ?? null;
+        // In the active feed but the individual shard missed — fetch the full
+        // bootstrap feed for the payload (description, apply link, etc.).
+        // The active feed has highest priority, so government/expired data is
+        // not needed here.
+        const feed = await fetchBootstrapFeed();
+        if (feed?.opportunities) {
+            const opportunity = feed.opportunities.find(
+                (opp) => opp.id === slugOrId || opp.slug === slugOrId,
+            );
+            if (opportunity) return opportunity as ExtendedOpportunity;
+        }
+        return null;
 
         // --- SEQUENTIAL FALLBACK (restore if parallel causes issues) ---
         // const feed = await fetchBootstrapFeed(false);

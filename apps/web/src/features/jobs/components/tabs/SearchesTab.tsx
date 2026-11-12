@@ -283,7 +283,7 @@ export function SearchesTab() {
                                         <div className="flex flex-wrap items-center gap-2">
                                             <h3 className="truncate text-sm font-semibold text-foreground">{s.name}</h3>
                                             {s.newMatchCount != null && s.newMatchCount > 0 ? (
-                                                <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
+                                                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
                                                     +{s.newMatchCount} new
                                                 </span>
                                             ) : null}

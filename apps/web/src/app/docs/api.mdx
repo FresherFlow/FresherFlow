@@ -69,10 +69,7 @@ The API is versioned. Current version: `v1`.
 
 ### MCP
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| `GET` | `/mcp/tools` | List available MCP tools | Bearer |
-| `POST` | `/mcp/call` | Call an MCP tool | Bearer |
+MCP tools are not REST endpoints. They are invoked over the MCP protocol at `https://mcp.fresherflow.in/mcp` using an OAuth 2.1 bearer token issued by this API — see the [MCP guide](/docs/mcp).
 
 ## Request Validation
 

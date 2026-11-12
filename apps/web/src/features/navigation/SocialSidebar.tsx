@@ -72,11 +72,11 @@ export function SocialSidebar() {
     const [open, setOpen] = useState(false);
 
     return (
-        <div className="hidden lg:flex fixed right-3.5 top-1/2 -translate-y-1/2 z-50 flex-col items-center gap-1.5 rounded-xl border border-border/30 bg-card/25 hover:bg-card/90 backdrop-blur-md px-1.5 py-2 hover:border-border/60 hover:shadow-lg hover:shadow-black/10 transition-all duration-300">
+        <div className="hidden lg:flex fixed right-3.5 top-1/2 -translate-y-1/2 z-50 flex-col items-center gap-1.5 rounded-xl border border-border/30 bg-card/25 hover:bg-card/90 backdrop-blur-md px-1.5 py-2 hover:border-border/60 hover:shadow-lg hover:shadow-black/10 transition-[background-color,border-color,box-shadow] duration-300">
             {!open ? (
                 <button
                     onClick={() => setOpen(true)}
-                    className="h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold text-muted-foreground/80 hover:text-primary hover:bg-primary/5 active:scale-95 transition-all duration-200"
+                    className="h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold text-muted-foreground/80 hover:text-primary hover:bg-primary/5 active:scale-[0.97] transition duration-200 motion-reduce:transform-none"
                     aria-label="Connect"
                     title="Connect with us"
                 >
@@ -86,7 +86,7 @@ export function SocialSidebar() {
                 <div className="flex flex-col items-center gap-1.5 animate-in fade-in zoom-in-95 duration-150">
                     <button
                         onClick={() => setOpen(false)}
-                        className="h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold text-muted-foreground/80 hover:text-destructive hover:bg-destructive/5 active:scale-95 transition-all duration-200"
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold text-muted-foreground/80 hover:text-destructive hover:bg-destructive/5 active:scale-[0.97] transition duration-200 motion-reduce:transform-none"
                         aria-label="Collapse"
                     >
                         
@@ -98,7 +98,7 @@ export function SocialSidebar() {
                             href={item.href}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground/80 hover:text-primary hover:bg-primary/5 hover:scale-110 active:scale-95 transition-all duration-200"
+                            className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground/80 hover:text-primary hover:bg-primary/5 hover:scale-110 active:scale-[0.97] transition duration-200 motion-reduce:transform-none"
                             aria-label={item.label}
                         >
                             <item.icon className="w-3.5 h-3.5" />

@@ -101,7 +101,7 @@ export function SkillsSection({
                                     type="button"
                                     onClick={() => toggleSkill(skill)}
                                     disabled={saving}
-                                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors duration-150 ease-out hover:bg-primary/20 disabled:opacity-60"
+                                    className="inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground transition-colors duration-150 ease-out hover:opacity-85 disabled:opacity-60"
                                     aria-label={`Remove ${skill}`}
                                 >
                                     {skill}

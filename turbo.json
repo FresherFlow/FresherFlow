@@ -28,6 +28,9 @@
         "ADMIN_WEB_HOST",
         "CDN_BUILD_TOKEN",
         "CDN_SIGNATURE_SECRET",
+        "NEXT_PUBLIC_CDN_URL",
+        "FEED_SOURCE",
+        "DB_FEED_REVALIDATE_SECONDS",
         "DATABASE_URL",
         "NODE_ENV",
         "FIREBASE_PROJECT_ID",
@@ -55,7 +58,7 @@
             "dependsOn": [
                 "^build"
             ],
-            "cache": false,
+            "cache": true,
             "outputs": [
                 "dist/**",
                 "!.next/cache/**",
@@ -71,9 +74,6 @@
         },
         "lint": {},
         "typecheck": {
-            "dependsOn": [
-                "^build"
-            ],
             "outputs": []
         },
         "test": {

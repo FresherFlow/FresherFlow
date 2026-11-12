@@ -43,7 +43,7 @@ export default function DownloadMockup() {
                     {SCREENS.map((screen) => (
                         <div
                             key={screen.id}
-                            className={`absolute inset-0 pt-4 sm:pt-5 transition-all duration-500 ease-in-out ${
+                            className={`absolute inset-0 pt-4 sm:pt-5 transition-transform duration-500 ease-in-out ${
                                 screen.id === activeTab
                                     ? 'opacity-100 scale-100 translate-y-0 z-10'
                                     : 'opacity-0 scale-95 translate-y-4 pointer-events-none'
@@ -72,9 +72,9 @@ export default function DownloadMockup() {
                             key={screen.id}
                             onMouseEnter={() => setActiveTab(screen.id)}
                             onClick={() => setActiveTab(screen.id)}
-                            className={`px-3.5 py-1.5 rounded-full text-xs md:text-xs font-bold tracking-wide border transition-all duration-300 ${
+                            className={`px-3.5 py-1.5 rounded-full text-xs md:text-xs font-bold tracking-wide border transition-colors duration-300 ${
                                 isActive
-                                    ? 'bg-primary/10 border-primary/40 text-primary shadow-sm'
+                                    ? 'bg-accent border-border text-accent-foreground shadow-sm'
                                     : 'bg-primary/30 border-border/50 text-muted-foreground hover:text-foreground hover:border-border'
                             }`}
                         >

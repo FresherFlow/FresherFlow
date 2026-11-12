@@ -79,7 +79,7 @@ const CATEGORY_CONFIG = {
 const TICKER_TAG_MAP: Record<string, { tag: string; color: string }> = {
     ADMIT_CARD_RELEASED: { tag: 'Admit Card', color: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20' },
     RESULT_DECLARED:     { tag: 'Result Out',  color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' },
-    ANSWER_KEY_RELEASED: { tag: 'Answer Key', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' },
+    ANSWER_KEY_RELEASED: { tag: 'Answer Key', color: 'bg-warning/10 text-warning border border-warning/20' },
     OPEN:                { tag: 'Apply Now',  color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20' },
 };
 
@@ -836,7 +836,7 @@ export function CategoryPageView({
             {/* Content area */}
             {profileIncomplete ? (
                 <div className="p-12 md:p-20 text-center rounded-2xl border border-border bg-card">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
                         <ShieldCheckIcon className="w-8 h-8 text-primary" />
                     </div>
                     <h2 className="text-2xl font-bold text-foreground tracking-tight mb-2">Profile Readiness Required</h2>
@@ -1199,7 +1199,7 @@ priority={index < 4}
                         <button
                             type="button"
                             onClick={() => setMobileMapView(prev => !prev)}
-                            className="flex items-center gap-2 px-5 py-3 rounded-full bg-foreground text-background font-bold text-xs shadow-2xl border border-border/50 backdrop-blur-md active:scale-95 transition-all duration-150 cursor-pointer hover:shadow-lg"
+                            className="flex items-center gap-2 px-5 py-3 rounded-full bg-foreground text-background font-bold text-xs shadow-2xl border border-border/50 backdrop-blur-md active:scale-[0.97] transition duration-150 motion-reduce:transform-none cursor-pointer hover:shadow-lg"
                         >
                             {mobileMapView ? (
                                 <>
@@ -1221,7 +1221,7 @@ priority={index < 4}
                     <button
                         onClick={() => resetFeedScroll('smooth')}
                         aria-label="Scroll to top"
-                        className="fixed ff-bottom-fab md:bottom-8 right-4 md:right-8 z-sheet flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
+                        className="fixed ff-bottom-fab md:bottom-8 right-4 md:right-8 z-sheet flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-[0.97] transition duration-200 motion-reduce:transform-none animate-in fade-in slide-in-from-bottom-2"
                     >
                         <ChevronUpIcon className="w-5 h-5" />
                     </button>

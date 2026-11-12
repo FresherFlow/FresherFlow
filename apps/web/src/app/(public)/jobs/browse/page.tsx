@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/feedServer';
 import {
     buildTaxonomyRegistry,
     TaxonomyItem,
     yearBoardSlug,
 } from '@/features/jobs/domain/taxonomy';
 
-// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
 // which marks the feed tags stale, and the next request regenerates this
 // page once. A worker sweep re-sends those tags if that call was lost.

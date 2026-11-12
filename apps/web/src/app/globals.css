@@ -35,33 +35,40 @@
   --color-action: oklch(20.6% 0.039 266); /* ACTION — CTA fill. Same navy for now. */
   --color-action-foreground: var(--color-paper);
 
-  /* Neutral ramp. The page background is warm newsprint (#f4f1ea), so
-     every neutral below sits on the same warm hue (~85) rather than the
-     old cool 248-257. Mixing a warm page with cool-gray surfaces is what
-     made the sidebar and chips read as a different material. Chroma stays
-     very low (0.005-0.016) so these still read as paper, not as tan. */
-  --color-secondary: oklch(96.1% 0.008 85); /* Warm light gray */
+  /* Neutral ramp. One hue (258, a cool neutral) at very low chroma, so every
+     surface reads as the same material: page, card, inset, selection.
+
+     This replaced a warm newsprint ramp on hue 85 (#f4f1ea page, brown-grey
+     text, tan borders). That ramp made every light-mode screen look sepia, and
+     sepia is the wrong signal for a job platform — it reads as a document
+     archive, not as live listings. The navy ink, the action colour and the
+     brand orange are unchanged; only the neutrals moved from warm to neutral.
+     Chroma stays at 0.003–0.008 so these read as grey, not as blue. */
+  --color-secondary: oklch(96.1% 0.005 258); /* Light neutral */
   --color-secondary-foreground: oklch(20.6% 0.039 266); /* Navy */
 
-  --color-accent: oklch(89.5% 0.010 85); /* Subtle hover bg (same as muted) — never navy */
+  --color-accent: oklch(93.6% 0.007 258); /* Subtle hover/selected bg — never navy */
   --color-accent-foreground: oklch(20.6% 0.039 266); /* Navy text on accent */
 
-  --color-background: #f4f1ea; /* Page bg — warm newsprint (--ff-paper). */
+  --color-background: oklch(97.6% 0.003 258); /* Page bg — cool near-white (#f6f7f9) */
   --color-foreground: oklch(20.6% 0.039 266); /* Primary text */
 
-  --color-card: oklch(100% 0 0); /* Card bg — true white, a clear step above the paper */
+  --color-card: oklch(100% 0 0); /* Card bg — true white, one clear step above the page */
   --color-card-foreground: oklch(20.6% 0.039 266); /* Card text */
   --color-popover: oklch(100% 0 0); /* Popover / menu bg */
   --color-popover-foreground: oklch(20.6% 0.039 266); /* Popover text */
 
   /* ── Borders & inputs ────────────────────────────────────────── */
-  --color-border: oklch(79% 0.013 80); /* Visible borders — warm hairline */
-  --color-input: oklch(79% 0.013 80); /* Input borders */
+  --color-border: oklch(88% 0.008 258); /* Visible borders — neutral hairline */
+  --color-input: oklch(88% 0.008 258); /* Input borders */
   --color-ring: oklch(20.6% 0.039 266); /* Focus ring = primary */
 
   /* ── Muted ───────────────────────────────────────────────────── */
-  --color-muted: oklch(91.5% 0.010 85); /* Muted bg — one step off the page */
-  --color-muted-foreground: oklch(29.5% 0.034 68); /* Muted text — 4.9:1 on card, 5.3:1 on muted */
+  --color-muted: oklch(96.2% 0.005 258); /* Muted bg — one step off the page */
+  /* Secondary text. Measured: 6.53:1 on card, 6.10:1 on the page, 5.85:1 on
+     muted. The warm brown-grey this replaced was 4.9:1 and looked like ink
+     fading into paper. */
+  --color-muted-foreground: oklch(48% 0.014 258);
 
   /* ── Semantic states ─────────────────────────────────────────────
      ONE red. This used to be three near-identical ones — `error`
@@ -73,12 +80,20 @@
 
      Note `signal-dead` aliases `error`, which aliases `destructive`, so
      the whole failure family resolves to one value in both themes. */
-  --color-destructive: oklch(63.6% 0.208 25); /* The one red */
+  /* The one red. Darkened from L63.6 to L55 so that red *text* clears 4.5:1
+     on both the card (5.35:1) and its own 10%/15% tint (4.91/4.70) — the
+     destructive label is small text, not a headline. */
+  --color-destructive: oklch(55% 0.19 25);
   --color-destructive-foreground: oklch(98.5% 0 90);
 
-  --color-success: oklch(61.1% 0.147 154); /* Green */
+  /* Green, darkened from L61.1 so text-success clears 4.5:1 on the card
+     (5.18:1) and on the success/10 tint badges (4.77:1). */
+  --color-success: oklch(52% 0.125 155);
   --color-error: var(--color-destructive); /* alias — one red only */
-  --color-warning: oklch(75.5% 0.17 64); /* Amber */
+  /* Amber, darkened from L75.5 (2.27:1 as text) to L54: 5.15:1 on card,
+     4.62:1 on the warning/15 badge tint. A caution colour that cannot be read
+     is not a caution colour. */
+  --color-warning: oklch(54% 0.125 60);
 
   /* ── Signal language (plan 17 §17.3, additive) ───────────────── */
   /* The truth system in type and color: used for stamps, board
@@ -96,24 +111,22 @@
         discipline (DESIGN.md → Do's and Don'ts), not a fifth red. */
 
   /* ── Chip / pill active states ───────────────────────────────── */
-  --color-chip-active: oklch(90% 0.012 84); /* Warm silver-gray */
+  --color-chip-active: oklch(93% 0.008 258); /* Neutral selected chip */
   --color-chip-active-text: oklch(20.6% 0.039 266); /* Navy */
-  --color-chip-active-border: oklch(
-    78% 0.026 78
-  ); /* Slightly darker than border */
+  --color-chip-active-border: oklch(85% 0.012 258); /* Slightly darker than border */
 
   /* ── Dropdown hover ──────────────────────────────────────────── */
-  --color-dropdown-hover: oklch(90% 0.016 82); /* Same as muted */
+  --color-dropdown-hover: oklch(94% 0.007 258); /* Same as muted */
   --color-dropdown-hover-text: oklch(20.6% 0.039 266);
 
   /* Sidebar tokens (shadcn). The rail is a clean paper plane: near-white and
      almost achromatic (chroma 0.004, one twentieth of the page tint), so it
      separates from the newsprint page by LIGHTNESS alone.
 
-     It was `--color-muted` (oklch 91.5% 0.010 85) — a chromatic tan. Next to
-     the warm #f4f1ea page, two warm planes at different lightness do not read
-     as hierarchy, they read as a mismatch: the rail looked dirty against the
-     content. The fix is to drop the chroma, not to darken it further.
+     It was `--color-muted` — a chromatic plane. Next to the page, two tinted
+     planes at different lightness do not read as hierarchy, they read as a
+     mismatch: the rail looked dirty against the content. The fix is to drop
+     the chroma, not to darken it further.
 
      The accent and border follow the same rule — a soft neutral row and a light
      hairline, so the selected item reads as a selection rather than a tan chip.
@@ -124,10 +137,10 @@
   --color-sidebar-primary: oklch(20.6% 0.039 266);
   --color-sidebar-primary-foreground: var(--color-paper);
   --color-sidebar-accent: oklch(
-    92% 0.005 85
+    94.5% 0.006 258
   ); /* Selected/hover row — a step below the rail, near-neutral */
   --color-sidebar-accent-foreground: oklch(20.6% 0.039 266);
-  --color-sidebar-border: oklch(86% 0.006 85); /* Light neutral hairline */
+  --color-sidebar-border: oklch(90% 0.006 258); /* Light neutral hairline */
   --color-sidebar-ring: oklch(20.6% 0.039 266); /* Same as foreground */
 
   /* ── Brand / third-party colors ──────────────────────────────── */
@@ -161,14 +174,14 @@
 
   /* ── Surface colors ──────────────────────────────────────────── */
   --color-surface-warm: oklch(
-    98.4% 0.006 88
-  ); /* #F7F5F0 — warm raised surface, a hair above the page */
+    98.6% 0.003 258
+  ); /* Raised surface, a hair above the page. Name kept for
+     compatibility; the value is no longer warm. */
 
-  /* Paper: the sidebar plane and the color of text on saturated fills. It
-     used to equal --color-background; now the page is the warmer newsprint
-     #f4f1ea, so paper is a clear step lighter and the rail separates from the
-     content by lightness instead of by adding more warmth. */
-  --color-paper: oklch(99% 0.004 85);
+  /* Paper: the sidebar plane and the color of text on saturated fills. It is
+     a clear step lighter than the page, so the rail separates from the content
+     by lightness instead of by tinting either surface. */
+  --color-paper: oklch(99.4% 0.002 258);
 
   /* ── Legacy brand palette: REMOVED ─────────────────────────────────
      This file used to carry a SECOND palette alongside the semantic
@@ -180,8 +193,8 @@
      the navy `--color-primary` ink, which is a large part of why the admin
      shell and the job pages read as two products sharing components.
 
-     Warm newsprint is still the page: it is `--color-background` (#f4f1ea).
-     Nothing was lost but the duplicate name. `--ff-accent` and the
+     The page is `--color-background`; nothing was lost but the duplicate name.
+     `--ff-accent` and the
      `--ff-band-*` instrument palette survive further down; they are a
      distinct always-dark marketing component, not a competing UI palette. */
 
@@ -818,22 +831,30 @@ html.ff-smooth {
 /* ── Landing: named text styles ──────────────────────────────────────────
    Every landing string resolves to one of these names rather than a loose
    size and weight. Sizes land only on Tailwind's default type scale. */
-.ff-h1 { font-size: 2.25rem; line-height: 2.5rem; font-weight: 600; letter-spacing: -0.025em; }
-.ff-h2 { font-size: 1.875rem; line-height: 2.25rem; font-weight: 600; letter-spacing: -0.02em; text-wrap: balance; }
-.ff-h5 { font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
-.ff-h6 { font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
-.ff-title-3 { font-size: 1rem; line-height: 1.5rem; font-weight: 500; }
-.ff-body-1 { font-size: 1rem; line-height: 1.5rem; font-weight: 600; text-wrap: pretty; }
-.ff-body-3 { font-size: 1rem; line-height: 1.5rem; font-weight: 400; text-wrap: pretty; }
-.ff-body-4 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 600; text-wrap: pretty; }
-.ff-body-6 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 400; text-wrap: pretty; }
-.ff-caption-1 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 500; }
-.ff-caption-2 { font-size: 0.875rem; line-height: 1.25rem; font-weight: 400; }
-.ff-caption-3 { font-size: 0.75rem; line-height: 1rem; font-weight: 600; }
+/* Line-heights are unitless so they scale with the font size. These ratios
+   reproduce the previous fixed rem values exactly; a rem line-height does not
+   scale when a role's size changes, which is how a heading ends up tighter at
+   the larger breakpoint than at the smaller one. */
+.ff-h1 { font-size: 2rem; line-height: 1.12; font-weight: 600; letter-spacing: -0.02em; }
+/* 24px at phone width, not 30px: a section heading that wraps to three lines
+   stops separating sections and starts competing with the page title. */
+.ff-h2 { font-size: 1.5rem; line-height: 1.25; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
+.ff-h5 { font-size: 1.5rem; line-height: 1.33; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
+.ff-h6 { font-size: 1.25rem; line-height: 1.4; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.ff-title-3 { font-size: 1rem; line-height: 1.5; font-weight: 500; }
+.ff-body-1 { font-size: 1rem; line-height: 1.5; font-weight: 600; text-wrap: pretty; }
+.ff-body-3 { font-size: 1rem; line-height: 1.5; font-weight: 400; text-wrap: pretty; }
+.ff-body-4 { font-size: 0.875rem; line-height: 1.43; font-weight: 600; text-wrap: pretty; }
+.ff-body-6 { font-size: 0.875rem; line-height: 1.43; font-weight: 400; text-wrap: pretty; }
+.ff-caption-1 { font-size: 0.875rem; line-height: 1.43; font-weight: 500; }
+.ff-caption-2 { font-size: 0.875rem; line-height: 1.43; font-weight: 400; }
+.ff-caption-3 { font-size: 0.75rem; line-height: 1.33; font-weight: 600; }
 
 @media (min-width: 640px) {
-  .ff-h1 { font-size: 3.75rem; line-height: 1; }
-  .ff-h2 { font-size: 3rem; line-height: 1; }
+  /* Display/heading leading, not the fixed 1.0 the rem values collapsed to:
+     the hero is two deliberate lines, section headings can run to three. */
+  .ff-h1 { font-size: 3.75rem; line-height: 1.05; }
+  .ff-h2 { font-size: 3rem; line-height: 1.1; }
 }
 
 /* Running copy holds a readable measure — roughly 65 characters. */
@@ -891,83 +912,13 @@ html.ff-smooth {
   .ff-btn-onink-outline:hover { opacity: 0.7; }
 }
 
-/* Hero feed — the board itself, held in a paper column. */
-.ff-feed {
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-}
-.ff-feed-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--color-border);
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--color-muted-foreground);
-}
-.ff-feed-total { color: var(--color-foreground); }
-.ff-feed-list { margin: 0; padding: 0; list-style: none; }
-.ff-feed-row { border-bottom: 1px solid var(--color-border); }
-.ff-feed-row:last-child { border-bottom: 0; }
-.ff-feed-link {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas:
-    'title time'
-    'place place';
-  gap: 4px 16px;
-  padding: 16px 20px;
-  transition: background-color 300ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-.ff-feed-title {
-  grid-area: title;
-  font-size: 1rem;
-  line-height: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  text-wrap: balance;
-}
-.ff-feed-time {
-  grid-area: time;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  font-weight: 500;
-  white-space: nowrap;
-  color: var(--color-muted-foreground);
-}
-.ff-feed-place {
-  grid-area: place;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  color: var(--color-muted-foreground);
-}
-.ff-feed-link:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--color-ring);
-}
-@media (hover: hover) and (pointer: fine) {
-  .ff-feed-link:hover { background: var(--color-accent); }
-}
-
-/* One orchestrated load sequence: the offer rises, the board follows, the
-   rows print in top to bottom. Nothing else on the page enters on scroll. */
+/* One orchestrated load sequence: the offer rises. Nothing else on the page
+   enters on scroll. */
 @keyframes ff-rise {
   from { opacity: 0; transform: translateY(20px); }
 }
-@keyframes ff-print {
-  from { opacity: 0; transform: translateY(8px); }
-}
 @media (prefers-reduced-motion: no-preference) {
   .ff-load { animation: ff-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-  .ff-feed { animation: ff-rise 700ms cubic-bezier(0.22, 1, 0.36, 1) 140ms both; }
-  .ff-feed-row {
-    animation: ff-print 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
-    animation-delay: var(--ff-row-delay, 0ms);
-  }
 }
 
 /* Tagline reveal. Words render at full colour by default, so a page with no

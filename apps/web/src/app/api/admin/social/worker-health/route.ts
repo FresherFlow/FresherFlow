@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
 import { withAdminAuth } from '@/lib/server/adminAuth';
-
-const WORKER_URL = process.env.WORKER_URL || '';
-const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
+import { WORKER_URL, WORKER_SECRET } from '@/lib/server/env';
 
 export const dynamic = 'force-dynamic';
 

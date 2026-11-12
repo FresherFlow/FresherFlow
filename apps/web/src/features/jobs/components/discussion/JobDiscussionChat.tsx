@@ -230,7 +230,7 @@ export function JobDiscussionChat({ comments, loading, error, onPost, onDelete, 
                                                     {isOwn ? 'You' : displayName(comment.user)}
                                                 </span>
                                                 {isQuestion ? (
-                                                    <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-micro font-bold text-primary">
+                                                    <span className="rounded-full bg-muted px-1.5 py-0.5 text-micro font-bold text-primary">
                                                         Question
                                                     </span>
                                                 ) : null}
@@ -257,7 +257,7 @@ export function JobDiscussionChat({ comments, loading, error, onPost, onDelete, 
                                                 className={cn(
                                                     'rounded-xl border px-3 py-2 text-sm leading-relaxed break-words',
                                                     isOwn
-                                                        ? 'rounded-br-sm border-primary/20 bg-primary/10 text-foreground'
+                                                        ? 'rounded-br-sm border-primary/20 bg-muted text-foreground'
                                                         : 'rounded-bl-sm border-border bg-muted/50 text-foreground'
                                                 )}
                                             >
@@ -303,7 +303,7 @@ export function JobDiscussionChat({ comments, loading, error, onPost, onDelete, 
                         className={cn(
                             'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors duration-150',
                             asking
-                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                ? 'border-border bg-accent text-accent-foreground'
                                 : 'border-border text-muted-foreground hover:text-foreground'
                         )}
                     >

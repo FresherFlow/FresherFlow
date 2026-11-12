@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type React from 'react';
-import { APP_LINKS, APP_LINKS as LINKS } from '@/lib/config/links';
+import { APP_LINKS } from '@/lib/config/links';
 import {
     TelegramBrandIcon,
     WhatsAppBrandIcon,
@@ -10,6 +10,7 @@ import {
     InstagramBrandIcon,
     FacebookBrandIcon,
 } from '@/features/navigation/SocialSidebar';
+import { LogoImage } from '@/features/shell/LogoImage';
 
 /**
  * Site footer — the app-wide footer (not a landing-only component).
@@ -19,13 +20,17 @@ import {
  * The statement band above it is light, so the seam is high-contrast.
  *
  * SOCIAL RULE (locked): right rail, vertical, icon + name per line,
- * left-aligned. GitHub included.
+ * left-aligned on desktop. On a phone the same links wrap horizontally under
+ * the columns, because eight stacked rows is most of a footer screen on their
+ * own.
  *
- * LEFT  — logo + wordmark + tagline, hairline, five bold-header columns
- * RIGHT — socials vertical (icon + name), © once on the bottom line
+ * LEFT  — logo + wordmark + tagline, hairline, link columns
+ * RIGHT — socials
+ * BOTTOM — EST · MADE IN INDIA, © once
+ *
+ * There is one way to submit an opportunity across the site (the Contribute
+ * button in the header), so it is deliberately not repeated here.
  */
-
-import { LogoImage } from '@/features/shell/LogoImage';
 
 function GitHubIcon({ className }: { className?: string }) {
     return (
@@ -46,14 +51,6 @@ const GROUPS: Array<{ title: string; links: Array<{ label: string; href: string 
         ],
     },
     {
-        title: 'Community',
-        links: [
-            { label: 'Post an opportunity', href: '/post' },
-            { label: 'Discussions', href: '/discussions' },
-            { label: 'Contributors', href: '/u' },
-        ],
-    },
-    {
         title: 'Explore',
         links: [
             { label: 'Companies', href: '/companies' },
@@ -65,6 +62,7 @@ const GROUPS: Array<{ title: string; links: Array<{ label: string; href: string 
         title: 'Company',
         links: [
             { label: 'About', href: '/about' },
+            { label: 'FAQ', href: '/faq' },
             { label: 'Blog', href: '/blog' },
             { label: 'Contact', href: '/contact' },
         ],
@@ -79,7 +77,7 @@ const GROUPS: Array<{ title: string; links: Array<{ label: string; href: string 
 ];
 
 const SOCIALS: Array<{ label: string; Icon: (p: { className?: string }) => React.ReactElement; href: string }> = [
-    { label: 'GitHub', Icon: GitHubIcon, href: 'https://github.com/MukeshCheekatla/FresherFlow' },
+    { label: 'GitHub', Icon: GitHubIcon, href: 'https://github.com/FresherFlow/FresherFlow' },
     { label: 'X / Twitter', Icon: XBrandIcon, href: APP_LINKS.x },
     { label: 'LinkedIn', Icon: LinkedInBrandIcon, href: APP_LINKS.linkedin },
     { label: 'Instagram', Icon: InstagramBrandIcon, href: APP_LINKS.instagram },
@@ -92,8 +90,8 @@ const SOCIALS: Array<{ label: string; Icon: (p: { className?: string }) => React
 export function SiteFooter() {
     return (
         <footer className="bg-background text-foreground">
-            <div className="mx-auto w-full max-w-7xl px-6 pb-8 pt-14">
-                <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
+            <div className="mx-auto w-full max-w-7xl px-5 pb-6 pt-10 sm:px-6 sm:pb-8 sm:pt-14">
+                <div className="flex flex-col gap-8 lg:flex-row lg:gap-12">
                     {/* LEFT — brand + link columns */}
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-3">
@@ -103,16 +101,16 @@ export function SiteFooter() {
                             </span>
                         </div>
                         <p className="mt-3 font-record text-xs tracking-widest text-muted-foreground">
-                            JOBS, POWERED BY FRESHERS.
+                            YOUR CAREER, ONE FLOW.
                         </p>
 
-                        <div className="my-8 h-px bg-border" aria-hidden />
+                        <div className="my-6 h-px bg-border sm:my-8" aria-hidden />
 
-                        <div className="flex flex-wrap gap-x-12 gap-y-10">
+                        <nav aria-label="Footer" className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
                             {GROUPS.map((g) => (
                                 <div key={g.title}>
                                     <div className="text-sm font-bold text-foreground">{g.title}</div>
-                                    <ul className="mt-4 flex flex-col gap-2.5">
+                                    <ul className="mt-3 flex flex-col gap-2 sm:mt-4 sm:gap-2.5">
                                         {g.links.map((l) => (
                                             <li key={l.href + l.label}>
                                                 <Link
@@ -126,12 +124,16 @@ export function SiteFooter() {
                                     </ul>
                                 </div>
                             ))}
-                        </div>
+                        </nav>
                     </div>
 
-                    {/* RIGHT — same rail, same spot: socials VERTICAL, icon + name per line */}
-                    <div className="flex w-full shrink-0 flex-col border-border lg:w-75 lg:border-l lg:pl-10">
-                        <nav aria-label="Social links" className="flex flex-col items-start gap-3">
+                    {/* RIGHT — desktop: same rail, socials vertical. Mobile: a
+                        wrapped row under the columns, not eight stacked lines. */}
+                    <div className="border-t border-border pt-6 lg:w-75 lg:shrink-0 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+                        <nav
+                            aria-label="Social links"
+                            className="flex flex-wrap gap-x-5 gap-y-2.5 lg:flex-col lg:items-start lg:gap-3"
+                        >
                             {SOCIALS.map(({ label, Icon, href }) => (
                                 <a
                                     key={label}
@@ -145,12 +147,11 @@ export function SiteFooter() {
                                 </a>
                             ))}
                         </nav>
-
                     </div>
                 </div>
 
                 {/* bottom line — EST + MADE IN INDIA, © (single occurrence) */}
-                <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6 font-record text-xs tracking-widest text-muted-foreground">
+                <div className="mt-8 flex flex-col gap-2 border-t border-border pt-5 font-record text-xs tracking-widest text-muted-foreground sm:mt-12 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3 sm:pt-6">
                     <span>EST. 2026 · MADE IN INDIA</span>
                     <span>© 2026 FresherFlow</span>
                 </div>

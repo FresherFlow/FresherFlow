@@ -184,7 +184,7 @@ function SettingsPageContent() {
                                 <span className="text-sm font-bold text-foreground">
                                     @{user?.username || 'candidate'}
                                 </span>
-                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
+                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-muted text-foreground text-xs font-bold border border-primary/20">
                                     <CheckBadgeIcon className="w-3 h-3" /> Candidate
                                 </span>
                             </div>
@@ -310,7 +310,7 @@ function SettingsPageContent() {
                             value={confirmInput}
                             onChange={(e) => setConfirmInput(e.target.value)}
                             placeholder={expectedConfirmText}
-                            className="w-full h-10 rounded-xl border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive/30"
+                            className="w-full h-10 rounded-xl border border-border bg-background px-3 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-destructive/30"
                         />
                     </div>
 

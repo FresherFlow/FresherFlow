@@ -318,7 +318,6 @@ export const extractDomain = (value?: string | null) => {
 export const getPublicOpportunityUrl = (slugOrId: string, opportunityType: OpportunityKind) => {
     const configuredOrigin =
         process.env.NEXT_PUBLIC_SITE_URL
-        || process.env.NEXT_PUBLIC_APP_URL
         || SITE_URL;
     const origin = /localhost|127\.0\.0\.1/i.test(configuredOrigin)
         ? SITE_URL

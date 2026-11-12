@@ -131,7 +131,7 @@ export default function ProgrammaticHub({
                         {description}
                     </p>
                     <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-muted-foreground font-medium">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-muted text-foreground border border-primary/20">
                             <ClockIcon className="w-3.5 h-3.5" />
                             {opportunities.length} Active Positions
                         </span>

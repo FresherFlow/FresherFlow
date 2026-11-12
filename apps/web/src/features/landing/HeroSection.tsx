@@ -1,104 +1,63 @@
 import Link from 'next/link';
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
-import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
-
-/**
- * Landing hero — matches the accepted mock:
- * LIVE note chip, 3 headline lines (one per sentence, block-level so no
- * mid-sentence wraps), orange accent on "learn.", three CTAs (board,
- * discussion, post), mono meta row, BOARD 00 eyebrow. Light brand surface
- * in both themes.
- *
- * Headline is the V1 product message: "Find jobs. Ask people. Share what
- * you learn." (see files/checklists/v1-job-community-checklist.md §G).
- */
 
 interface HeroSectionProps {
     newToday: number;
-    refreshedAt: Date | null;
-    /**
-     * Where "Ask / Discuss" goes. Defaults to the discussions board rather than
-     * /jobs, because /jobs is already the "Browse the board" target — a
-     * fallback there silently makes two CTAs identical.
-     */
-    discussHref?: string;
+    total: number;
 }
 
-export function HeroSection({ newToday, refreshedAt, discussHref = '/community?tab=discussions' }: HeroSectionProps) {
-    const mins = refreshedAt ? Math.max(0, Math.floor((Date.now() - refreshedAt.getTime()) / 60000)) : null;
-    const age =
-        mins === null
-            ? null
-            : mins < 1
-              ? 'JUST NOW'
-              : mins < 60
-                ? `${mins}M AGO`
-                : mins < 1440
-                  ? `${Math.floor(mins / 60)}H AGO`
-                  : `${Math.floor(mins / 1440)}D AGO`;
-
+/**
+ * First viewport: the statement, one line of context, one action.
+ *
+ * The live board used to sit here as a five row feed, which meant a stranger
+ * met job titles before they knew what the site was. The feed now lives one
+ * section down (`LiveBoard`); what stays above the fold is the promise and the
+ * single number that proves the board is alive.
+ */
+export function HeroSection({ newToday, total }: HeroSectionProps) {
     return (
-        <section className="relative">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 pb-16 pt-10">
-                
+        <section className="border-b border-border">
+            <div className="mx-auto max-w-[1200px] px-5 sm:px-8 pt-10 pb-12 sm:pt-24 sm:pb-28">
+                {/* Statement left, the answer right, both sitting on the same
+                    baseline. Nothing sits in the right column that is not part
+                    of the offer, so the fold stays one thought. */}
+                <div className="grid gap-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:items-end lg:gap-16">
+                    <div>
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 font-record text-xs tracking-[0.14em] text-muted-foreground">
+                            <span className="tabular-nums">{total.toLocaleString('en-IN')}</span>
+                            <span>LIVE ROLES</span>
+                            {newToday > 0 && (
+                                <>
+                                    <span aria-hidden>·</span>
+                                    <span className="tabular-nums">{newToday.toLocaleString('en-IN')}</span>
+                                    <span>ADDED TODAY</span>
+                                </>
+                            )}
+                        </div>
 
-                <h1 className="ff-hero-h1 font-display text-[clamp(26px,8.5vw,44px)] sm:text-[clamp(44px,7.4vw,92px)] font-extrabold leading-[0.98] tracking-[-0.03em]">
-                    <span className="line" style={{ animationDelay: '0.05s' }}>
-                        Find jobs.
-                    </span>
-                    <span className="line" style={{ animationDelay: '0.18s' }}>
-                        Ask people.
-                    </span>
-                    <span className="line" style={{ animationDelay: '0.34s' }}>
-                        Share what you <span className="accent">learn.</span>
-                    </span>
-                </h1>
+                        {/* Breaks where the thought breaks: the subject, then the verb. */}
+                        <h1 className="ff-h1 ff-load font-display ff-hero-gradient mt-5 max-w-[680px]">
+                            Your career,
+                            <br />
+                            one flow.
+                        </h1>
+                    </div>
 
-                <p className="ff-hero-sub">
-                    Off-campus drives, internships and walk-ins across India — with real discussion on every job. Ask
-                    questions, share interview experiences, and help the next fresher. All roles link straight to
-                    official pages.
-                </p>
+                    <div className="lg:pb-2">
+                        <p className="ff-body-3 text-muted-foreground">
+                            Off campus roles, internships, walk in drives and government vacancies
+                            in one place. Every listing opens the employer&apos;s own page, so you
+                            can check it is real before you apply.
+                        </p>
 
-                <div className="ff-hero-ctas flex flex-wrap gap-2">
-                    <Link
-                        href="/jobs"
-                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-[var(--color-ff-accent-ink)] transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]"
-                    >
-                        Browse the board <ArrowRightIcon className="h-4 w-4" />
-                    </Link>
-                    {COMMUNITY_UI_ENABLED && (
-                        <Link
-                            href={discussHref}
-                            className="inline-flex items-center gap-2 rounded-[2px] border border-foreground/80 px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]"
-                        >
-                            Ask / Discuss
-                        </Link>
-                    )}
-                    <Link
-                        href="/post"
-                        className="inline-flex items-center gap-2 rounded-[2px] border border-border px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform duration-150 ease-out hover:-translate-y-px hover:border-foreground/60 active:scale-[0.98]"
-                    >
-                        Post an opportunity
-                    </Link>
-                </div>
-
-                <div className="ff-hero-meta">
-                    <span>
-                        · <b>+{newToday}</b> TODAY
-                    </span>
-                    {age && (
-                        <span>
-                            · REFRESHED <b>{age}</b>
-                        </span>
-                    )}
-                    <span>· ALL LINKS CHECKED DAILY</span>
-                </div>
-
-                <div className="ff-hero-eyebrow flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                    <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
-                    BOARD 00 · THE NUMBERS
-                    <span className="h-px hidden sm:flex-1 bg-border" aria-hidden />
+                        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+                            <Link href="/jobs" className="ff-btn ff-btn-primary">
+                                Browse jobs
+                            </Link>
+                            <span className="ff-caption-2 text-muted-foreground">
+                                No account needed to read the board.
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

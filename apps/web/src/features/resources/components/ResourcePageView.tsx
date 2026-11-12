@@ -188,8 +188,8 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                                                 type="text"
                                                 value={skillSearch}
                                                 onChange={e => setSkillSearch(e.target.value)}
-                                                placeholder="Search skills..."
-                                                className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                                placeholder="Search skills…"
+                                                className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-base sm:text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                                                 onClick={e => e.stopPropagation()}
                                             />
                                         </div>

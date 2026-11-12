@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Sector } from '@fresherflow/types';
-import { fetchFeedIndex, fetchGovernmentFeed, fetchBootstrapFeed, type BootstrapFeedResponse } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex, fetchGovernmentFeed, fetchBootstrapFeed, type BootstrapFeedResponse } from '@/lib/api/feedServer';
 import { withRateLimit } from '@/lib/api/rateLimit';
 
 // The route itself is always rendered per request (force-dynamic) and its own
@@ -35,19 +35,16 @@ async function servePublicFeed(request: NextRequest) {
 
         if (isGovernment) {
             feed = await fetchGovernmentFeed();
-            if (!feed?.opportunities?.length) {
-                feed = await fetchFeedIndex();
-            }
         } else {
             // Use lightweight feed-index (faster, has all card-rendering fields)
             // Fall back to bootstrap only if index is unavailable
             feed = await fetchFeedIndex();
-            if (!feed?.opportunities?.length) {
+            if (!feed) {
                 feed = await fetchBootstrapFeed();
             }
         }
 
-        if (!feed?.opportunities?.length) {
+        if (!feed) {
             return NextResponse.json({ error: 'Feed unavailable' }, { status: 503 });
         }
 

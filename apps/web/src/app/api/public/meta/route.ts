@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
-import { fetchSkillsMetadata, fetchCompaniesMetadata, fetchEducationMetadata } from '@/lib/api/cdnFeed';
+import { fetchSkillsMetadata, fetchCompaniesMetadata, fetchEducationMetadata } from '@/lib/api/feedServer';
 import { CONTROLLED_TAGS } from '@fresherflow/constants';
 import { CITIES_METADATA_URL } from '@/lib/utils/runtimeConfig';
 

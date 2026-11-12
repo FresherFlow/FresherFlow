@@ -56,7 +56,7 @@ export default function AdminBottomNav() {
 
     return (
         <nav style={{paddingBottom:"max(0.5rem, env(safe-area-inset-bottom))"}} className={cn(
-            "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden transition-all duration-300 pb-2",
+            "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden pb-2",
             "translate-y-0 opacity-100"
         )}>
             <div className="flex justify-around items-center h-16 px-2">
@@ -84,18 +84,20 @@ export default function AdminBottomNav() {
                             key={item.label}
                             href={item.href}
                             className={cn(
-                                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all duration-300",
+                                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-colors duration-300",
                                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                             )}
                         >
                             <div className={cn(
-                                "p-1 rounded-xl transition-all",
-                                isActive && "bg-primary/10"
+                                "p-1 rounded-xl transition-colors",
+                                // Rule 7: navy is ink, not a surface tint. Selected
+                                // navigation uses the ladder's active fill.
+                                isActive && "bg-surface-active text-surface-active-foreground"
                             )}>
                                 <item.icon className={cn("w-6 h-6", isActive && "fill-primary/20")} strokeWidth={isActive ? 2 : 1.5} />
                             </div>
                             <span className={cn(
-                                "text-xs font-medium transition-all",
+                                "text-xs font-medium transition-colors",
                                 isActive ? "font-semibold" : "font-normal"
                             )}>
                                 {item.label}

@@ -5,8 +5,6 @@
   "scripts": {
     "prune:web": "turbo prune fresherflow-web --docker",
     "dev": "next dev",
-    "sync:feeds": "node scripts/sync-local-feeds.mjs",
-    "dev:local": "node scripts/sync-local-feeds.mjs && FEED_SOURCE=local next dev",
     "build:deps": "turbo run build --filter=\"fresherflow-web^...\"",
     "build": "pnpm run build:deps && next build --webpack",
     "start": "node .next/standalone/apps/web/server.js",

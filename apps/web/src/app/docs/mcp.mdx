@@ -13,57 +13,51 @@ The FresherFlow MCP (Model Context Protocol) server lets AI clients call Fresher
 ## Quick Start
 
 1. **Connect your AI client** to `https://mcp.fresherflow.in/mcp`
-2. **Complete OAuth login** when prompted (or use an API key for headless)
+2. **Complete OAuth login** when prompted
 3. **Call tools** based on your role
 
 ## Available Tools
 
-| Tool | Public | User | Moderator | Description |
-|------|--------|------|-----------|-------------|
-| `whoami` | ✅ | ✅ | ✅ | Current connection identity, role, capabilities |
-| `get_jobs` | ✅ | ✅ | ✅ | Search live job listings by keyword, city, company, type |
-| `submit_opportunity` | ❌ | ✅ | ✅ | Submit a job (DRAFT for users, PUBLISHED for moderators) |
-| `list_my_submissions` | ❌ | ✅ | ✅ | Your submissions with status |
-| `withdraw_submission` | ❌ | ✅ | ✅ | Withdraw a PENDING_REVIEW submission |
-| `get_listing_schema` | ❌ | ❌ | ✅ | Full field contract for listings |
-| `create_listing` | ❌ | ❌ | ✅ | Create full listing (defaults to PUBLISHED) |
-| `update_listing` | ❌ | ❌ | ✅ | Full replace of a listing |
-| `get_listing` | ❌ | ❌ | ✅ | Read a full listing |
-| `review_queue` | ❌ | ❌ | ✅ | Submissions awaiting review |
-| `approve_submission` | ❌ | ❌ | ✅ | Publish a submission |
-| `reject_submission` | ❌ | ❌ | ✅ | Reject with reason |
+| Tool | User | Moderator | Description |
+|------|------|-----------|-------------|
+| `whoami` | ✅ | ✅ | Current connection identity, role, capabilities |
+| `get_jobs` | ✅ | ✅ | Search live job listings by keyword, city, company, type |
+| `submit_opportunity` | ✅ | ✅ | Submit a job (DRAFT for users, PUBLISHED for moderators) |
+| `list_my_submissions` | ✅ | ✅ | Your submissions with status |
+| `withdraw_submission` | ✅ | ✅ | Withdraw a PENDING_REVIEW submission |
+| `get_listing_schema` | ❌ | ✅ | Full field contract for listings |
+| `create_listing` | ❌ | ✅ | Create full listing (defaults to PUBLISHED) |
+| `update_listing` | ❌ | ✅ | Full replace of a listing |
+| `get_listing` | ❌ | ✅ | Read a full listing |
+| `review_queue` | ❌ | ✅ | Submissions awaiting review |
+| `approve_submission` | ❌ | ✅ | Publish a submission |
+| `reject_submission` | ❌ | ✅ | Reject with reason |
 
 ## Role-Based Access
 
 | Role | How to Get | What Changes |
 |------|------------|--------------|
-| `public` | No auth | Only `whoami`, `get_jobs` |
 | `user` | Sign in to FresherFlow | Submit drafts, manage own submissions |
 | `moderator` | Admin panel: `opportunity.review` + `opportunity.publish` | Publish on submit, full listing CRUD, moderation |
 
-**The tool list a connection sees already reflects its role.** A user never sees moderation tools.
+**The tool list a connection sees already reflects its role.** A user never sees moderation tools. There is no anonymous tier: every connection resolves to a signed-in account.
 
 ## Authentication
 
-### OAuth 2.1 (Recommended)
+### OAuth 2.1
 
-The MCP server is an OAuth 2.1 **resource server**; the FresherFlow API is the **authorization server**.
+The MCP server is an OAuth 2.1 **resource server**; the FresherFlow API is the **authorization server**. Every connection is a signed-in FresherFlow account — there is no API key and no unauthenticated access.
 
-1. Client fetches discovery: `GET https://mcp.fresherflow.in/.well-known/oauth-protected-resource`
+1. Client fetches discovery: `GET https://mcp.fresherflow.in/.well-known/oauth-protected-resource/mcp`
 2. Client registers via DCR: `POST https://api.fresherflow.in/oauth/register`
 3. Client redirects user: `GET https://api.fresherflow.in/oauth/authorize?...`
 4. User approves on consent screen
 5. Client exchanges code for tokens: `POST https://api.fresherflow.in/oauth/token`
 6. All tool calls include `Authorization: Bearer <access_token>`
 
-**PKCE S256 is required.** ChatGPT, Codex, and other clients handle this automatically.
+**PKCE S256 is required**, and the authorize request must carry the RFC 8707 `resource` parameter for `https://mcp.fresherflow.in/mcp`. ChatGPT, Codex, and other clients handle both automatically. Access tokens last 1 hour; refresh tokens last 90 days.
 
-### API Key (Headless / CI)
-
-For environments where OAuth is inconvenient:
-
-1. Create an API key in FresherFlow: **Settings → API Keys**
-2. Send `Authorization: Bearer <api_key>` or `x-api-key: <api_key>` with requests
+Manage or revoke connections at any time from **Settings → Connected apps** in the web app.
 
 ## Connect Your AI Client
 
@@ -111,7 +105,7 @@ Settings → Integrations & MCP → Add your own → `https://mcp.fresherflow.in
 ## Connection Flow
 
 ```
-┌─────────────┐     1. GET /.well-known/oauth-protected-resource
+┌─────────────┐     1. GET /.well-known/oauth-protected-resource/mcp
 │   Client    │◄────────────────────────────────────────────────
 └──────┬──────┘
        │ 2. POST /oauth/register (DCR)
@@ -145,6 +139,7 @@ Settings → Integrations & MCP → Add your own → `https://mcp.fresherflow.in
 | Endpoint | Limit |
 |----------|-------|
 | `/mcp` | 60 req/min per IP |
+| `whoami` and own-submission reads | 60/min |
 | `submit_opportunity` | 60/hr per account |
 | OAuth `/register` | 30/hr per IP |
 | OAuth `/token` | 60/15min per IP |
@@ -163,5 +158,6 @@ Settings → Integrations & MCP → Add your own → `https://mcp.fresherflow.in
 
 - **401 on first call** → Normal. Client must follow `resource_metadata` URL and complete OAuth
 - **Tools not found** → Check role via `whoami`. User ≠ Moderator tools
-- **Codex `issuer` error** → Upgrade Codex CLI to ≥0.147.0 or use API key
+- **Codex `issuer` error** → Upgrade Codex CLI to ≥0.147.0
 - **Auth fails** → Disconnect and reconnect the MCP server in your client
+- **Expired token** → Clients refresh automatically; if it still fails, reconnect FresherFlow from **Settings → Connected apps**

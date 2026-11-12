@@ -133,7 +133,7 @@ export function PersonalizationBar({
                 className={cn(
                     'inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-bold transition-colors shrink-0',
                     prefs.enabled
-                        ? 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15'
+                        ? 'border-border bg-accent text-accent-foreground'
                         : 'border-border bg-background text-muted-foreground hover:text-foreground',
                 )}
             >

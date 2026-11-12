@@ -150,7 +150,7 @@ const ecosystem: EcosystemItem[] = [
         description:
             'Our public monorepo hosting our web application, native mobile apps, and documentation—open for community contributions.',
         linkText: 'View on GitHub',
-        href: 'https://github.com/MukeshCheekatla/FresherFlow',
+        href: 'https://github.com/FresherFlow/FresherFlow',
         external: true,
     },
 ];
@@ -195,7 +195,7 @@ const communityChannels: CommunityChannel[] = [
     {
         name: 'GitHub',
         description: 'Star the repository, open issues, and contribute code.',
-        href: 'https://github.com/MukeshCheekatla/FresherFlow',
+        href: 'https://github.com/FresherFlow/FresherFlow',
         icon: GithubBrandIcon,
         action: 'View Repo',
     },
@@ -238,7 +238,7 @@ export default function AboutPage() {
                     </div>
 
                     <h1 className="max-w-xs font-display text-4xl font-extrabold leading-none tracking-tight text-foreground">
-                        Find jobs. Share opportunities. Help other freshers.
+                        Your career, one flow.
                     </h1>
 
                     <p className="max-w-prose text-base leading-relaxed text-muted-foreground">

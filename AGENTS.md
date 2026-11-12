@@ -205,7 +205,7 @@ CDN and R2 URLs must use signed URL helpers. Do not expose raw private R2 object
 
 Caching mistakes can publish stale or private data. Treat cache changes as production-risk changes.
 
-- Public feed and category pages carry **no** ISR timer: `export const revalidate = false`. A publish busts a feed tag and the next request regenerates that page once. A numeric `revalidate` on a page — or on a feed `fetch` in `apps/web/src/lib/api/cdnFeed.ts` — becomes the route's ISR period, so every visitor and crawler pays for a full render. Public pages self-heal through the worker's version-gated tag sweep, not through a clock. The only allowlisted exception is `/u/[username]` (300s), because profiles have no invalidation channel
+- Public feed and category pages carry **no** ISR timer: `export const revalidate = false`. A publish busts a feed tag and the next request regenerates that page once. A numeric `revalidate` on a page — or on a feed `fetch` in `apps/web/src/lib/api/feedServer.ts` — becomes the route's ISR period, so every visitor and crawler pays for a full render. Public pages self-heal through the worker's version-gated tag sweep, not through a clock. The only allowlisted exception is `/u/[username]` (300s), because profiles have no invalidation channel
 - Auth, profile, dashboard, admin, saved jobs, alerts, and user-specific reads use `no-store`
 - High-cardinality routes must not trigger broad tag invalidation
 - Feed fetches must not use `no-store` unless debugging locally

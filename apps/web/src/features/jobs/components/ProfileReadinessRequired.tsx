@@ -13,7 +13,7 @@ export function ProfileReadinessRequired({ percentage, message }: ProfileReadine
     const router = useRouter();
     return (
         <div className="p-10 md:p-16 text-center rounded-3xl border border-border bg-card/80 shadow-2xl">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
                 <ShieldCheckIcon className="w-8 h-8 text-primary" />
             </div>
             <h3 className="text-2xl font-bold text-foreground tracking-tight mb-2">

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { INGESTION_URL, LOCAL_INGESTION_URL } from '@/lib/server/env';
 
 /**
  * Base URL of the ingestion service, trailing slashes trimmed.
@@ -8,15 +9,6 @@ import { withRateLimit } from '@/lib/api/rateLimit';
  * to Vercel with the env var unset, it would turn a misconfiguration into a plain 500 and
  * make the cause invisible. `ingestionBaseUrl()` below enforces that split.
  */
-const INGESTION_URL = (
-    process.env.INGESTION_SERVICE_URL ||
-    process.env.NEXT_PUBLIC_INGESTION_URL ||
-    process.env.INGESTION_URL ||
-    ''
-).replace(/\/+$/, '');
-
-const LOCAL_INGESTION_URL = 'http://localhost:3005';
-
 function ingestionBaseUrl(): string | null {
     if (INGESTION_URL) return INGESTION_URL;
     if (process.env.NODE_ENV === 'production') {

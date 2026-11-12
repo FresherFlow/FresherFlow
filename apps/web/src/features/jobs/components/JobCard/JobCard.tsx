@@ -70,6 +70,7 @@ export default function JobCard({
         shareUrl,
         directionsUrl,
         postedLabel,
+        canApply,
         handleSaveClick,
         handleApplyClick,
         handleCardClick,
@@ -151,17 +152,40 @@ export default function JobCard({
                                     </span>
                                 )}
                             </div>
-                            <h2 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2 sm:line-clamp-1">
-                                {job.normalizedRole || job.title}
+                            {/* Two lines at every width: the title is the only
+                                field that identifies the row, and a single
+                                clamped line hid the rest with no way to read
+                                it (the schema allows up to 200 characters). */}
+                            <h2
+                                className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2"
+                                title={job.normalizedRole || job.title}
+                            >
+                                {job.normalizedRole || job.title?.trim() || job.company?.trim() || 'Untitled listing'}
                             </h2>
                             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs sm:text-sm text-muted-foreground">
-                                <span className="font-semibold text-foreground/80 truncate min-w-0 ff-company-cap sm:ff-company-cap-lg">{job.company}</span>
-                                <span className="text-muted-foreground/40 shrink-0 hidden sm:inline">•</span>
-                                <span className="inline-flex min-w-0 flex-1 items-center gap-1">
-                                    <MapPinIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                                    <span className="truncate">{locationInfo.shortLabel}</span>
+                                <span
+                                    className="font-semibold text-foreground/80 truncate min-w-0 ff-company-cap sm:ff-company-cap-lg"
+                                    title={job.company}
+                                    dir="auto"
+                                >
+                                    {job.company}
                                 </span>
-                                <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
+                                {/* `parseOpportunityLocation` reports an empty
+                                    location list as "Remote"; say nothing
+                                    instead of claiming a work mode the listing
+                                    never stated. */}
+                                {locationInfo.shortLabel && (
+                                    <>
+                                        <span className="text-muted-foreground/40 shrink-0 hidden sm:inline">•</span>
+                                        <span className="inline-flex min-w-0 flex-1 items-center gap-1">
+                                            <MapPinIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                                            <span className="truncate">{locationInfo.shortLabel}</span>
+                                        </span>
+                                    </>
+                                )}
+                                {locationInfo.shortLabel && (
+                                    <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
+                                )}
                                 <span className="hidden sm:inline text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap shrink-0">
                                     {typeLabel}
                                 </span>
@@ -256,7 +280,9 @@ export default function JobCard({
                                 <button
                                     type="button"
                                     onClick={handleApplyClick}
-                                    className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none"
+                                    disabled={!canApply}
+                                    title={canApply ? undefined : 'This listing has no application link'}
+                                    className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition duration-150 ease-out motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
                                 >
                                     Apply
                                     <ArrowUpRight className="w-3.5 h-3.5" aria-hidden />
@@ -268,7 +294,7 @@ export default function JobCard({
                 <Hint label="Edit Listing (Admin)" side="top">
                     <button
                         onClick={handleAdminEditClick}
-                        className="absolute top-2 right-20 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30"
+                        className="absolute top-2 right-20 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-muted transition-colors z-30"
                         aria-label="Edit Listing (Admin)"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">

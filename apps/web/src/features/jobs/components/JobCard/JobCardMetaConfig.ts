@@ -18,9 +18,7 @@ import {
     formatEducationEligibility,
     formatPassoutYears,
     getExpiryLabel,
-    getPostedLabel,
     getSalaryLabel,
-    isFreshlyPosted,
     isJobExpired,
     resolvePassoutYears,
 } from './jobCardUtils';
@@ -72,10 +70,15 @@ export function buildMetaItems(
     const items: MetaItem[] = [];
     const workMode = getWorkModeMetaLabel((job.workMode as string) || (job as { mode?: string }).mode || null);
     const salary = getSalaryLabel(job, isGovernment, isDrive);
-    const posted = getPostedLabel(job);
     const expiry = getExpiryLabel(job, isGovernment);
     const ats = getAtsName(job.applyLink || (job as { sourceLink?: string }).sourceLink);
-    const govtMeta = job.governmentJobDetails as { totalVacancies?: number; applicationStatus?: string } | undefined;
+    // `vacancyCount` is the field on `GovernmentJobDetails`; `totalVacancies`
+    // only ever appears on legacy payloads. Reading the legacy key alone meant
+    // the vacancies badge never rendered for current listings.
+    const govtMeta = job.governmentJobDetails as
+        | { vacancyCount?: number; totalVacancies?: number; applicationStatus?: string }
+        | undefined;
+    const vacancyCount = govtMeta?.vacancyCount ?? govtMeta?.totalVacancies;
 
     if (isWalkin || isDrive) {
         const driveDetails = getDriveDetails(job);
@@ -90,7 +93,11 @@ export function buildMetaItems(
 
         const distKm = (job as { distanceKm?: number }).distanceKm;
         if (typeof distKm === 'number') {
-            const walkTime = getTransitWalkTimeLabel(driveDetails?.transitInfo) || getWalkingTimeLabel(distKm);
+            // A walking estimate only makes sense for a walk-in you could walk
+            // to. At 1,284 km it produced "~285h 20m walk".
+            const walkTime =
+                getTransitWalkTimeLabel(driveDetails?.transitInfo) ||
+                (distKm <= 3 ? getWalkingTimeLabel(distKm) : null);
             items.push({
                 key: 'distance',
                 icon: MapPinIcon,
@@ -120,15 +127,17 @@ export function buildMetaItems(
             items.push({
                 key: 'venue',
                 icon: MapPinIcon,
-                value: venue.length > 36 ? `${venue.slice(0, 36)}…` : venue,
+                // The badge truncates with CSS and carries the full value in
+                // its `title`; slicing here threw the rest away.
+                value: venue,
             });
         }
     } else if (isGovernment) {
-        if (govtMeta?.totalVacancies) {
+        if (vacancyCount) {
             items.push({
                 key: 'vacancies',
                 icon: UsersIcon,
-                value: `${Number(govtMeta.totalVacancies).toLocaleString('en-IN')} posts`,
+                value: `${Number(vacancyCount).toLocaleString('en-IN')} posts`,
             });
         }
         if (salary) {
@@ -182,14 +191,10 @@ export function buildMetaItems(
                 value: expiry,
                 urgent: !isJobExpired(job) && (daysToExpiry(job) ?? 99) <= 3,
             });
-        } else if (posted) {
-            items.push({
-                key: 'posted',
-                icon: ClockIcon,
-                value: posted,
-                fresh: isFreshlyPosted(job),
-            });
         }
+        // No posted-label fallback: the card already prints it next to the
+        // bookmark button, and repeating it in the strip showed "2 days ago"
+        // twice on the same row.
     }
 
     return items.slice(0, MAX_META_ITEMS);

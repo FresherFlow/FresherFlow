@@ -420,7 +420,7 @@ export function SocialLinksSection() {
                                     }}
                                     placeholder="Filter your repositories"
                                     aria-label="Filter repositories"
-                                    className="h-7 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                                    className="h-7 w-full bg-transparent text-base sm:text-sm text-foreground outline-none placeholder:text-muted-foreground"
                                 />
                                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                                     {selectedRepos.length}/{MAX_PINNED_REPOS}

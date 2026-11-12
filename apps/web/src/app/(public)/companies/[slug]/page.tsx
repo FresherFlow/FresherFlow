@@ -5,7 +5,7 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
-import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex, fetchCompanySlugHistory, fetchExpiredFeed } from '@/lib/api/cdnFeed';
+import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex, fetchCompanySlugHistory, fetchExpiredFeed } from '@/lib/api/feedServer';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { resolveCompanySlugAlias } from '@/features/companies/utils/companySlugAliases';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
@@ -27,10 +27,10 @@ import {
     type LucideIcon,
 } from 'lucide-react';
 // NOTE: fetchCompaniesMetadata / fetchCompanyShard / fetchFeedIndex are already
-// wrapped in React cache() inside lib/api/cdnFeed.ts, so generateMetadata and
+// wrapped in React cache() inside lib/api/feedServer.ts, so generateMetadata and
 // the page component share one set of CDN round-trips per request.
 
-// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
 // which marks the feed tags stale, and the next request regenerates this
 // page once. A worker sweep re-sends those tags if that call was lost.
@@ -191,40 +191,21 @@ export async function generateMetadata(
     const properSlug = slugify(decodeURIComponent(rawSlug));
     const base = SITE_URL.replace(/\/+$/, '');
 
-    const [companyDirectory, shard, slugHistory] = await Promise.all([
-        fetchCompaniesMetadata(),
-        fetchCompanyShard(properSlug),
-        fetchCompanySlugHistory(),
-    ]);
+    const shard = await fetchCompanyShard(properSlug);
 
     // Metadata must declare the canonical URL we actually serve — resolve
-    // aliases here too, so an old slug's canonical points at the live page
-    // instead of endorsing itself. Runs after the history fetch so a rename
-    // recorded by the API is honoured, not just the static seed.
-    const canonicalSlug = resolveCompanySlugAlias(properSlug, slugHistory.aliases);
+    // aliases against the static seed so an old slug's canonical points at
+    // the live page instead of endorsing itself.
+    const canonicalSlug = resolveCompanySlugAlias(properSlug);
     const canonicalUrl = `${base}/companies/${canonicalSlug}`;
 
-    let activeShard = shard;
     let companyName = (shard as any)?.company || shard?.opportunities?.[0]?.company || properSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    if (companyDirectory && companyDirectory.length > 0) {
-        const matched = companyDirectory.find(c => c && (c.slug === properSlug || slugify(c.name || '') === properSlug));
-        if (matched?.name) {
-            companyName = matched.name;
-        }
-        if ((!activeShard || !activeShard.opportunities || activeShard.opportunities.length === 0) && matched?.slug && matched.slug !== properSlug) {
-            activeShard = await fetchCompanyShard(matched.slug);
-        }
-    }
 
     // Indexability is about whether this company exists, not whether it is
     // hiring right now. A company with zero live jobs still renders a real
     // archive page at this URL, so noindexing it would trade a thin page for a
     // dead one. Only a slug that was never published is noindex.
-    const isKnownCompany = Boolean(
-        companyDirectory?.some(c => c && (c.slug === properSlug || slugify(c.name || '') === properSlug)) ||
-        slugHistory.everLive.has(properSlug) ||
-        slugHistory.everLive.has(canonicalSlug)
-    );
+    const isKnownCompany = Boolean((shard as any)?.company || (shard?.opportunities?.length ?? 0) > 0);
 
     // SEO: keep the full <title> within 50-60 chars once the root layout
     // template ("%s | FresherFlow", 13 chars) is applied — base stays ≤47.
@@ -316,12 +297,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         permanentRedirect(`/companies/${shouldRedirectTo}`);
     }
 
-    const [feedIndex, companyShard] = await Promise.all([
-        fetchFeedIndex(),
-        fetchCompanyShard(targetSlug)
-    ]);
-
-    let feed = companyShard;
+    let feed = await fetchCompanyShard(targetSlug);
     let companyJobs = feed?.opportunities || [];
 
     if (companyJobs.length === 0 && targetSlug !== properSlug) {
@@ -332,15 +308,18 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         }
     }
 
-    // Fallback: company shards are not uploaded to R2 yet (producer disabled),
-    // so derive this company's jobs from the lightweight feed index using the
-    // same slugger logic as generateStaticParams.
-    if (companyJobs.length === 0 && feedIndex?.opportunities?.length) {
-        const slugger = new CompanySlugger(companyDirectory || []);
-        const derived = feedIndex.opportunities.filter((o: any) => slugger.getSlug(o) === targetSlug);
-        if (derived.length > 0) {
-            companyJobs = derived;
-            feed = { opportunities: derived, count: derived.length, generatedAt: (feedIndex as any).generatedAt };
+    // Company shards are the normal path. Only load the feed index when a shard
+    // is missing, then derive this company's jobs using the same slugger logic
+    // as generateStaticParams.
+    if (companyJobs.length === 0) {
+        const feedIndex = await fetchFeedIndex();
+        if (feedIndex?.opportunities?.length) {
+            const slugger = new CompanySlugger(companyDirectory || []);
+            const derived = feedIndex.opportunities.filter((o: any) => slugger.getSlug(o) === targetSlug);
+            if (derived.length > 0) {
+                companyJobs = derived;
+                feed = { opportunities: derived, count: derived.length, generatedAt: (feedIndex as any).generatedAt };
+            }
         }
     }
 

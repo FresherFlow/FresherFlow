@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed } from '@/lib/api/feedServer';
 import { withRateLimit } from '@/lib/api/rateLimit';
 
 // The route renders per request (force-dynamic) and its own response is

@@ -18,14 +18,14 @@ export default function JobOgPreviewPage() {
                     <button
                         type="button"
                         onClick={() => setMode('job')}
-                        className={`rounded-lg border px-4 py-2 text-sm font-semibold ${mode === 'job' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-foreground'}`}
+                        className={`rounded-lg border px-4 py-2 text-sm font-semibold ${mode === 'job' ? 'border-primary bg-muted text-foreground' : 'border-border text-foreground'}`}
                     >
                         Normal Job
                     </button>
                     <button
                         type="button"
                         onClick={() => setMode('drive')}
-                        className={`rounded-lg border px-4 py-2 text-sm font-semibold ${mode === 'drive' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-foreground'}`}
+                        className={`rounded-lg border px-4 py-2 text-sm font-semibold ${mode === 'drive' ? 'border-primary bg-muted text-foreground' : 'border-border text-foreground'}`}
                     >
                         Hiring Drive
                     </button>

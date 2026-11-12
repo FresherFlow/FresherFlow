@@ -133,7 +133,7 @@ export function PlatformsPageView({ resources, lastUpdated, title, description, 
                     className={cn(
                         chipBase,
                         recommendedOnly
-                            ? 'bg-primary/10 text-primary border-primary/20 font-semibold'
+                            ? 'bg-accent text-accent-foreground border-border font-semibold'
                             : chipDefault
                     )}
                 >

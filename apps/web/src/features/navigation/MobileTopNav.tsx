@@ -53,7 +53,7 @@ function AdminMobileSearchButton() {
             type="button"
             onClick={palette.openPalette}
             aria-label="Search admin"
-            className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-95"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none"
         >
             <MagnifyingGlassIcon className="w-5 h-5" />
         </button>
@@ -99,7 +99,7 @@ export function MobileTopNav() {
         <>
                 <header
                     className={cn(
-                        "lg:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-4 transition-all duration-300 select-none",
+                        "lg:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-4 transition-[background-color,box-shadow,backdrop-filter] duration-300 select-none motion-reduce:transition-none",
                         scrolled
                             ? "bg-background/95 backdrop-blur-md shadow-sm"
                             : "bg-background"
@@ -108,13 +108,14 @@ export function MobileTopNav() {
             >
                 <div className="w-full flex items-center justify-between px-4 h-full">
                     {/* Brand */}
+                    {/* Same rule as desktop: the brand is the site, not a tab. */}
                     <Link
-                        href={resolvedUser && !isAuthRoute ? '/jobs?tab=for-you' : '/'}
+                        href="/"
                         onClick={(event) => {
-                            const targetHref = resolvedUser && !isAuthRoute ? '/jobs?tab=for-you' : '/';
-                            if (pathname === targetHref) event.preventDefault();
+                            if (pathname === '/') event.preventDefault();
                         }}
-                        className="flex items-center gap-2 min-w-0 active:scale-95 transition-transform duration-150 ease-out"
+                        aria-label="FresherFlow home"
+                        className="flex items-center gap-2 min-w-0 active:scale-[0.97] transition-transform duration-150 ease-out motion-reduce:transform-none"
                     >
                         <LogoImage width={24} height={24} className="w-6 h-6 object-contain shrink-0" />
                         <span className="text-base font-semibold tracking-wide text-foreground/95 truncate leading-none">
@@ -130,14 +131,14 @@ export function MobileTopNav() {
                                 {resolvedUser ? (
                                     <Link
                                         href="/jobs?tab=for-you"
-                                        className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                        className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                     >
                                         Dashboard
                                     </Link>
                                 ) : (
                                     <Link
                                         href="/register"
-                                        className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                        className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                     >
                                         Create Profile
                                     </Link>
@@ -149,7 +150,7 @@ export function MobileTopNav() {
                                     <NotificationsDropdown />
                                 )}
                                 {!isAuthRoute && (
-                                    <button onClick={() => setMenuOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-95" aria-label="Open menu">
+                                    <button onClick={() => setMenuOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none" aria-label="Open menu">
                                         <Bars3Icon className="w-5 h-5" />
                                     </button>
                                 )}
@@ -157,7 +158,7 @@ export function MobileTopNav() {
                                     <button
                                         onClick={() => void toggleTheme()}
                                         aria-label="Toggle theme"
-                                        className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors duration-200 outline-none active:scale-95"
+                                        className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors duration-200 outline-none active:scale-[0.97] motion-reduce:transform-none"
                                     >
                                         <span className="relative flex h-5 w-5 items-center justify-center">
                                             {/* Mount-gated: resolvedTheme differs between SSR and
@@ -165,8 +166,8 @@ export function MobileTopNav() {
                                                 icons immediately causes a hydration mismatch. */}
                                             {isMounted && (
                                                 <>
-                                                    <Sun className={`absolute transition-all duration-300 ${resolvedTheme === 'dark' ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'}`} size={18} />
-                                                    <Moon className={`absolute transition-all duration-300 ${resolvedTheme === 'dark' ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'}`} size={18} />
+                                                    <Sun className={`absolute transition-[opacity,transform] duration-300 ${resolvedTheme === 'dark' ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'}`} size={18} />
+                                                    <Moon className={`absolute transition-[opacity,transform] duration-300 ${resolvedTheme === 'dark' ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'}`} size={18} />
                                                 </>
                                             )}
                                         </span>

@@ -93,7 +93,7 @@ export function PageTagLinks({ skills = [], locations = [], companies = [], vali
                                 const { label, url } = resolveTagLink(item, 'skills');
                                 return (
                                     <Link key={url} href={url}>
-                                        <Badge variant="secondary" className="hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer capitalize">
+                                        <Badge variant="secondary" className="hover:bg-muted hover:text-foreground transition-colors cursor-pointer capitalize">
                                             {label}
                                         </Badge>
                                     </Link>

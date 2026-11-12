@@ -199,7 +199,7 @@ export function DataGridColumnVisibility<TData extends RowData>({
           <ViewColumnsIcon className="w-4 h-4 shrink-0" />
           <span className="hidden sm:inline">Columns</span>
           {hasHidden && (
-            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/10 px-1 text-xs font-bold text-primary">
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-xs font-bold text-primary">
               {visibleCount}
             </span>
           )}

@@ -76,7 +76,7 @@ export function PayloadModal({
  </span>
  )}
  {status && (
- <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs font-bold tracking-wider border border-primary/20">
+ <span className="px-1.5 py-0.5 rounded bg-muted text-foreground text-xs font-bold tracking-wider border border-primary/20">
  {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace(/_/g, ' ')}
  </span>
  )}
@@ -90,7 +90,7 @@ export function PayloadModal({
  href={toSafeOutboundUrl(applyLink) ?? undefined}
  target="_blank"
  rel="noreferrer"
- className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
+ className="px-3 py-1.5 rounded-lg bg-muted text-foreground hover:bg-primary/20 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"
  >
  <span>Apply Link</span>
  <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
@@ -170,7 +170,7 @@ export function PayloadModal({
  skills.map((skill) => (
  <span
  key={skill}
- className="px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-medium"
+ className="px-2 py-0.5 rounded-md bg-muted text-foreground border border-primary/20 font-medium"
  >
  {skill}
  </span>

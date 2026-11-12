@@ -140,20 +140,20 @@ export function CommunityFeedClient() {
                         value={newPostTitle}
                         onChange={(e) => setNewPostTitle(e.target.value)}
                         placeholder="Title"
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                     <textarea
                         value={newPostBody}
                         onChange={(e) => setNewPostBody(e.target.value)}
                         rows={3}
-                        placeholder="Share your thoughts..."
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        placeholder="Share your thoughts…"
+                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                     <div className="flex flex-wrap gap-3">
                         <select
                             value={newPostCategory}
                             onChange={(e) => setNewPostCategory(e.target.value as CommunityPostCategory)}
-                            className="rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            className="rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                         >
                             {CATEGORIES.map((cat) => (
                                 <option key={cat.value} value={cat.value}>{cat.label}</option>
@@ -163,7 +163,7 @@ export function CommunityFeedClient() {
                             value={newPostTags}
                             onChange={(e) => setNewPostTags(e.target.value)}
                             placeholder="Tags (comma-separated)"
-                            className="flex-1 min-w-50 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            className="flex-1 min-w-50 rounded-xl border border-border bg-background px-3 py-2 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
                     </div>
                     <button
@@ -196,8 +196,8 @@ export function CommunityFeedClient() {
                     type="search"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search discussions..."
-                    className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder="Search discussions…"
+                    className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 {searchQuery && (
                     <button
@@ -282,15 +282,15 @@ export function CommunityFeedClient() {
                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span>Showing:</span>
                     {category && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary font-semibold">{category}</span>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-primary font-semibold">{category}</span>
                     )}
                     {selectedTags.map((tag) => (
-                        <span key={tag} className="rounded-full bg-primary/10 px-2 py-0.5 text-primary font-semibold">
+                        <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-primary font-semibold">
                             #{tag}
                         </span>
                     ))}
                     {debouncedSearch && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary font-semibold">
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-primary font-semibold">
                             &quot;{debouncedSearch}&quot;
                         </span>
                     )}

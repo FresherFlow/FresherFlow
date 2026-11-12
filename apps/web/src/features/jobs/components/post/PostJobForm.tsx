@@ -138,7 +138,7 @@ export function PostJobForm() {
     }
 
     const inputClass =
-        'w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30';
+        'w-full rounded-xl border border-border bg-card px-3 py-2 text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30';
 
     return (
         <form onSubmit={onSubmit} className="space-y-4">

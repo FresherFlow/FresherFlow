@@ -116,8 +116,8 @@ export function CommentThread({
                                 void handleSubmit();
                             }
                         }}
-                        placeholder={replyTo ? 'Write a reply...' : 'Add a comment...'}
-                        className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        placeholder={replyTo ? 'Write a reply…' : 'Add a comment…'}
+                        className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
                     />
                     <button
                         type="button"

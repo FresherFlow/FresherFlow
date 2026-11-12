@@ -272,7 +272,7 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                                 <p className="text-xs font-bold text-muted-foreground tracking-wide">Skills</p>
                                                 <div className="flex flex-wrap gap-1 mt-1.5">
                                                     {opp.requiredSkills.map(s => (
-                                                        <span key={s} className="text-xs font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded">{s}</span>
+                                                        <span key={s} className="text-xs font-medium bg-muted text-foreground px-1.5 py-0.5 rounded">{s}</span>
                                                     ))}
                                                 </div>
                                             </div>

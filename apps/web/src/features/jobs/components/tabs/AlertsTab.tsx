@@ -182,7 +182,7 @@ function SkillTagInput({
                     {skills.map((skill, index) => (
                         <span
                             key={`${skill}-${index}`}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-muted text-foreground border border-primary/20"
                         >
                             {skill}
                             <button
@@ -206,7 +206,7 @@ function SkillTagInput({
                 onKeyDown={handleKeyDown}
                 onBlur={() => addSkill(inputValue)}
                 placeholder="Type a skill and press Enter or comma (e.g. React, Python)"
-                className="w-full px-3 py-2 text-xs rounded-xl bg-card border border-border/60 focus:border-primary focus:outline-none transition-colors"
+                className="w-full px-3 py-2 text-base sm:text-xs rounded-xl bg-card border border-border/60 focus:border-primary focus:outline-none transition-colors"
             />
         </div>
     );

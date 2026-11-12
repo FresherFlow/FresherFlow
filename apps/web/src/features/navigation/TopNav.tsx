@@ -124,9 +124,9 @@ export default function TopNav() {
                             {!isAdminRoute && (
                                 <Link
                                     href="/contribute"
-                                    className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+                                    className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                                 >
-                                    <span>+ Post a Job</span>
+                                    <span>Contribute</span>
                                 </Link>
                             )}
 
@@ -149,7 +149,7 @@ export default function TopNav() {
                                 <button
                                     onClick={handleAccountClick}
                                     className={cn(
-                                        "flex items-center justify-center w-9 h-9 rounded-full transition-all active:scale-95 shadow-sm overflow-hidden",
+                                        "flex items-center justify-center w-9 h-9 rounded-full transition-transform active:scale-[0.97] shadow-sm overflow-hidden motion-reduce:transform-none",
                                         user
                                             ? "bg-primary text-primary-foreground"
                                             : "bg-muted text-muted-foreground hover:bg-muted/80"

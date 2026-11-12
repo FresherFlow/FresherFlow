@@ -7,7 +7,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useAuth } from '@/lib/auth/AuthContext';
 import toast from 'react-hot-toast';
 import { readFeedCache, saveFeedCache } from '@/lib/cache/opportunitiesFeedCache';
-import { fetchFullFeedOnClient } from '@/lib/api/cdnFeed';
+import { fetchFullFeedOnClient } from '@/lib/api/feedClient';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/jobs/domain/matchScore';
 import { useProfileFilterPrefs, getActiveProfileChips, deriveProfileFilterChips } from '@/features/jobs/hooks/useProfileFilters';
 import { isStaleWalkin, isGovernmentOpportunity, matchesFeedType } from '@/features/jobs/utils/walkinMapUtils';

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { REVALIDATE_SECRET_TOKEN } from '@/lib/server/env';
 
 //   ISR WRITE SAFETY — READ BEFORE EDITING THIS FILE
 //
@@ -99,7 +100,7 @@ async function handleRevalidate(request: NextRequest) {
         const body = await request.json();
         const { secret, paths } = body;
 
-        const expectedSecret = process.env.REVALIDATE_SECRET_TOKEN;
+        const expectedSecret = REVALIDATE_SECRET_TOKEN;
         if (!expectedSecret) {
             return NextResponse.json(
                 { message: 'REVALIDATE_SECRET_TOKEN is not configured on the server' },

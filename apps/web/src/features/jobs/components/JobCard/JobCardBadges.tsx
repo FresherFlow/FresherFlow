@@ -44,7 +44,11 @@ export function JobCardBadges({
     // The mobile card's density comes from which badges it is given (two skills,
     // no meta strip) and from `SkillPill`'s size, not from these classes, so the
     // shared pill geometry is stated once.
-    const pill = 'inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap shrink-0 min-w-0';
+    // Skills are fixed-size chips; meta badges must be able to shrink. With
+    // `shrink-0` a badge wider than the row (a long education list, or any
+    // badge once the user zooms the browser to 200%) ran underneath the
+    // Discuss / Apply column instead of truncating.
+    const metaPill = 'inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap min-w-0 max-w-full shrink';
     const icon = 'w-3 h-3 shrink-0';
     const text = 'truncate text-xs';
 
@@ -68,7 +72,7 @@ export function JobCardBadges({
             <span
                 key={item.key}
                 className={cn(
-                    pill,
+                    metaPill,
                     badgeStyle,
                 )}
                 title={typeof item.value === 'string' ? item.value : undefined}
@@ -105,7 +109,7 @@ export function JobCardBadges({
                         size={compact ? 'xs' : 'sm'}
                         hideFallbackIcon={compact}
                         variant="plain"
-                        className="h-6"
+                        className={compact ? 'h-6 max-w-[45vw]' : 'h-6'}
                     />
                 );
 

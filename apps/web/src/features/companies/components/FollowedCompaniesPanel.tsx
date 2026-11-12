@@ -106,10 +106,10 @@ export function FollowedCompaniesPanel({
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                         type="text"
-                        placeholder="Search followed companies..."
+                        placeholder="Search followed companies…"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="w-full h-10 pl-9 pr-3 rounded-xl border border-border bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className="w-full h-10 pl-9 pr-3 rounded-xl border border-border bg-background text-base sm:text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                     />
                 </div>
                 <span className="shrink-0 text-xs font-medium uppercase tracking-wide tabular-nums text-muted-foreground">

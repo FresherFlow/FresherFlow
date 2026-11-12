@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
 import { withAdminAuth } from '@/lib/server/adminAuth';
 import { hasR2Read, readJsonFromR2 } from '@/lib/server/r2read';
+import { CDN_URL } from '@/lib/utils/runtimeConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,7 +75,7 @@ const CENSUS_TTL_MS = 5 * 60_000;
 let censusCache: { at: number; data: Census } | null = null;
 
 function cdnBase(): string {
-  return (process.env.NEXT_PUBLIC_CDN_URL || '').trim().replace(/\/$/, '');
+  return CDN_URL;
 }
 
 async function loadCensus(): Promise<Census> {

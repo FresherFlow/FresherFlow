@@ -42,7 +42,7 @@ export function getColorByUrl(url: string, type?: string) {
         host.split('.').includes('sharepoint')
     ) return 'text-success bg-success/10';
     
-    return 'text-primary bg-primary/10';
+    return 'text-foreground bg-muted';
 }
 
 export const getIconByUrl = (url: string, type?: string, className?: string) => {
@@ -154,7 +154,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                     }
                     if (onToggleSave) onToggleSave();
                 }}
-                className="absolute top-3 right-3 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors z-20 pointer-events-auto"
+                className="absolute top-3 right-3 h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-muted transition-colors z-20 pointer-events-auto"
                 aria-label="Save Resource"
             >
                 {isSaved ? <BookmarkSolidIcon className="w-4 h-4 text-primary" /> : <BookmarkIcon className="w-4 h-4" />}

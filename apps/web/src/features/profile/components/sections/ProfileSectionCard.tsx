@@ -108,7 +108,7 @@ export function SectionEmptyState({
             onClick={onClick}
             className="group flex w-full flex-col items-center gap-1 rounded-xl border border-dashed border-border/70 px-4 py-6 text-center transition-colors duration-150 ease-out hover:border-primary/40 hover:bg-primary/[0.03]"
         >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors group-hover:bg-muted group-hover:text-primary">
                 <Plus className="h-4 w-4" aria-hidden="true" />
             </span>
             <span className="mt-1 text-sm font-semibold text-foreground">{label}</span>

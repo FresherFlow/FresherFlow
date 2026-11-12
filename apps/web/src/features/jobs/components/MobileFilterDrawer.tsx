@@ -414,7 +414,7 @@ export function MobileFilterDrawer({
                                 value={locSearch}
                                 onChange={e => setLocSearch(e.target.value)}
                                 placeholder="Search city or state..."
-                                className="w-full h-9 px-3 rounded-xl border border-border bg-card text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                className="w-full h-9 px-3 rounded-xl border border-border bg-card text-base sm:text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                             />
                             <div className="space-y-3 max-h-52 overflow-y-auto overscroll-contain pr-1">
                                 <div className="flex flex-wrap gap-2">
@@ -608,7 +608,7 @@ export function MobileFilterDrawer({
                                         value={companySearch}
                                         onChange={e => setCompanySearch(e.target.value)}
                                         placeholder="Search companies..."
-                                        className="w-full h-9 px-3 rounded-xl border border-border bg-card text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        className="w-full h-9 px-3 rounded-xl border border-border bg-card text-base sm:text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
                                     />
                                     <div className="max-h-52 overflow-y-auto overscroll-contain pr-1 flex flex-wrap gap-2">
                                         {filteredCompanies.map(({ company, count }) => {

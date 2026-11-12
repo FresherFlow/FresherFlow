@@ -23,7 +23,7 @@ export default async function ResourcesDirectoryPage() {
     // route is retired). Same CDN object, same hourly revalidation as before.
     let platforms: InternshipPlatform[] = [];
     try {
-        const res = await fetch(`${CDN_URL}/internship-platforms.json`, { next: { revalidate: 3600 } });
+        const res = await fetch(`${CDN_URL}/internship-platforms.json`, { next: { revalidate: false } });
         if (res.ok) {
             const data = await res.json();
             platforms = Array.isArray(data.resources) ? data.resources : (Array.isArray(data) ? data : []);

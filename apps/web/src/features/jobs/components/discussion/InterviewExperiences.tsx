@@ -12,7 +12,7 @@ import { SkeletonInterviewRow } from '@/features/jobs/components/OpportunitySkel
 
 const DIFFICULTY_COLORS: Record<string, string> = {
     EASY: 'bg-green-500/10 text-green-600',
-    MEDIUM: 'bg-amber-500/10 text-amber-600',
+    MEDIUM: 'bg-warning/10 text-warning',
     HARD: 'bg-orange-500/10 text-orange-600',
     VERY_HARD: 'bg-red-500/10 text-red-600',
 };
@@ -20,7 +20,7 @@ const DIFFICULTY_COLORS: Record<string, string> = {
 const RESULT_COLORS: Record<string, string> = {
     SELECTED: 'bg-green-500/10 text-green-600',
     REJECTED: 'bg-red-500/10 text-red-600',
-    WAITING: 'bg-amber-500/10 text-amber-600',
+    WAITING: 'bg-warning/10 text-warning',
     WITHDRAWN: 'bg-muted text-muted-foreground',
 };
 
@@ -286,12 +286,12 @@ function InterviewForm({ opportunityIdOrSlug, onSubmitted }: { opportunityIdOrSl
                 <div>
                     <label className="text-xs font-semibold text-foreground mb-1 block">Role *</label>
                     <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Software Engineer"
-                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
                 </div>
                 <div>
                     <label className="text-xs font-semibold text-foreground mb-1 block">Batch</label>
                     <input value={batch} onChange={(e) => setBatch(e.target.value)} placeholder="e.g. 2026" type="number"
-                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
                 </div>
                 <div>
                     <label className="text-xs font-semibold text-foreground mb-1 block">Difficulty</label>
@@ -328,14 +328,14 @@ function InterviewForm({ opportunityIdOrSlug, onSubmitted }: { opportunityIdOrSl
                         <div className="flex items-center gap-2">
                             <input value={round.name} onChange={(e) => updateRound(idx, 'name', e.target.value)}
                                 placeholder={`Round ${idx + 1} name`}
-                                className="flex-1 rounded-lg border border-border bg-background px-2.5 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                                className="flex-1 rounded-lg border border-border bg-background px-2.5 py-1 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
                             {rounds.length > 1 && (
                                 <button type="button" onClick={() => removeRound(idx)} className="text-muted-foreground hover:text-destructive text-xs"></button>
                             )}
                         </div>
                         <textarea value={round.questions} onChange={(e) => updateRound(idx, 'questions', e.target.value)}
                             rows={2} placeholder="Questions asked (one per line)"
-                            className="w-full rounded-lg border border-border bg-background px-2.5 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                            className="w-full rounded-lg border border-border bg-background px-2.5 py-1 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
                     </div>
                 ))}
             </div>
@@ -344,7 +344,7 @@ function InterviewForm({ opportunityIdOrSlug, onSubmitted }: { opportunityIdOrSl
                 <label className="text-xs font-semibold text-foreground mb-1 block">Overall Notes</label>
                 <textarea value={overallNotes} onChange={(e) => setOverallNotes(e.target.value)} rows={3}
                     placeholder="Any tips or overall experience..."
-                    className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
             </div>
 
             <button type="button" onClick={() => void handleSubmit()} disabled={submitting}

@@ -98,8 +98,8 @@ pnpm dev:web
 The MCP (Model Context Protocol) server enables AI clients to interact with FresherFlow:
 
 - **Tools**: List available tools, submit opportunities, browse jobs
-- **Authentication**: OAuth 2.1 bearer tokens
-- **Roles**: User (draft submissions), Moderator (publish), Service key (full access)
+- **Authentication**: OAuth 2.1 bearer tokens — every connection is a signed-in FresherFlow account
+- **Roles**: User (draft submissions), Moderator (publish). Pipeline scripts call the API directly with the internal service key; they do not connect over MCP
 
 See the [MCP tools documentation](/docs/mcp) for details on available tools.
 

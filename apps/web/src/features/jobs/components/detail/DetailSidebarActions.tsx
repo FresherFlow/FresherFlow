@@ -289,7 +289,7 @@ export function DetailSidebarActions({
             {isCampusDrive && timelineEvents.length > 0 && (
                 <button
                     onClick={jumpToTimeline}
-                    className="rounded-xs border border-primary/20 bg-primary/5 px-4.5 py-2.5 text-meta font-semibold text-primary transition-colors hover:bg-primary/10"
+                    className="rounded-xs border border-primary/20 bg-primary/5 px-4.5 py-2.5 text-meta font-semibold text-primary transition-colors hover:bg-muted"
                 >
                     View drive timeline
                 </button>

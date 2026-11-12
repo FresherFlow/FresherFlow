@@ -12,8 +12,8 @@ import { SkeletonUpdateRow } from '@/features/jobs/components/OpportunitySkeleto
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     APPLIED: { label: 'Applied', color: 'bg-blue-500/10 text-blue-600' },
-    ASSESSMENT_RECEIVED: { label: 'OA Received', color: 'bg-amber-500/10 text-amber-600' },
-    ASSESSMENT_COMPLETED: { label: 'OA Completed', color: 'bg-amber-500/10 text-amber-600' },
+    ASSESSMENT_RECEIVED: { label: 'OA Received', color: 'bg-warning/10 text-warning' },
+    ASSESSMENT_COMPLETED: { label: 'OA Completed', color: 'bg-warning/10 text-warning' },
     INTERVIEW_SCHEDULED: { label: 'Interview Scheduled', color: 'bg-purple-500/10 text-purple-600' },
     INTERVIEW_COMPLETED: { label: 'Interview Done', color: 'bg-purple-500/10 text-purple-600' },
     SELECTED: { label: 'Selected', color: 'bg-green-500/10 text-green-600' },
@@ -196,8 +196,8 @@ function UpdateForm({ opportunityIdOrSlug, onSubmitted }: { opportunityIdOrSlug:
             <div>
                 <label className="text-xs font-semibold text-foreground mb-1 block">Notes (optional)</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
-                    placeholder="Any additional context..."
-                    className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                    placeholder="Any additional context…"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-base sm:text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
             </div>
 
             <button type="button" onClick={() => void handleSubmit()} disabled={submitting || !status}

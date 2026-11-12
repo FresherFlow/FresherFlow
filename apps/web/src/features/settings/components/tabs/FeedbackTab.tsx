@@ -207,7 +207,7 @@ function FeedbackPageContent() {
                                                 onClick={() => setType(option.value)}
                                                 className={`rounded-2xl border px-3.5 py-3.5 text-left transition-all cursor-pointer ${
                                                     isActive
-                                                        ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                                                        ? 'border-border bg-accent text-accent-foreground shadow-sm'
                                                         : 'border-border bg-card hover:border-primary/40'
                                                 }`}
                                             >
@@ -257,8 +257,8 @@ function FeedbackPageContent() {
                                         value={message}
                                         onChange={(event) => setMessage(event.target.value)}
                                         rows={5}
-                                        placeholder="Share what you noticed or want improved..."
-                                        className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-xs md:text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
+                                        placeholder="Share what you noticed or want improved…"
+                                        className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-base sm:text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                                     />
                                 </div>
 

@@ -14,7 +14,7 @@ import { SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons
 import JobCard from '@/features/jobs/components/JobCard';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { calculateProfileCompletion } from '@fresherflow/utils';
-import { fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/feedServer';
 import { readFeedCache, saveFeedCache } from '@/lib/cache/opportunitiesFeedCache';
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
@@ -73,7 +73,7 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
                         </div>
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Saved</p>
-                            <p className="text-base font-black text-foreground leading-tight mt-0.5">{savedCount}</p>
+                            <p className="text-base font-black text-foreground leading-tight mt-0.5 tabular-nums">{savedCount}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -87,7 +87,7 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
                         </div>
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Applied</p>
-                            <p className="text-base font-black text-foreground leading-tight mt-0.5">{trackerCount}</p>
+                            <p className="text-base font-black text-foreground leading-tight mt-0.5 tabular-nums">{trackerCount}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -101,7 +101,7 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
                         </div>
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Interviews</p>
-                            <p className="text-base font-black text-foreground leading-tight mt-0.5">{interviewCount}</p>
+                            <p className="text-base font-black text-foreground leading-tight mt-0.5 tabular-nums">{interviewCount}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -115,7 +115,7 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
                         </div>
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Profile</p>
-                            <p className="text-base font-black text-foreground leading-tight mt-0.5">{profileCompletion}%</p>
+                            <p className="text-base font-black text-foreground leading-tight mt-0.5 tabular-nums">{profileCompletion}%</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -124,12 +124,12 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
             <div onClick={() => router.push('/contribute')} className="group cursor-pointer">
                 <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
-                        <div className="p-1.5 w-fit rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+                        <div className="p-1.5 w-fit rounded-lg bg-muted text-foreground group-hover:scale-105 transition-transform">
                             <RocketLaunchIcon className="w-4 h-4" />
                         </div>
                         <div>
                             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Submissions</p>
-                            <p className="text-base font-black text-foreground leading-tight mt-0.5">{submissionsCount}</p>
+                            <p className="text-base font-black text-foreground leading-tight mt-0.5 tabular-nums">{submissionsCount}</p>
                         </div>
                     </CardContent>
                 </Card>

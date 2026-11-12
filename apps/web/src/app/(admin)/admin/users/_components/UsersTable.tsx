@@ -182,7 +182,7 @@ function buildColumns({
                 const name = user.fullName;
                 return (
                     <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-sm font-bold uppercase text-primary">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-muted text-sm font-bold uppercase text-primary">
                             {(name || user.email || user.username || 'U')[0]}
                         </div>
                         {/* Bounded on mobile so a long name or email truncates

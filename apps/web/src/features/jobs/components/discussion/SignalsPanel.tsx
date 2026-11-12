@@ -109,7 +109,7 @@ export function SignalsPanel({ opportunityIdOrSlug }: Props) {
                     className={cn(
                         'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
                         isOn
-                            ? 'border-primary/30 bg-primary/10 text-primary'
+                            ? 'border-border bg-accent text-accent-foreground'
                             : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted/40',
                         busy && 'opacity-60'
                     )}

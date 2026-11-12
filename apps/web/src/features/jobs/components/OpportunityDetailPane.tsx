@@ -158,7 +158,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         className={cn(
                             'h-9 px-3.5 rounded-lg border text-sm font-bold flex items-center justify-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                             isOppSaved
-                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                ? 'border-border bg-accent text-accent-foreground'
                                 : 'border-border bg-background text-foreground hover:bg-muted'
                         )}
                     >
@@ -173,7 +173,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         <button
                             type="button"
                             onClick={handleApply}
-                            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm transition motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             Apply
                             <ArrowTopRightOnSquareIcon className="w-4 h-4" />
@@ -385,7 +385,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         ) : (
                             <button
                                 onClick={handleApply}
-                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-95 rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all"
+                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.97] rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition motion-reduce:transform-none"
                             >
                                 {isGovernmentJob ? 'Apply on Official Portal' : 'Apply on Website'}
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -399,7 +399,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         value={typeof window !== 'undefined' ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : ''}
                         icon={LinkIcon}
                         iconClassName="w-5 h-5"
-                        className="shrink-0 w-12 h-12 flex items-center justify-center active:scale-95"
+                        className="shrink-0 w-12 h-12 flex items-center justify-center active:scale-[0.97] motion-reduce:transform-none"
                     />
                 </div>
             )}

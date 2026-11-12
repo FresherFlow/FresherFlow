@@ -102,7 +102,7 @@ export function readFeedCache(scope?: string | null): FeedCachePayload | null {
         const parsed = JSON.parse(raw) as FeedCachePayload;
         if (!Array.isArray(parsed.opportunities) || typeof parsed.cachedAt !== 'number') return null;
         // An expired snapshot is treated as absent, so every caller (including
-        // cdnFeed's client branch and getOpportunityFromCache) falls through to
+        // feedServer's client branch and getOpportunityFromCache) falls through to
         // the network instead of painting stale listings.
         if (Date.now() - parsed.cachedAt > FEED_CACHE_TTL_MS) return null;
         return parsed;

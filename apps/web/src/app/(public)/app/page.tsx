@@ -119,7 +119,7 @@ export default function DownloadPage() {
                             <p className="text-xs text-muted-foreground/90">
                                 Older or 32-bit device?<br />
                                 <a
-                                    href="https://github.com/MukeshCheekatla/FresherFlow/releases/latest/download/FresherFlow-universal.apk"
+                                    href="https://github.com/FresherFlow/FresherFlow/releases/latest/download/FresherFlow-universal.apk"
                                     className="text-primary hover:underline font-bold inline-flex items-center gap-0.5 mt-1"
                                 >
                                     Try the Universal APK.

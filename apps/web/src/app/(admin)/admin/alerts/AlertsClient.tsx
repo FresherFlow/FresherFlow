@@ -159,7 +159,7 @@ export default function AdminAlertsPage() {
 
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b font-semibold">Raw Logs</div>
-        {loading ? <div className="p-4 text-sm text-muted-foreground">Loading...</div> : null}
+        {loading ? <div className="p-4 text-sm text-muted-foreground">Loading…</div> : null}
         {error ? <div className="p-4 text-sm text-destructive">{error}</div> : null}
         {!loading && !error && (data?.logs.length || 0) === 0 ? (
           <div className="p-4 text-sm text-muted-foreground">No logs in this window.</div>
