@@ -5,8 +5,7 @@ import { generateSlug, generateCompanyLogoUrl, normalizeSkills, sanitizeCustomSl
 import { normalizeOpportunityLinks } from '../../utils/opportunityLinks';
 import { handleOpportunityPublished } from '../../infrastructure/services/opportunity/publish.service';
 import { invalidatePublicOpportunityCache } from '../../infrastructure/services/opportunity/publicOpportunityCache.service';
-import { refreshFeedsAndAnnounce, scheduleDiscoveryFeedRefresh } from '../../infrastructure/services/opportunity/feedRefresh';
-import { notifyWebFeedChanged } from '../../infrastructure/services/opportunity/webRevalidation.service';
+import { refreshFeedsAndAnnounce } from '../../infrastructure/services/opportunity/feedRefresh';
 import { adminCache } from '../../infrastructure/cache/adminCache';
 import type { ExtendedAdminOpportunityData } from './listingPayload';
 import {
@@ -106,7 +105,7 @@ function toDateOrUndefined(value: unknown): Date | undefined {
  * `null` — Prisma requires the explicit `DbNull` sentinel. Omitting the key
  * leaves the column untouched; an explicit `null` clears it.
  */
-function toJsonInput(
+export function toJsonInput(
     value: unknown,
 ): Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue | undefined {
     if (value === undefined) return undefined;
@@ -549,14 +548,7 @@ export async function updateListing(
         // The announcement is chained onto the rebuild: a tag bust only makes
         // Next re-read the SAME CDN URL, so the web has to be told AFTER the
         // new snapshot exists.
-        void Promise.resolve(scheduleDiscoveryFeedRefresh())
-            .then(() => notifyWebFeedChanged('listing-edit'))
-            .catch((err) => {
-                logger.error('[listingWrite] Web feed revalidation announcement failed', {
-                    opportunityId: listing.id as string,
-                    error: err instanceof Error ? err.message : String(err),
-                });
-            });
+        void refreshFeedsAndAnnounce('listing-edit');
 
         // Per-job shard upload (atomic ~2.5KB object) — keeps /jobs/[slug]
         // resolvable from the CDN edge without falling back to the full

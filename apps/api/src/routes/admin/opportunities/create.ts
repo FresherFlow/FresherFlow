@@ -13,7 +13,7 @@ import {
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
 import { refreshFeedsAndAnnounce } from '../../../infrastructure/services/opportunity/feedRefresh';
-import { buildIdOrSlugWhere } from '../../../application/opportunity/listingPayload';
+import { buildIdOrSlugWhere, ExtendedAdminOpportunityData } from '../../../application/opportunity/listingPayload';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 
 const router = Router();
@@ -153,42 +153,21 @@ router.patch(
 
             const existing = await prisma.opportunity.findFirst({
                 where: buildIdOrSlugWhere(idParam),
+                select: { id: true, slug: true, status: true, applyLink: true, sourceLink: true },
             });
             if (!existing) return sendError(res, 404, ErrorCode.NOT_FOUND, 'Opportunity not found', req.requestId);
 
-            const opportunity = await prisma.opportunity.update({
-                where: { id: existing.id as string },
-                data: {
-                    status: status as unknown as DbOpportunityStatus,
-                    ...(status === OpportunityStatus.PUBLISHED ? { expiredAt: null, expiresAt: null, deletedAt: null, deletionReason: null } : {}),
-                },
-                include: { driveDetails: true, governmentJobDetails: true },
-            });
+            const { listing } = await updateListing(idParam, {
+                applyLink: existing.applyLink ?? undefined,
+                sourceLink: existing.sourceLink ?? undefined,
+                status,
+            } as ExtendedAdminOpportunityData, status as unknown as OpportunityStatus);
 
-            // Fire publish pipeline if transitioning to PUBLISHED
-            if (existing.status !== OpportunityStatus.PUBLISHED && status === OpportunityStatus.PUBLISHED) {
-                await handleOpportunityPublished(opportunity as unknown as import('@fresherflow/types').Opportunity, { isNew: true });
-            } else if (existing.status === OpportunityStatus.PUBLISHED && status !== OpportunityStatus.PUBLISHED) {
-                // Leaving the live set is a removal: the R2 feed still lists the
-                // listing and its job shard still resolves, so /jobs/<slug>
-                // stayed reachable after the admin set it back to draft or
-                // archived. Rebuild (which collects the shard), then announce
-                // the new snapshot once it exists.
-                void invalidatePublicOpportunityCache({
-                    idsOrSlugs: [existing.id as string, existing.slug as string],
-                    purgeFeed: true,
-                    type: existing.category as string,
-                    tags: [],
-                });
-                void refreshFeedsAndAnnounce('status-unpublish');
-            }
-
-            adminCache.invalidate(existing.id as string);
-            if (existing.slug) adminCache.invalidate(existing.slug as string);
-            adminCache.invalidateLists();
-
-            res.json({ opportunity, message: `Status updated to ${status}` });
+            res.json({ opportunity: listing, message: `Status updated to ${status}` });
         } catch (error) {
+            if (error instanceof ListingWriteError) {
+                return respondWithWriteError(res, req, error);
+            }
             next(error);
         }
     },

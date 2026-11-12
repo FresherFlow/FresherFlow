@@ -397,14 +397,10 @@ describe('updateListing', () => {
         // that still described the OLD listing, and never rebuilt the feed, so
         // the edit stayed invisible on /jobs until an operator pressed
         // "Refresh cache".
-        const { scheduleDiscoveryFeedRefresh } = await import(
+        const { refreshFeedsAndAnnounce } = await import(
             '../infrastructure/services/opportunity/feedRefresh'
         );
-        const { notifyWebFeedChanged } = await import(
-            '../infrastructure/services/opportunity/webRevalidation.service'
-        );
-        expect(scheduleDiscoveryFeedRefresh).toHaveBeenCalled();
-        expect(notifyWebFeedChanged).toHaveBeenCalled();
+        expect(refreshFeedsAndAnnounce).toHaveBeenCalled();
     });
 
     it('rebuilds the feed when a live listing is edited out of the live set', async () => {

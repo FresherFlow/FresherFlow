@@ -7,33 +7,10 @@ import { queueNewJobAlerts } from '../../../application/opportunity/listingPaylo
 import { OpportunityService } from '../../../infrastructure/services/opportunity/opportunity.service';
 import { getGranularTagsForOpportunity } from '../../../infrastructure/services/opportunity/publish.service';
 import type { Opportunity } from '@fresherflow/database';
-import { scheduleDiscoveryFeedRefresh } from '../../../infrastructure/services/opportunity/feedRefresh';
-import { notifyWebFeedChanged } from '../../../infrastructure/services/opportunity/webRevalidation.service';
+import { refreshFeedsAndAnnounce } from '../../../infrastructure/services/opportunity/feedRefresh';
 import { logger } from '@fresherflow/utils';
 
 const router = Router();
-
-/**
- * Rebuild the discovery feeds and, once the rebuild has landed, tell the web
- * app that its cached copies are stale.
- *
- * A bulk action moves a whole batch of jobs in or out of the live set, so
- * both halves are required: the feed files decide what the hub pages show,
- * and the web app only re-reads those files when it is told. The announcement
- * is chained onto the rebuild because a tag bust only makes Next re-read the
- * SAME CDN URL — telling the web before the new snapshot exists re-caches the
- * version that is about to be replaced.
- */
-function scheduleFeedRefreshAndRevalidate(reason: string): void {
-    void Promise.resolve(scheduleDiscoveryFeedRefresh())
-        .then(() => notifyWebFeedChanged(reason))
-        .catch((err) => {
-            logger.error('[bulk] Web feed revalidation announcement failed', {
-                reason,
-                error: err instanceof Error ? err.message : String(err),
-            });
-        });
-}
 
 /**
  * POST /api/admin/opportunities/bulk
@@ -112,7 +89,7 @@ router.post(
             // One debounced rebuild for the whole batch, instead of one per row.
             // The Redis invalidation above only clears cached copies; the feed
             // files themselves are what the hub pages read.
-            scheduleFeedRefreshAndRevalidate(`bulk-${action.toLowerCase()}`);
+            void refreshFeedsAndAnnounce(`bulk-${action.toLowerCase()}`);
         } catch (error) {
             next(error);
         }
