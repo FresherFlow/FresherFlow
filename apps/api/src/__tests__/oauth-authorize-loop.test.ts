@@ -9,8 +9,10 @@
  * The fix has two halves, both asserted here:
  *   1. the first pass carries `oauth_retry=1` on the return leg, to the app host
  *      (where /login lives) rather than the public host;
- *   2. a second pass without a session must NOT redirect. It answers 401 with an
- *      explanation, which is what terminates the loop.
+ *   2. a second pass without a session must NOT bounce to /login again. It
+ *      sends the browser once to the web consent page's `error=session_expired`
+ *      screen, which only moves on an explicit "Sign in again" click — that
+ *      click is what terminates the loop.
  *
  * Prisma is faked at the module boundary; Redis is disabled so the rate
  * limiters use their in-memory store, cleared between cases.
@@ -109,15 +111,28 @@ describe('MCP sign-in handoff', () => {
         expect(nested.searchParams.get('state')).toBe('st1');
     });
 
-    it('does not redirect a second time: a retry with no session explains instead', async () => {
+    it('does not bounce a second time: a retry with no session lands on the consent screen', async () => {
         const res = await request(buildApp()).get(`${VALID_AUTHORIZE}&oauth_retry=1`);
 
-        expect(res.status).toBe(401);
-        expect(res.headers.location).toBeUndefined();
-        expect(res.headers['content-type']).toMatch(/text\/html/);
-        expect(res.text).toContain('Sign in to FresherFlow');
+        // One hop to the web app, never back to /login.
+        expect(res.status).toBe(302);
+
+        const consent = new URL(res.headers.location as string);
+        expect(consent.origin).toBe('https://fresherflow.in');
+        expect(consent.pathname).toBe('/oauth/consent');
+        // The marker the consent page renders its sign-in card from.
+        expect(consent.searchParams.get('error')).toBe('session_expired');
+        // The whole authorization request travels along so /login can send the
+        // browser back to it — but never a consent_token: this handoff grants
+        // no authority, only enough to rebuild the return leg.
+        expect(consent.searchParams.get('client_id')).toBe('ffc_loop');
+        expect(consent.searchParams.get('redirect_uri')).toBe('https://chatgpt.com/callback');
+        expect(consent.searchParams.get('code_challenge')).toBe('abc123');
+        expect(consent.searchParams.get('state')).toBe('st1');
+        expect(consent.searchParams.get('scope')).toBe('mcp');
+        expect(consent.searchParams.get('consent_token')).toBeNull();
         // No code was issued and no client was consulted beyond validation.
-        expect(res.text).not.toContain('code=');
+        expect(consent.searchParams.get('code')).toBeNull();
     });
 
     it('still redirects back to the client when the browser has a live session', async () => {
@@ -126,7 +141,7 @@ describe('MCP sign-in handoff', () => {
         // path is covered by the OAuth service tests; here we only assert that
         // the retry marker never leaks into the client redirect.
         const res = await request(buildApp()).get(`${VALID_AUTHORIZE}&oauth_retry=1`);
-        expect(res.status).toBe(401);
-        expect(res.text).not.toContain('https://chatgpt.com/callback?code=');
+        expect(res.status).toBe(302);
+        expect(res.headers.location).not.toContain('https://chatgpt.com/callback?code=');
     });
 });

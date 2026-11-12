@@ -63,13 +63,13 @@ export function csrfGate(req: Request, res: Response, next: NextFunction) {
 
     // 1.3 OAuth 2.1 consent submission.
     //
-    // The consent screen is server-rendered HTML (see routes/oauth.ts) because
-    // it must work inside an OAuth redirect, before the web app has loaded. A
-    // plain form cannot carry a custom header, so this one path defends itself
-    // instead: the form submits an HMAC over the exact authorization request
-    // parameters, verified server-side, and the session cookie it needs is
-    // SameSite=Lax so a cross-site POST does not carry it in the first place.
-    // Path-exact: no other route gets this treatment.
+    // The consent screen is rendered by the web app at `/oauth/consent`, which
+    // posts the decision back here as a plain form inside an OAuth redirect.
+    // A plain form cannot carry a custom header, so this one path defends
+    // itself instead: the form submits an HMAC over the exact authorization
+    // request parameters, verified server-side, and the session cookie it
+    // needs is SameSite=Lax so a cross-site POST does not carry it in the
+    // first place. Path-exact: no other route gets this treatment.
     if (req.method === 'POST' && req.path === '/oauth/authorize') {
         return next();
     }

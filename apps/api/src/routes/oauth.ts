@@ -82,16 +82,6 @@ function sendOAuthError(res: Response, error: unknown, fallbackStatus = 400): vo
     });
 }
 
-/** HTML-escape for the consent page. `&` first, then the rest, in one pass. */
-function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
 /** Secret for the consent form token. Falls back through the server's existing
  * secrets so a deployment that already runs the API needs no new variable.
  */
@@ -322,8 +312,9 @@ function loginRedirectUrl(params: AuthorizeParams, hadStaleSession: boolean): st
     if (params.state) authorizeUrl.searchParams.set('state', params.state);
     if (params.scope) authorizeUrl.searchParams.set('scope', params.scope);
     if (params.resource) authorizeUrl.searchParams.set('resource', params.resource);
-    // Marks the return leg. A second failure renders `sessionLostPage` instead
-    // of redirecting, which is what ends the /login <-> /oauth/authorize loop.
+    // Marks the return leg. A second failure stops bouncing and redirects to
+    // the web consent page's `error=session_expired` screen, which is what ends
+    // the /login <-> /oauth/authorize loop.
     authorizeUrl.searchParams.set('oauth_retry', '1');
 
     // The public host, which always exists. A deployment that separates login
@@ -333,37 +324,6 @@ function loginRedirectUrl(params: AuthorizeParams, hadStaleSession: boolean): st
     loginUrl.searchParams.set('redirect', authorizeUrl.toString());
     if (hadStaleSession) loginUrl.searchParams.set('expired', 'true');
     return loginUrl.toString();
-}
-
-/**
- * Shown when the OAuth handoff returns without a session after one sign-in.
- *
- * One more redirect is what causes the endless reload: the API cannot see the
- * cookie the web app wrote, so it bounces to /login, which bounces back here.
- * Nothing can be fixed by repeating that, and only the user can act, so this
- * page says what is actually wrong and offers one way out.
- */
-function sessionLostPage(): string {
-    const signInUrl = new URL(`${getPublicSiteUrl()}/login`);
-    signInUrl.searchParams.set('expired', 'true');
-    return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sign in to connect FresherFlow</title>
-<style>
- body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#0b0b0f;color:#f5f5f7}
- main{max-width:30rem;padding:2rem;border:1px solid #26262e;border-radius:1rem;background:#131319}
- h1{font-size:1.25rem;margin:0 0 .5rem}
- p{line-height:1.5;color:#c7c7d1}
- a{display:inline-block;margin-top:1.25rem;padding:.75rem 1rem;border-radius:.75rem;background:#2563eb;color:#fff;text-decoration:none;font-weight:600}
- .muted{font-size:.85rem;color:#8b8b98}
-</style></head>
-<body><main>
- <h1>This browser is not signed in to FresherFlow</h1>
- <p>Signing in did not reach the FresherFlow API, so the connection cannot be approved.</p>
- <p class="muted">Sign in on the website, then return to your AI client and start the FresherFlow connection again. If it still fails, your browser is not sending the session cookie to the API.</p>
- <a href="${escapeHtml(signInUrl.toString())}">Sign in to FresherFlow</a>
-</main></body></html>`;
 }
 
 function redirectWithError(res: Response, redirectUri: string, state: string, error: string, description: string): void {
@@ -413,6 +373,10 @@ async function validateAuthorizeRequest(params: AuthorizeParams): Promise<{ clie
  *
  * Unauthenticated callers are sent to the web login with this exact URL as
  * `next`, so the consent screen is reached again after signing in.
+ *
+ * Authenticated callers are sent to the web app's branded consent screen
+ * (`/oauth/consent`), which renders the form and posts the decision back to
+ * `POST /oauth/authorize` unchanged.
  */
 router.get('/oauth/authorize', authorizeLimiter, async (req: Request, res: Response) => {
     const params = readAuthorizeParams(req.query);
@@ -431,11 +395,25 @@ router.get('/oauth/authorize', authorizeLimiter, async (req: Request, res: Respo
     const userId = await resolveSessionUserId(req, res);
     if (!userId) {
         // The browser has already been through sign-in for this exact
-        // authorization request (`oauth_retry=1`). Redirecting again is the
-        // reload loop users report as "login keeps refreshing", so stop and
-        // explain instead of bouncing a second time.
+        // authorization request (`oauth_retry=1`). Bouncing it to /login again
+        // is the reload loop users report as "login keeps refreshing", so this
+        // branch stops bouncing: it sends the browser to the web app's
+        // session-expired consent screen, which only moves on an explicit
+        // "Sign in again" click. No automatic hop back here means the loop
+        // protection still holds, and the API renders no HTML of its own.
         if (params.retry) {
-            res.status(401).type('html').send(sessionLostPage());
+            const sessionExpiredUrl = new URL(`${getPublicSiteUrl()}/oauth/consent`);
+            sessionExpiredUrl.searchParams.set('error', 'session_expired');
+            sessionExpiredUrl.searchParams.set('client_id', params.clientId);
+            sessionExpiredUrl.searchParams.set('redirect_uri', params.redirectUri);
+            sessionExpiredUrl.searchParams.set('code_challenge', params.codeChallenge);
+            sessionExpiredUrl.searchParams.set('state', params.state);
+            sessionExpiredUrl.searchParams.set('scope', params.scope);
+            sessionExpiredUrl.searchParams.set('resource', params.resource);
+            // Deliberately no `consent_token`: this handoff carries no
+            // authority, only enough of the request for the page to rebuild
+            // the sign-in return URL.
+            res.redirect(sessionExpiredUrl.toString());
             return;
         }
         // `redirect`, not `next`: that is the parameter the web login actually
@@ -451,7 +429,7 @@ router.get('/oauth/authorize', authorizeLimiter, async (req: Request, res: Respo
         where: { id: userId },
         select: { fullName: true, username: true, email: true },
     });
-    const who = escapeHtml(account?.fullName || account?.username || account?.email || 'your FresherFlow account');
+    const who = account?.fullName || account?.username || account?.email || 'your FresherFlow account';
 
     const formToken = consentFormToken({
         client_id: params.clientId,
@@ -462,55 +440,30 @@ router.get('/oauth/authorize', authorizeLimiter, async (req: Request, res: Respo
         resource: params.resource,
     });
 
-    // A minimal, self-contained consent screen. It is deliberately server
-    // rendered: it must work inside the OAuth redirect without depending on the
-    // web app's session, and it carries its own CSRF token.
-    res.type('html').send(`<!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Connect FresherFlow</title>
-<style>
- body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;display:grid;place-items:center;min-height:100vh;background:#0b0b0f;color:#f5f5f7}
- main{max-width:30rem;padding:2rem;border:1px solid #26262e;border-radius:1rem;background:#131319}
- h1{font-size:1.25rem;margin:0 0 .5rem}
- p{line-height:1.5;color:#c7c7d1}
- ul{color:#c7c7d1;line-height:1.6}
- .row{display:flex;gap:.75rem;margin-top:1.5rem}
- button{flex:1;padding:.75rem 1rem;border-radius:.75rem;border:1px solid #3a3a46;background:#1d1d26;color:#f5f5f7;font-size:1rem;cursor:pointer}
- button.approve{background:#2563eb;border-color:#2563eb}
- .muted{font-size:.85rem;color:#8b8b98}
-</style></head>
-<body><main>
- <h1>Connect ${escapeHtml(clientName)} to FresherFlow</h1>
- <p><strong>${escapeHtml(clientName)}</strong> is asking to act as <strong>${who}</strong>.</p>
- <p>It will be able to:</p>
- <ul>
-  <li>Add jobs as you (moderators publish on submit; everyone else submits a draft for review)</li>
-  <li>See the listings and submissions you own</li>
-  <li>Withdraw a submission you made</li>
- </ul>
- <p class="muted">It will not see your password or your account settings. You can disconnect it at any time from your account.</p>
- <form method="post" action="/oauth/authorize">
-  <input type="hidden" name="client_id" value="${escapeHtml(params.clientId)}">
-  <input type="hidden" name="redirect_uri" value="${escapeHtml(params.redirectUri)}">
-  <input type="hidden" name="code_challenge" value="${escapeHtml(params.codeChallenge)}">
-  <input type="hidden" name="state" value="${escapeHtml(params.state)}">
-  <input type="hidden" name="scope" value="${escapeHtml(params.scope)}">
-  <input type="hidden" name="resource" value="${escapeHtml(params.resource)}">
-  <input type="hidden" name="consent_token" value="${escapeHtml(formToken)}">
-  <div class="row">
-   <button type="submit" name="decision" value="deny">Cancel</button>
-   <button type="submit" class="approve" name="decision" value="allow">Allow</button>
-  </div>
- </form>
-</main></body></html>`);
+    // The consent screen itself lives in the web app, alongside login, so it
+    // can be branded. Everything the form must post back travels as query
+    // parameters and is re-submitted from there as a plain urlencoded POST;
+    // the HMAC token minted above is still the only thing the POST handler
+    // below accepts, so this handoff carries no authority of its own.
+    const consentUrl = new URL(`${getPublicSiteUrl()}/oauth/consent`);
+    consentUrl.searchParams.set('client_id', params.clientId);
+    consentUrl.searchParams.set('redirect_uri', params.redirectUri);
+    consentUrl.searchParams.set('code_challenge', params.codeChallenge);
+    consentUrl.searchParams.set('state', params.state);
+    consentUrl.searchParams.set('scope', params.scope);
+    consentUrl.searchParams.set('resource', params.resource);
+    consentUrl.searchParams.set('consent_token', formToken);
+    consentUrl.searchParams.set('client_name', clientName);
+    consentUrl.searchParams.set('account', who);
+    res.redirect(consentUrl.toString());
 });
 
 /** POST /oauth/authorize — the consent decision.
  *
- * Reached only from the form above. Its CSRF defence is the HMAC token bound to
- * the exact request parameters, which is why this one path is exempted from the
- * header-based gate (see middleware/csrf.ts).
+ * Reached only from the consent form the web app renders at `/oauth/consent`,
+ * which posts the decision back here. Its CSRF defence is the HMAC token bound
+ * to the exact request parameters, which is why this one path is exempted from
+ * the header-based gate (see middleware/csrf.ts).
  */
 router.post('/oauth/authorize', authorizeLimiter, express.urlencoded({ extended: false }), async (req: Request, res: Response) => {
     const body = req.body as Record<string, unknown>;
