@@ -21,12 +21,17 @@ function getRegistrableBaseHost(hostname: string): string | null {
     return parts.slice(-2).join('.');
 }
 
+/**
+ * Sibling hosts for a request host.
+ *
+ * There is no `app.` subdomain: the signed-in app lives on the public host, so
+ * only `admin.` and `join.` are derived.
+ */
 function deriveSiblingHosts(hostname: string) {
     const baseHost = getRegistrableBaseHost(hostname);
     if (!baseHost || baseHost === 'localhost') {
         return {
             publicHost: hostname,
-            appHost: hostname,
             adminHost: hostname,
             joinHost: hostname,
         };
@@ -35,16 +40,6 @@ function deriveSiblingHosts(hostname: string) {
     if (hostname === baseHost || hostname === `www.${baseHost}`) {
         return {
             publicHost: baseHost,
-            appHost: `app.${baseHost}`,
-            adminHost: `admin.${baseHost}`,
-            joinHost: `join.${baseHost}`,
-        };
-    }
-
-    if (hostname.startsWith('app.')) {
-        return {
-            publicHost: baseHost,
-            appHost: hostname,
             adminHost: `admin.${baseHost}`,
             joinHost: `join.${baseHost}`,
         };
@@ -53,7 +48,6 @@ function deriveSiblingHosts(hostname: string) {
     if (hostname.startsWith('admin.')) {
         return {
             publicHost: baseHost,
-            appHost: `app.${baseHost}`,
             adminHost: hostname,
             joinHost: `join.${baseHost}`,
         };
@@ -62,7 +56,6 @@ function deriveSiblingHosts(hostname: string) {
     if (hostname.startsWith('join.')) {
         return {
             publicHost: baseHost,
-            appHost: `app.${baseHost}`,
             adminHost: `admin.${baseHost}`,
             joinHost: hostname,
         };
@@ -70,7 +63,6 @@ function deriveSiblingHosts(hostname: string) {
 
     return {
         publicHost: baseHost,
-        appHost: `app.${baseHost}`,
         adminHost: `admin.${baseHost}`,
         joinHost: `join.${baseHost}`,
     };
@@ -79,14 +71,14 @@ function deriveSiblingHosts(hostname: string) {
 export function getHostRole(hostname: string, request: NextRequest) {
     const normalizedHost = hostname.toLowerCase();
 
-    // On localhost we can't distinguish between app/admin/public hosts —
+    // On localhost we can't distinguish between public/admin/join hosts —
     // all are on the same machine. Return 'other' so none of the host-specific
     // redirect rules fire in development.
     if (normalizedHost === 'localhost' || normalizedHost === '127.0.0.1') {
         return 'other' as const;
     }
 
-    const { PUBLIC_WEB_HOST, APP_WEB_HOST, ADMIN_WEB_HOST, JOIN_WEB_HOST } = resolveHosts(request);
+    const { PUBLIC_WEB_HOST, ADMIN_WEB_HOST, JOIN_WEB_HOST } = resolveHosts(request);
     const baseHost = getRegistrableBaseHost(normalizedHost);
 
     if (
@@ -104,10 +96,6 @@ export function getHostRole(hostname: string, request: NextRequest) {
         return 'admin' as const;
     }
 
-    if (normalizedHost === APP_WEB_HOST || normalizedHost.startsWith('app.')) {
-        return 'app' as const;
-    }
-
     if (
         normalizedHost === PUBLIC_WEB_HOST ||
         (baseHost && (normalizedHost === baseHost || normalizedHost === `www.${baseHost}`))
@@ -119,50 +107,35 @@ export function getHostRole(hostname: string, request: NextRequest) {
 }
 
 /**
- * One canonical name per value, with older names accepted as fallbacks.
+ * One canonical name per host. Host routing only ever runs in the proxy, on the
+ * server, so these are server-only names — no `NEXT_PUBLIC_` twins are read.
+ * `.env.example` documents the same set; there is no second list.
  *
- * Five hosts were being read through ten different `||` chains, which is what
- * made this config unreadable. `.env.example` lists the canonical set: the
- * server-only names. The `NEXT_PUBLIC_` twins stay readable here so an existing
- * deployment keeps working, but nothing new should use them — host routing only
- * ever runs in the proxy, on the server.
+ * There is no app host: the signed-in app is served from `PUBLIC_WEB_HOST`.
+ * Anything that is not `admin.` or `join.` is a public-host request, and any
+ * host that matches neither falls through to `'other'`.
  */
-function firstEnv(...names: string[]): string {
-    for (const name of names) {
-        const value = process.env[name];
-        if (value && value.trim()) return value;
-    }
-    return '';
-}
-
 export function resolveHosts(request: NextRequest) {
     const requestHost = request.nextUrl.hostname.toLowerCase();
 
-    const envPublicHost = normalizeHost(
-        firstEnv('PUBLIC_WEB_HOST', 'NEXT_PUBLIC_PUBLIC_WEB_HOST', 'NEXT_PUBLIC_SITE_URL'),
-        ''
-    );
-    const envAppHost = normalizeHost(firstEnv('APP_WEB_HOST', 'NEXT_PUBLIC_APP_WEB_HOST'), '');
-    const envAdminHost = normalizeHost(firstEnv('ADMIN_WEB_HOST', 'NEXT_PUBLIC_ADMIN_WEB_HOST'), '');
-    const envLoginHost = normalizeHost(firstEnv('USER_LOGIN_HOST', 'NEXT_PUBLIC_USER_LOGIN_HOST'), '');
-    const envJoinHost = normalizeHost(firstEnv('JOIN_WEB_HOST', 'NEXT_PUBLIC_JOIN_WEB_HOST'), '');
+    const envPublicHost = normalizeHost(process.env.PUBLIC_WEB_HOST, '');
+    const envAdminHost = normalizeHost(process.env.ADMIN_WEB_HOST, '');
+    const envLoginHost = normalizeHost(process.env.USER_LOGIN_HOST, '');
+    const envJoinHost = normalizeHost(process.env.JOIN_WEB_HOST, '');
 
     const derived = deriveSiblingHosts(requestHost);
 
     const PUBLIC_WEB_HOST = isRealHost(envPublicHost) ? envPublicHost : derived.publicHost;
-    const APP_WEB_HOST = isRealHost(envAppHost) ? envAppHost : derived.appHost;
     const ADMIN_WEB_HOST = isRealHost(envAdminHost) ? envAdminHost : derived.adminHost;
-    // Sign-in lives on the public host unless an app host actually exists.
-    // Defaulting to app.<domain> sent visitors to a host that is not deployed in
-    // a single-domain setup, and to a 308 loop when both names resolve together.
+    // Sign-in lives on the public host. There is no separate login host, so
+    // fall straight back to PUBLIC_WEB_HOST.
     const USER_LOGIN_HOST = isRealHost(envLoginHost)
         ? envLoginHost
-        : (isRealHost(envAppHost) ? APP_WEB_HOST : PUBLIC_WEB_HOST);
+        : PUBLIC_WEB_HOST;
     const JOIN_WEB_HOST = isRealHost(envJoinHost) ? envJoinHost : derived.joinHost;
 
     return {
         PUBLIC_WEB_HOST,
-        APP_WEB_HOST,
         ADMIN_WEB_HOST,
         USER_LOGIN_HOST,
         JOIN_WEB_HOST,

@@ -61,32 +61,13 @@ export function handleHostRouting(req: NextRequest) {
     }
 
     // Phase 4: Strict Host Enforcement
-    
-    // 3. App Host handling (app.fresherflow.in)
-    if (hostRole === 'app') {
-        // Redirect root to /dashboard (auth guard will bounce unauthenticated to /login)
-        if (pathname === '/') {
-            return NextResponse.redirect(
-                `${req.nextUrl.protocol}//${USER_LOGIN_HOST}/dashboard`,
-                308
-            );
-        }
 
-        // app.fresherflow.in + PUBLIC route -> 308 fresherflow.in
-        // Ensure we don't redirect auth paths or api routes
-        if (!pathname.startsWith('/api') && isPublicPath(pathname) && !isAuthPath(pathname)) {
-            return NextResponse.redirect(
-                `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`,
-                308
-            );
-        }
-        
-        // App host + PRIVATE route -> allow (auth logic will handle login checks)
-        // App host + AUTH route -> allow
-        return null;
-    }
-
-    // 4. Public Host handling (fresherflow.in)
+    // 3. Public Host handling (fresherflow.in)
+    //
+    // There is no app host: the signed-in app is served from this same public
+    // host. Any host that is not admin. or join. falls through to here as
+    // 'public' when it matches the configured/derived public host, and to
+    // 'other' (no routing) when it matches nothing known.
     if (hostRole === 'public') {
         // fresherflow.in + PRIVATE route or AUTH route -> 308 the login host.
         // Never redirect to ourselves: in a single-domain deployment the login

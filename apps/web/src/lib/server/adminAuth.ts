@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken } from '@fresherflow/utils';
+import { HAS_ADMIN_SIGNING_SECRET } from '@/lib/server/env';
 
 /**
  * Admin authentication for the `/api/admin/**` Route Handlers in `apps/web`.
@@ -72,15 +73,15 @@ export type AdminRouteHandler = (
  * `verifyAdminToken` cannot verify anything and every caller is denied.
  *
  * Detection only — this never produces, returns or substitutes a secret, and
- * it is never used to verify anything. `getAdminSecret` in
- * `packages/utils/src/auth.ts` is not exported, so the only available signal is
- * the presence of the three names it resolves from, in its documented
- * precedence (`JWT_ADMIN_SECRET`, else `JWT_ACCESS_SECRET`, else `JWT_SECRET`).
- * Keep in sync with that helper; if the chain there changes, change it here too.
+ * it is never used to verify anything. The resolution order itself lives in
+ * `getAdminSecret` in `packages/utils/src/auth.ts` (`JWT_ADMIN_SECRET`, else
+ * `JWT_ACCESS_SECRET`, else `JWT_SECRET`); `getAdminSecret` is not exported, so
+ * the only available signal is whether any of those names is set —
+ * `HAS_ADMIN_SIGNING_SECRET` in `@/lib/server/env` answers exactly that. If the
+ * chain in `packages/utils/src/auth.ts` changes, change `env.ts` too.
  */
 function isAdminSecretUnset(): boolean {
-    return ![process.env.JWT_ADMIN_SECRET, process.env.JWT_ACCESS_SECRET, process.env.JWT_SECRET]
-        .some((value) => typeof value === 'string' && value.trim().length > 0);
+    return !HAS_ADMIN_SIGNING_SECRET;
 }
 
 /** Whether the unset-secret misconfiguration has already been reported in this process. */

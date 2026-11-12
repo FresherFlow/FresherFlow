@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { PLUGIN_REGISTRY, BOARD_SET, COMPANY_PROVIDER_SET } from '@fresherflow/plugins';
+import { CDN_URL } from '@/lib/utils/runtimeConfig';
 
 export interface IngestionTarget {
   company: string;
@@ -14,7 +15,7 @@ export interface IngestionTarget {
 function resolveAtsCdnBase(): string {
   const configured = process.env.ATS_CDN_BASE;
   if (configured) return configured.replace(/\/$/, '');
-  const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL;
+  const cdnUrl = CDN_URL;
   if (cdnUrl) return `${cdnUrl.replace(/\/$/, '')}/api/ats/india`;
   return '';
 }

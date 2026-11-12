@@ -6,11 +6,11 @@ export const APP_LINKS = {
     // Direct link to the absolute latest APK attached to GitHub releases
     // Note: 'releases/latest/download/FresherFlow.apk' will automatically redirect to the asset 
     // attached to your most recent published release on GitHub.
-    androidDownload: "https://github.com/MukeshCheekatla/FresherFlow/releases/latest/download/FresherFlow.apk",
+    androidDownload: "https://github.com/FresherFlow/FresherFlow/releases/latest/download/FresherFlow.apk",
     currentVersion: "v1.2.0", // Update this string here when releasing a new version!
     
     // Fallback release page overview
-    githubReleases: "https://github.com/MukeshCheekatla/FresherFlow/releases/latest",
+    githubReleases: "https://github.com/FresherFlow/FresherFlow/releases/latest",
     
     // Future target links (keep empty or comment out until live)
     playStore: "",

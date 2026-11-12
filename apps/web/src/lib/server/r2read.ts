@@ -1,4 +1,11 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  R2_ENDPOINT,
+  R2_ACCESS_KEY_ID,
+  R2_SECRET_ACCESS_KEY,
+  R2_BUCKET_NAME,
+  HAS_R2_READ,
+} from '@/lib/server/env';
 
 // Server-only minimal R2 JSON reader for admin routes (source health ledger).
 // Separate from `@fresherflow/utils/r2` on purpose: the web app must not
@@ -7,9 +14,9 @@ import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 // "not connected" state, never a 500. Never throws.
 
 function getClient(): S3Client | null {
-  const endpoint = process.env.R2_ENDPOINT;
-  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  const endpoint = R2_ENDPOINT;
+  const accessKeyId = R2_ACCESS_KEY_ID;
+  const secretAccessKey = R2_SECRET_ACCESS_KEY;
   if (!endpoint || !accessKeyId || !secretAccessKey) return null;
   return new S3Client({
     region: 'auto',
@@ -18,13 +25,11 @@ function getClient(): S3Client | null {
   });
 }
 
-export const hasR2Read = Boolean(
-  process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET_NAME
-);
+export const hasR2Read = HAS_R2_READ;
 
 export async function readJsonFromR2<T>(key: string): Promise<T | null> {
   const client = getClient();
-  const bucket = (process.env.R2_BUCKET_NAME || '').trim();
+  const bucket = R2_BUCKET_NAME;
   if (!client || !bucket) return null;
   try {
     const res = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));

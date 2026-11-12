@@ -1,10 +1,12 @@
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getDatabase, type Database } from 'firebase-admin/database';
-
-const project_id = process.env.FIREBASE_PROJECT_ID?.replace(/^"|"$/g, '') || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.replace(/^"|"$/g, '');
-const client_email = process.env.FIREBASE_CLIENT_EMAIL?.replace(/^"|"$/g, '');
-const private_key = process.env.FIREBASE_PRIVATE_KEY?.replace(/^"|"$/g, '')?.replace(/\\n/g, '\n');
+import {
+    FIREBASE_ADMIN_PROJECT_ID,
+    FIREBASE_ADMIN_CLIENT_EMAIL,
+    FIREBASE_ADMIN_PRIVATE_KEY,
+    HAS_FIREBASE_ADMIN_CREDENTIALS,
+} from '@/lib/server/env';
 
 /**
  * Whether this deployment actually holds a service-account credential.
@@ -27,7 +29,7 @@ const private_key = process.env.FIREBASE_PRIVATE_KEY?.replace(/^"|"$/g, '')?.rep
  *
  * Callers must therefore ask before they read. See `requireAdminDatabase()`.
  */
-export const hasAdminCredentials = Boolean(project_id && client_email && private_key);
+export const hasAdminCredentials = HAS_FIREBASE_ADMIN_CREDENTIALS;
 
 const apps = getApps();
 let app: App;
@@ -36,14 +38,14 @@ if (apps.length === 0) {
     if (hasAdminCredentials) {
         app = initializeApp({
             credential: cert({
-                projectId: project_id,
-                clientEmail: client_email,
-                privateKey: private_key,
+                projectId: FIREBASE_ADMIN_PROJECT_ID,
+                clientEmail: FIREBASE_ADMIN_CLIENT_EMAIL,
+                privateKey: FIREBASE_ADMIN_PRIVATE_KEY,
             }),
-            databaseURL: `https://${project_id}-default-rtdb.asia-southeast1.firebasedatabase.app`
+            databaseURL: `https://${FIREBASE_ADMIN_PROJECT_ID}-default-rtdb.asia-southeast1.firebasedatabase.app`
         });
     } else {
-        const pid = project_id || 'fresherflow-dev-staging';
+        const pid = FIREBASE_ADMIN_PROJECT_ID || 'fresherflow-dev-staging';
         if (!process.env.GCLOUD_PROJECT) process.env.GCLOUD_PROJECT = pid;
         app = initializeApp({
             projectId: pid,

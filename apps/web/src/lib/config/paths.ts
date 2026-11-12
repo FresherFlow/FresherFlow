@@ -1,3 +1,5 @@
+import { API_URL } from '@/lib/utils/runtimeConfig';
+
 export const USER_PATHS = [
     "/dashboard",
     "/account",
@@ -73,7 +75,7 @@ export function isSafeInternalRedirect(path: string | null | undefined) {
     if (!path) return false;
     const clean = path.trim();
 
-    const apiBase = process.env.NEXT_PUBLIC_API_URL;
+    const apiBase = API_URL;
     if (apiBase && /^https?:\/\//i.test(clean)) {
         try {
             const target = new URL(clean);
@@ -100,7 +102,7 @@ export function isPublicPath(pathname: string) {
     // Exact paths
     const exactPaths = [
         '/', '/about', '/privacy', '/terms', '/careers', 
-        '/contact', '/resources', '/blog', '/govt', 
+        '/contact', '/resources', '/blog', '/govt', '/faq',
         '/batch', '/roles', '/skills', '/locations', 
         '/app', '/join', '/pricing'
     ];

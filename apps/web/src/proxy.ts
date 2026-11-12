@@ -4,6 +4,7 @@ import { handleAuth } from "@/lib/config/auth";
 import { applySeoHeaders } from "@/lib/config/seo";
 import { logRouteResult } from "@/lib/observability";
 import { isPublicPath } from "@/lib/config/paths";
+import { BASIC_AUTH_USER, BASIC_AUTH_PASSWORD } from "@/lib/server/env";
 
 
 /**
@@ -74,8 +75,8 @@ export default function middleware(req: NextRequest) {
                 const authValue = basicAuth.split(' ')[1];
                 const [user, pwd] = atob(authValue).split(':');
 
-                const expectedUser = process.env.BASIC_AUTH_USER;
-                const expectedPass = process.env.BASIC_AUTH_PASSWORD;
+                const expectedUser = BASIC_AUTH_USER;
+                const expectedPass = BASIC_AUTH_PASSWORD;
 
                 if (expectedUser && expectedPass && user === expectedUser && pwd === expectedPass) {
                     authenticated = true;
