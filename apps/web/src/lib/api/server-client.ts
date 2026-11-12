@@ -1,15 +1,7 @@
 
 
-import { ADMIN_WEB_HOST } from '@/lib/utils/runtimeConfig';
-import { normalizeApiBase } from '@/lib/api/normalize-api-base';
+import { ADMIN_WEB_HOST, USER_API_URL, ADMIN_API_URL } from '@/lib/utils/runtimeConfig';
 
-const DEFAULT_API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '';
-
-const USER_API_URL = normalizeApiBase(process.env.USER_API_URL || process.env.NEXT_PUBLIC_USER_API_URL) || normalizeApiBase(DEFAULT_API_URL);
-const USE_SEPARATE_ADMIN_API = process.env.USE_SEPARATE_ADMIN_API === 'true' || process.env.NEXT_PUBLIC_USE_SEPARATE_ADMIN_API === 'true';
-const ADMIN_API_URL = USE_SEPARATE_ADMIN_API
-    ? (normalizeApiBase(process.env.ADMIN_API_URL || process.env.NEXT_PUBLIC_ADMIN_API_URL) || normalizeApiBase(DEFAULT_API_URL))
-    : normalizeApiBase(DEFAULT_API_URL);
 const DEFAULT_PUBLIC_REVALIDATE_SECONDS = 1800;
 
 function resolveApiBase(endpoint: string) {

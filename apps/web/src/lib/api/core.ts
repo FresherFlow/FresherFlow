@@ -1,6 +1,6 @@
 import { markDetailSyncedNow, markFeedSyncedNow } from '@/lib/cache/syncStatus';
 import { toCleanMessage } from '@/lib/utils/error';
-import { normalizeApiBase } from '@/lib/api/normalize-api-base';
+import { API_URL, USER_API_URL, ADMIN_API_URL } from '@/lib/utils/runtimeConfig';
 
 // Thrown when a request is made with no network connectivity.
 // Callers can check `err instanceof OfflineError` to skip toast notifications.
@@ -224,13 +224,6 @@ export function getAdminAccessToken() {
 export function clearAdminAccessToken() {
     clearStorage(ADMIN_ACCESS_TOKEN_KEY);
 }
-
-const DEFAULT_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
-const USER_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_USER_API_URL) || DEFAULT_API_URL;
-const USE_SEPARATE_ADMIN_API = process.env.NEXT_PUBLIC_USE_SEPARATE_ADMIN_API === 'true';
-const ADMIN_API_URL = USE_SEPARATE_ADMIN_API
-    ? (normalizeApiBase(process.env.NEXT_PUBLIC_ADMIN_API_URL) || DEFAULT_API_URL)
-    : DEFAULT_API_URL;
 
 function shouldUseRelativeApiBase(): boolean {
     if (typeof window === 'undefined') return false;
