@@ -7,6 +7,9 @@ process.env.REDIS_ENABLED = 'false';
 // out of publish.service.ts, which is why a published job never appeared on the
 // hub pages no matter how many times the admin cache buttons were pressed.
 const scheduleDiscoveryFeedRefresh = vi.fn();
+const refreshFeedsAndAnnounce = vi.fn(async (reason: string) => {
+    notifyWebFeedChanged(reason);
+});
 const uploadSingleJob = vi.fn(async () => undefined);
 const invalidatePublicOpportunityCache = vi.fn(async () => undefined);
 const sendNewJobAlerts = vi.fn(async () => undefined);
@@ -15,7 +18,10 @@ const appendOpportunityMetadata = vi.fn(async () => undefined);
 const generateAndUploadOgImage = vi.fn(async () => undefined);
 const notifyWebFeedChanged = vi.fn(async () => undefined);
 
-vi.mock('../infrastructure/services/opportunity/feedRefresh', () => ({ scheduleDiscoveryFeedRefresh }));
+vi.mock('../infrastructure/services/opportunity/feedRefresh', () => ({
+    scheduleDiscoveryFeedRefresh,
+    refreshFeedsAndAnnounce,
+}));
 vi.mock('../infrastructure/services/opportunity/staticFeed.service', () => ({
     StaticFeedService: { uploadSingleJob },
 }));
@@ -52,7 +58,7 @@ describe('publish side-effects', () => {
 
         await handleOpportunityPublished(opportunity, { isNew: true });
 
-        expect(scheduleDiscoveryFeedRefresh).toHaveBeenCalledTimes(1);
+        expect(refreshFeedsAndAnnounce).toHaveBeenCalledTimes(1);
         // Cached copies are only invalidated here; the feed FILES are what the
         // rebuild produces, and both are required.
         expect(invalidatePublicOpportunityCache).toHaveBeenCalledTimes(1);

@@ -42,6 +42,12 @@ vi.mock('../infrastructure/services/opportunity/feedGenerator.service', () => ({
         slugify: (value: string) => String(value).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         getCompanySlug: (name: string) => String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-'),
         generateStats: vi.fn(async () => ({ total: 1 })),
+        // Step 14 uploads this artifact. Without it the rebuild now throws (it
+        // used to swallow the failure and bump the version anyway), so the mock
+        // has to implement every artifact the tested target regenerates.
+        generateCompaniesMetadata: vi.fn(async () => [
+            { name: 'State Health Dept', url: null, logo_url: null, slug: 'state-health-dept' },
+        ]),
         generateTakenUsernames: vi.fn(async () => []),
         generateResourcesFeed: vi.fn(async () => ({ resources: [] })),
     },

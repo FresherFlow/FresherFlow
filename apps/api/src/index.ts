@@ -4,10 +4,10 @@
 import fs from 'fs';
 import path from 'path';
 
-import express, { Application } from 'express';
+import express, { Application, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import * as Sentry from '@sentry/node';
 import { requestIdMiddleware } from './middleware/requestId';
@@ -77,6 +77,7 @@ import usernameRoutes from './routes/username';
 import publicStatsRoutes from './routes/public/stats';
 import resourcesRoutes from './routes/resources';
 import deviceTokenRoutes from './routes/deviceToken';
+import { StorageService } from './infrastructure/services/platform/storage.service';
 import { StaticFeedService } from './infrastructure/services/opportunity/staticFeed.service';
 import { initializeQueueListeners } from './infrastructure/services/alerts/push-notification.service';
 import { installShutdownHandlers, markReady } from './utils/readiness';
@@ -111,22 +112,12 @@ const isAdminMode = APP_MODE === 'all' || APP_MODE === 'admin';
 const rootDomainHost = getRootDomainHost();
 
 function extractClientIp(req: express.Request): string {
-    const forwarded = req.headers['x-forwarded-for'];
-    const cfIp = req.headers['cf-connecting-ip'];
-    const realIp = req.headers['x-real-ip'];
-
-    const firstForwarded = Array.isArray(forwarded)
-        ? forwarded[0]
-        : typeof forwarded === 'string'
-            ? forwarded.split(',')[0]
-            : undefined;
-
-    const raw = (firstForwarded || (Array.isArray(cfIp) ? cfIp[0] : cfIp) || (Array.isArray(realIp) ? realIp[0] : realIp) || req.ip || 'unknown')
-        .toString()
-        .trim();
-
-    // Normalize IPv6-mapped IPv4 (e.g. ::ffff:1.2.3.4)
-    return raw.replace(/^::ffff:/, '');
+    // `req.ip` is resolved through Express's explicitly configured trusted-proxy
+    // chain. Reading forwarding headers directly lets callers forge a fresh
+    // rate-limit key on every request. Bucket IPv6 clients by subnet to prevent
+    // trivial address rotation from bypassing per-IP limits.
+    const raw = (req.ip || req.socket.remoteAddress || 'unknown').trim().replace(/^::ffff:/, '');
+    return raw === 'unknown' ? raw : ipKeyGenerator(raw);
 }
 
 // Trust proxy for Render/Vercel/Load Balancers
@@ -235,7 +226,6 @@ app.use(cors({
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
 
 
 // observabilityMiddleware
@@ -355,20 +345,67 @@ app.get('/robots.txt', (_req, res) => {
     res.type('text/plain').send('User-agent: *\nDisallow: /');
 });
 
+/**
+ * Feed artifacts change on publish/expire, not on a clock, but these routes
+ * regenerate from Postgres on every request. Without a shared cache window,
+ * every visitor and every crawler becomes a full-table read. 60s matches the
+ * db-mode revalidate default; stale-while-revalidate absorbs a burst without
+ * making a request wait for the rebuild.
+ */
+const FEED_ARTIFACT_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
+
+/**
+ * Serves a prebuilt artifact with the shared cache policy.
+ * Returns false when the snapshot does not exist, so the caller can generate.
+ * `headers` is passed to sendFile because express otherwise writes its own
+ * `Cache-Control: public, max-age=0`, which defeats the point.
+ */
+function sendFeedArtifactFile(res: Response, filePath: string): boolean {
+    if (!fs.existsSync(filePath)) return false;
+    // Set it twice on purpose: the pre-set is what a caller sees if sendFile
+    // bails, and `headers` wins over the `max-age=0` express would otherwise
+    // derive from its default maxAge option.
+    res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
+    res.sendFile(filePath, {
+        maxAge: 60_000,
+        headers: { 'Cache-Control': FEED_ARTIFACT_CACHE_CONTROL },
+    });
+    return true;
+}
+
+/**
+ * Read catalog artifacts that are maintained outside the opportunity tables.
+ * R2 is the canonical copy in production; the checked-out public artifact is
+ * a local-development fallback. Parsing before sending catches a broken object
+ * instead of returning a successful response with an unusable payload.
+ */
+async function sendStoredJsonArtifact(res: Response, key: string, filePath: string): Promise<boolean> {
+    const content = await StorageService.fetchFromR2(key) ?? StorageService.readLocalFile(filePath);
+    if (content === null) return false;
+
+    try {
+        JSON.parse(content);
+    } catch (error) {
+        logger.error(`Stored feed artifact is not valid JSON: ${key}`, error);
+        return false;
+    }
+
+    res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
+    res.type('application/json').send(content);
+    return true;
+}
+
 app.get('/feeds/bootstrap-feed.min.json', async (req, res) => {
     try {
         // FEED_SOURCE=db forces generation from Postgres on every request,
         // bypassing any cached static file. Postgres is the source of truth.
         const serveFromDb = process.env.FEED_SOURCE === 'db';
         const filePath = path.join(process.cwd(), 'public', 'feeds', 'bootstrap-feed.min.json');
-        if (!serveFromDb) {
-            if (fs.existsSync(filePath)) {
-                return res.sendFile(filePath);
-            }
-        }
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
 
         // Generated live from Postgres
         const results = await StaticFeedService.generateBootstrapFeed();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(results);
 
         // Background refresh to (re)create the static file (CDN path only)
@@ -383,10 +420,9 @@ app.get('/feeds/government-feed.json', async (_req, res) => {
     try {
         const serveFromDb = process.env.FEED_SOURCE === 'db';
         const filePath = path.join(process.cwd(), 'public', 'feeds', 'government-feed.json');
-        if (!serveFromDb && fs.existsSync(filePath)) {
-            return res.sendFile(filePath);
-        }
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
         const results = await StaticFeedService.generateGovernmentFeed();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve government feed', error);
@@ -398,7 +434,15 @@ app.get('/feeds/government-feed.json', async (_req, res) => {
 // from Postgres instead of a prebuilt snapshot.
 app.get('/feeds/feed-index.json', async (_req, res) => {
     try {
+        // Serve the snapshot when one exists. This route used to regenerate on
+        // every request even in CDN mode, so the single most-requested feed was
+        // also the most expensive one to answer.
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
+        const filePath = path.join(process.cwd(), 'public', 'feeds', 'feed-index.json');
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
+
         const results = await StaticFeedService.generateFeedIndex();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve feed index', error);
@@ -408,11 +452,35 @@ app.get('/feeds/feed-index.json', async (_req, res) => {
 
 app.get('/feeds/expired-feed.min.json', async (_req, res) => {
     try {
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
+        const filePath = path.join(process.cwd(), 'public', 'feeds', 'expired-feed.min.json');
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
+
         const results = await StaticFeedService.generateExpiredFeed();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve expired feed', error);
         res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/meta/feed-version.json', async (_req, res) => {
+    // The web reader uses this sentinel in DB mode to skip version lookup. Keep
+    // the route contract complete for other consumers and prevent intermediaries
+    // from pinning the sentinel if the source mode changes during a rollout.
+    if (process.env.FEED_SOURCE === 'db') {
+        res.setHeader('Cache-Control', 'no-store');
+        return res.json({ version: 'db', stable: true });
+    }
+
+    try {
+        const filePath = path.join(process.cwd(), 'public', 'meta', 'feed-version.json');
+        if (await sendStoredJsonArtifact(res, 'meta/feed-version.json', filePath)) return;
+        return res.status(503).json({ error: { message: 'Feed version unavailable' } });
+    } catch (error) {
+        logger.error('Failed to serve feed version', error);
+        return res.status(500).json({ error: { message: 'Internal server error' } });
     }
 });
 
@@ -428,6 +496,7 @@ app.get('/jobs/:id.json', async (req, res) => {
         if (!detail) {
             return res.status(404).json({ error: { message: 'Opportunity not found' } });
         }
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(detail);
     } catch (error) {
         logger.error('Failed to serve opportunity detail', error);
@@ -438,6 +507,7 @@ app.get('/jobs/:id.json', async (req, res) => {
 app.get('/companies.json', async (_req, res) => {
     try {
         const results = await StaticFeedService.generateCompaniesMetadata();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve companies metadata', error);
@@ -448,6 +518,7 @@ app.get('/companies.json', async (_req, res) => {
 app.get('/skills.json', async (_req, res) => {
     try {
         const results = await StaticFeedService.generateSkillsMetadata();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve skills metadata', error);
@@ -455,9 +526,48 @@ app.get('/skills.json', async (_req, res) => {
     }
 });
 
+// These catalog files are maintained by ingestion metadata sync rather than
+// derived from the Opportunity tables. Serve the canonical R2 artifact in
+// FEED_SOURCE=db mode, with the checked-out copy available for local development.
+app.get('/education.json', async (_req, res) => {
+    try {
+        const filePath = path.join(process.cwd(), 'public', 'education.json');
+        if (await sendStoredJsonArtifact(res, 'education.json', filePath)) return;
+        return res.status(503).json({ error: { message: 'Education metadata unavailable' } });
+    } catch (error) {
+        logger.error('Failed to serve education metadata', error);
+        return res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/cities.json', async (_req, res) => {
+    try {
+        const filePath = path.join(process.cwd(), 'public', 'cities.json');
+        if (await sendStoredJsonArtifact(res, 'cities.json', filePath)) return;
+        return res.status(503).json({ error: { message: 'Cities metadata unavailable' } });
+    } catch (error) {
+        logger.error('Failed to serve cities metadata', error);
+        return res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/meta/company-slug-history.json', async (_req, res) => {
+    try {
+        const filePath = path.join(process.cwd(), 'public', 'meta', 'company-slug-history.json');
+        if (await sendStoredJsonArtifact(res, 'meta/company-slug-history.json', filePath)) return;
+        // Slug history is durable state: an empty default could turn previously
+        // indexed company URLs into 404s, so surface a missing artifact clearly.
+        return res.status(503).json({ error: { message: 'Company history unavailable' } });
+    } catch (error) {
+        logger.error('Failed to serve company slug history', error);
+        return res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
 app.get('/meta/stats.json', async (_req, res) => {
     try {
         const results = await StaticFeedService.generateStats();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve feed stats', error);
@@ -465,15 +575,101 @@ app.get('/meta/stats.json', async (_req, res) => {
     }
 });
 
-app.get('/companies-directory.min.json', async (req, res) => {
+// ---------------------------------------------------------------------------
+// Remaining db-mode artifacts.
+//
+// The CDN is served from R2, so in cdn mode these routes only ever read the
+// local snapshot (or 404 on a stateless deploy). FEED_SOURCE=db generates them
+// from Postgres instead, which is what makes local development and a
+// pre-CDN deployment work without any CDN dependency.
+// ---------------------------------------------------------------------------
+
+app.get('/feeds/links.min.json', async (_req, res) => {
     try {
-        const filePath = path.join(process.cwd(), 'public', 'companies-directory.min.json');
-        if (fs.existsSync(filePath)) {
-            return res.sendFile(filePath);
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
+        const filePath = path.join(process.cwd(), 'public', 'feeds', 'links.min.json');
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
+        const results = await StaticFeedService.generateLinksFeed();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve links feed', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/feeds/walkins-feed.json', async (_req, res) => {
+    try {
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
+        const filePath = path.join(process.cwd(), 'public', 'feeds', 'walkins-feed.json');
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
+        const results = await StaticFeedService.generateWalkinFeed();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve walk-ins feed', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/sitemaps/sitemap-data.json', async (_req, res) => {
+    try {
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
+        const filePath = path.join(process.cwd(), 'public', 'sitemaps', 'sitemap-data.json');
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
+        if (!serveFromDb) {
+            return res.status(404).json({ error: { message: 'Sitemap data not found' } });
+        }
+        const results = await StaticFeedService.generateSitemapData();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve sitemap data', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/companies/:slug.json', async (req, res) => {
+    try {
+        const { slug } = req.params;
+        if (!/^[a-zA-Z0-9-_]+$/.test(slug)) {
+            return res.status(400).json({ error: { message: 'Invalid company slug' } });
         }
 
-        // Fallback
-        const results = await StaticFeedService.generateBootstrapFeed(); // Dummy for dir
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
+        const filePath = path.join(process.cwd(), 'public', 'companies', `${path.basename(slug)}.json`);
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
+
+        // Generating every company shard is a full catalogue grouping; only db
+        // mode should ever pay for it on a request.
+        if (!serveFromDb) {
+            return res.status(404).json({ error: { message: 'Company shard not found' } });
+        }
+
+        const shards = await StaticFeedService.generateCompanyShards();
+        const shard = shards.find((entry) => entry.slug === slug);
+        if (!shard) {
+            return res.status(404).json({ error: { message: 'Company shard not found' } });
+        }
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
+        res.json(shard.data);
+    } catch (error) {
+        logger.error('Failed to serve company shard', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/companies-directory.min.json', async (_req, res) => {
+    try {
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
+        const filePath = path.join(process.cwd(), 'public', 'companies-directory.min.json');
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
+
+        // Generate the directory itself. This used to fall back to
+        // generateBootstrapFeed(), which returns a feed object where every
+        // consumer expects a company array — a wrong-shape 200 that parses.
+        const results = await StaticFeedService.generateCompaniesMetadata();
+        res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve companies directory', error);
@@ -489,10 +685,19 @@ app.get('/categories/:id.json', async (req, res) => {
             return res.status(400).json({ error: { message: 'Invalid category ID' } });
         }
 
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
         const filePath = path.join(process.cwd(), 'public', 'categories', `${path.basename(id)}.json`);
-        if (fs.existsSync(filePath)) {
-            return res.sendFile(filePath);
+        if (!serveFromDb && sendFeedArtifactFile(res, filePath)) return;
+
+        if (serveFromDb) {
+            const shards = await StaticFeedService.generateCategoryShards();
+            const shard = shards.find((entry) => entry.id === id);
+            if (shard) {
+                res.setHeader('Cache-Control', FEED_ARTIFACT_CACHE_CONTROL);
+                return res.json(shard.data);
+            }
         }
+
         res.status(404).json({ error: { message: 'Category shard not found' } });
     } catch (error) {
         logger.error('Failed to serve category shard', error);
@@ -631,6 +836,11 @@ if (isAdminMode) {
 // ============================================================================
 // Error Handling
 // ============================================================================
+
+// Explicit API and feed routes must win over static files. A checked-out feed
+// snapshot must not shadow FEED_SOURCE=db and return stale bytes before the
+// source-aware handlers above can run.
+app.use(express.static('public'));
 
 // 404 handler
 app.use((req, res) => {

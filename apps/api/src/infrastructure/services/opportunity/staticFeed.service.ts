@@ -490,8 +490,10 @@ export class StaticFeedService {
                 }
                 return opp.driveDetails == null;
             };
-            // Filter Active/Unexpired Opportunities
-            const activeMapped = allMapped.filter(isBaseLive);
+            // Apply lifecycle checks to raw Prisma rows before mapping: mapFeedOpportunities
+            // drops those fields from the client payload, which would make expired rows look live.
+            const liveOpportunityIds = new Set(allOpportunities.filter(isBaseLive).map((opp) => opp.id));
+            const activeMapped = allMapped.filter((opp) => liveOpportunityIds.has(opp.id as string));
             const indexMapped = activeMapped.filter(hasLiveDrive);
 
             // One canonical company per domain, shared by the sitemap,
@@ -588,6 +590,8 @@ export class StaticFeedService {
                 const exp = new Date(opp.expiresAt as string | Date);
                 return exp <= now && exp > fortyFiveDaysAgo;
             });
+            const renderableIds = new Set([...activeMapped, ...expiredMapped].map((opp) => opp.id as string));
+            const renderableMapped = allMapped.filter((opp) => renderableIds.has(opp.id as string));
             if (target === 'all' || target === 'expired' || target === 'bootstrap' || target === 'govt') {
                 const expired = {
                     opportunities: expiredMapped,
@@ -642,7 +646,7 @@ export class StaticFeedService {
                 // the sitemap advertised hundreds of jobs the live feed had
                 // already dropped. Their job shards were then garbage
                 // collected, and every one of those URLs answered 500.
-                const sitemapOpps = [...activeMapped, ...expiredMapped] as Record<string, unknown>[];
+                const sitemapOpps = renderableMapped as Record<string, unknown>[];
                 const companiesCounts = new Map<string, number>();
                 sitemapOpps.forEach((opp) => {
                     if (opp.company && typeof opp.company === 'string') {
@@ -1084,16 +1088,20 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
             }
 
             // 14. Upload companies metadata (root companies.json)
+            //
+            // Deliberately NOT wrapped in try/catch. Swallowing this failure let
+            // the rebuild carry on to step 16 and bump the feed version, which
+            // promoted a snapshot whose companies.json still held the previous
+            // contents — and the new `?v=` URL then cached that mismatch for an
+            // hour. A failed metadata upload has to fail the rebuild before the
+            // version moves; the caller (and the admin button) already treat a
+            // thrown refresh as a failed regeneration.
             if (target === 'all' || target === 'companies' || target === 'bootstrap') {
-                try {
-                    const companiesMetadata = await FeedGeneratorService.generateCompaniesMetadata();
-                    const companiesBody = JSON.stringify(companiesMetadata);
-                    StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'companies.json'), companiesBody);
-                    await StorageService.uploadToR2('companies.json', companiesBody, 'application/json');
-                    logger.info(`[StaticFeedService] Uploaded companies.json (${companiesMetadata.length} companies)`);
-                } catch (e) {
-                    logger.error('[StaticFeedService] Failed to upload companies.json', e);
-                }
+                const companiesMetadata = await FeedGeneratorService.generateCompaniesMetadata();
+                const companiesBody = JSON.stringify(companiesMetadata);
+                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'companies.json'), companiesBody);
+                await StorageService.uploadToR2('companies.json', companiesBody, 'application/json');
+                logger.info(`[StaticFeedService] Uploaded companies.json (${companiesMetadata.length} companies)`);
             }
 
                 // 15. Group & Upload Company Shards sequentially (garbage collect references)
@@ -1194,7 +1202,7 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
             // rebuild that writes them.
             if (target === 'all' || target === 'bootstrap' || target === 'jobs') {
                 StorageService.ensureDirectoryExists(this.JOBS_DIR);
-                for (const opp of allMapped) {
+                for (const opp of renderableMapped) {
                     const jobBody = JSON.stringify(opp);
                     const id = (opp as { id?: string }).id;
                     if (id) {
@@ -1211,8 +1219,8 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 // RAM/network limits: an unthrottled await loop over every job
                 // hammers R2 and trips its rate limiter.
                 const BATCH_SIZE = 5;
-                for (let i = 0; i < allMapped.length; i += BATCH_SIZE) {
-                    const chunk = allMapped.slice(i, i + BATCH_SIZE);
+                for (let i = 0; i < renderableMapped.length; i += BATCH_SIZE) {
+                    const chunk = renderableMapped.slice(i, i + BATCH_SIZE);
                     await Promise.all(
                         chunk.map(opp => {
                             const id = (opp as { id?: string }).id;
@@ -1280,11 +1288,10 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
     /**
      * Delete the per-job shards of jobs that are no longer in the feed.
      *
-     * `allMapped` only holds PUBLISHED, not-deleted rows, so a job that was
-     * archived or deleted is missing from the uploaded set and its shard is
-     * collected here. Without this the CDN keeps serving `jobs/<id>.json` for
-     * a listing that no longer exists, and the web resolves /jobs/[slug] from
-     * it — a deleted job with a live detail page.
+     * `renderableMapped` holds live rows and the 45-day expired-page grace set.
+     * A swept, otherwise inactive, or older listing is missing from the uploaded
+     * set and its shard is collected here. Without this the CDN keeps serving
+     * `jobs/<id>.json` for a listing the web no longer considers renderable.
      *
      * Guards, in the same spirit as the company shard GC above:
      *   - a truncated bucket listing means the bucket could not be fully

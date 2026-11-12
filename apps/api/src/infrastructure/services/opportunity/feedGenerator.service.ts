@@ -547,10 +547,19 @@ export class FeedGeneratorService {
 
     public static async generateCategoryShards() {
         return this.withDbRetry(async () => {
-            const categories = [
+            const categories: Array<{
+                id: string;
+                where: Prisma.OpportunityWhereInput;
+                orderBy?: Prisma.OpportunityOrderByWithRelationInput;
+                walkInsOnly?: boolean;
+            }> = [
                 { id: 'remote', where: { workMode: 'REMOTE' } },
-                { id: 'internships', where: { type: 'INTERNSHIP' } },
-                { id: 'walkins', where: { type: 'WALKIN' } },
+                { id: 'internships', where: { employmentTypes: { has: EmploymentType.INTERNSHIP } } },
+                {
+                    id: 'walkins',
+                    where: { OR: [{ recruitmentMethod: RecruitmentMethod.WALK_IN }, { driveDetails: { isNot: null } }] },
+                    walkInsOnly: true,
+                },
                 { id: 'freshers', where: { experienceMin: { lte: 0 } } },
                 { id: '2026', where: { allowedPassoutYears: { has: 2026 } } },
                 { id: 'trending', where: {}, orderBy: { trendingScore: 'desc' } },
@@ -560,11 +569,13 @@ export class FeedGeneratorService {
             for (const cat of categories) {
                 const opportunities = await prisma.opportunity.findMany({
                     where: {
-                        ...cat.where,
-                        status: OpportunityStatus.PUBLISHED,
-                        deletedAt: null
-                    } as Prisma.OpportunityWhereInput,
-                    orderBy: (cat as { orderBy?: Prisma.OpportunityOrderByWithRelationInput }).orderBy || { postedAt: 'desc' },
+                        AND: [
+                            this.baseLiveWhere(),
+                            cat.where,
+                            ...(cat.walkInsOnly ? [this.liveDriveWhere()] : []),
+                        ],
+                    },
+                    orderBy: cat.orderBy || { postedAt: 'desc' },
                     take: 100,
                     select: {
                         id: true,
