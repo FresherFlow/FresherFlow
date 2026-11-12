@@ -104,6 +104,7 @@ const mcpListingLimiter = createRateLimiter({
     max: 60,
     message: 'Too many listing writes. Please slow down.',
     keyPrefix: 'mcp_listing',
+    keyGenerator: (req) => req.userId ?? req.ip ?? 'unknown-ip',
 });
 
 const mcpReadLimiter = createRateLimiter({
@@ -111,6 +112,7 @@ const mcpReadLimiter = createRateLimiter({
     max: 120,
     message: 'Too many listing reads. Please slow down.',
     keyPrefix: 'mcp_listing_read',
+    keyGenerator: (req) => req.userId ?? req.ip ?? 'unknown-ip',
 });
 
 /** How much of a listing an agent actually needs to build the next call. */

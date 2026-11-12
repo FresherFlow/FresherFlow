@@ -37,9 +37,13 @@ const router = Router();
 
 const identityLimiter = createRateLimiter({
     windowMs: 60 * 1000,
-    max: 60,
+    // Identity is revalidated before every stateless MCP request so expired
+    // tokens and RBAC changes take effect immediately. The tool-specific read,
+    // write and review limits below remain the tighter usage budgets.
+    max: 180,
     message: 'Too many MCP requests. Please slow down.',
     keyPrefix: 'mcp_identity',
+    keyGenerator: (req) => req.userId ?? req.ip ?? 'unknown-ip',
 });
 
 const reviewLimiter = createRateLimiter({
@@ -47,6 +51,7 @@ const reviewLimiter = createRateLimiter({
     max: 30,
     message: 'Too many moderation actions. Please slow down.',
     keyPrefix: 'mcp_review',
+    keyGenerator: (req) => req.userId ?? req.ip ?? 'unknown-ip',
 });
 
 const asyncHandler =
