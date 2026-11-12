@@ -1,5 +1,4 @@
 import { whoami } from './api/identity.js';
-import { logger } from './logger.js';
 
 /**
  * Who this MCP connection is acting as, and what that account may do.
@@ -51,36 +50,6 @@ const NO_PRIVILEGES: McpCapabilities = {
     editFullListing: false,
 };
 
-/**
- * Short-lived cache of resolved identities.
- *
- * Every MCP request builds a fresh server, which means one `whoami` round-trip
- * per request. A minute of caching removes the cost of a client that lists its
- * tools and then makes a burst of calls, while keeping a role change visible
- * quickly. Keyed by the token itself (never logged), and bounded so a long-lived
- * process cannot accumulate tokens.
- */
-const CACHE_TTL_MS = 60 * 1000;
-const CACHE_MAX_ENTRIES = 500;
-const identityCache = new Map<string, { identity: ConnectionIdentity; expiresAt: number }>();
-
-function cacheKey(token: string): string {
-    return token;
-}
-
-function pruneCache(now: number): void {
-    for (const [key, entry] of identityCache) {
-        if (entry.expiresAt <= now) identityCache.delete(key);
-    }
-    // A single user with many connections must not evict everyone else, but the
-    // map still has to stay bounded: drop the oldest insertions.
-    while (identityCache.size >= CACHE_MAX_ENTRIES) {
-        const oldest = identityCache.keys().next().value;
-        if (oldest === undefined) break;
-        identityCache.delete(oldest);
-    }
-}
-
 function toIdentity(identity: Awaited<ReturnType<typeof whoami>>): ConnectionIdentity {
     const capabilities = { ...NO_PRIVILEGES, ...identity.capabilities };
     return {
@@ -97,26 +66,13 @@ function toIdentity(identity: Awaited<ReturnType<typeof whoami>>): ConnectionIde
 }
 
 /**
- * Resolve, and cache, the identity behind an access token.
+ * Resolve the current identity for one HTTP request.
  *
  * The caller must already be inside `runWithAccessToken`, because the lookup is
- * an authenticated API call. A failure propagates: the connection cannot be
- * treated as authenticated when its identity cannot be established, and every
- * tool would fail on the same API anyway.
+ * an authenticated API call. Resolving on every request ensures expired tokens,
+ * suspended accounts, and changed RBAC grants take effect before the tool list
+ * is built. A failure propagates; an unverified identity is never assumed.
  */
-export async function resolveConnectionIdentity(token: string): Promise<ConnectionIdentity> {
-    const now = Date.now();
-    const cached = identityCache.get(cacheKey(token));
-    if (cached && cached.expiresAt > now) return cached.identity;
-
-    const identity = toIdentity(await whoami());
-    pruneCache(now);
-    identityCache.set(cacheKey(token), { identity, expiresAt: now + CACHE_TTL_MS });
-    logger.info('Resolved MCP identity', { userId: identity.userId, role: identity.role });
-    return identity;
-}
-
-/** Test-only: clears the identity cache. */
-export function clearIdentityCacheForTests(): void {
-    identityCache.clear();
+export async function resolveConnectionIdentity(): Promise<ConnectionIdentity> {
+    return toIdentity(await whoami());
 }

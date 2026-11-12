@@ -1,8 +1,8 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { createFresherFlowMcpServer } from './server.js';
 import { resolveConnectionIdentity } from './identity.js';
-import { bearerFromHeaders, runWithAccessToken } from './http/token.js';
-import { setApiBaseUrl } from './http/client.js';
+import { bearerFromHeaders, runWithAccessToken, runWithLocalDevScope } from './http/token.js';
+import { ApiHttpError, setApiBaseUrl } from './http/client.js';
 import { logger } from './logger.js';
 
 /**
@@ -16,13 +16,23 @@ import { logger } from './logger.js';
  * tier and the Worker holds no service key: a request without a bearer is
  * answered with a 401 challenge pointing at the API's protected-resource
  * metadata, which is how ChatGPT/Claude start the sign-in flow.
+ *
+ * The single exception is the dev-only `MCP_AUTH_MODE=local_noauth`, which
+ * skips the challenge so a local client can reach `http://localhost:8787/mcp`
+ * without an OAuth round trip. Anything other than that exact value — including
+ * an unset variable on production — is the OAuth path above, unchanged.
  */
 
 interface Env {
   FRESHERFLOW_API_URL: string;
   PUBLIC_SITE_URL: string;
   MCP_PUBLIC_URL: string;
+  /** Only ever `local_noauth` (set by the dev script); absent in production. */
+  MCP_AUTH_MODE?: string;
 }
+
+/** The one value that disables OAuth. Anything else is the normal auth path. */
+const LOCAL_NOAUTH = 'local_noauth';
 
 const MCP_CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, mcp-session-id, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
@@ -32,15 +42,31 @@ const MCP_CORS_HEADERS = {
   'Access-Control-Max-Age': '86400',
 } as const;
 
-// Best-effort per-isolate limiter. Workers scale out, so this bounds abuse of a
-// single isolate rather than acting as a global quota.
-const RATE_LIMIT = { windowMs: 60_000, max: 60 };
+// Best-effort per-isolate guard. Authoritative quotas live in the API, where
+// they can be enforced across Worker isolates and key writes by user identity.
+const RATE_LIMIT = { windowMs: 60_000, max: 600 };
+const RATE_LIMIT_MAX_KEYS = 2_000;
 const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+let nextRateLimitCleanupAt = 0;
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
+  if (now >= nextRateLimitCleanupAt) {
+    for (const [key, entry] of rateLimitMap) {
+      if (entry.resetAt <= now) rateLimitMap.delete(key);
+    }
+    nextRateLimitCleanupAt = now + RATE_LIMIT.windowMs;
+  }
+
   const entry = rateLimitMap.get(ip);
   if (!entry || entry.resetAt <= now) {
+    // Bound memory use if a high-cardinality source rotates addresses. This is
+    // only a local guard; API rate limits remain the protection at scale.
+    while (rateLimitMap.size >= RATE_LIMIT_MAX_KEYS) {
+      const oldest = rateLimitMap.keys().next().value;
+      if (oldest === undefined) break;
+      rateLimitMap.delete(oldest);
+    }
     rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT.windowMs });
     return true;
   }
@@ -68,9 +94,16 @@ function originOf(value: string | undefined): string {
   const raw = (value ?? '').trim();
   if (!raw) return '';
   try {
-    return new URL(raw).origin;
+    const parsed = new URL(raw);
+    const localHttp = parsed.protocol === 'http:'
+      && (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]');
+    if ((parsed.protocol !== 'https:' && !localHttp)
+      || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+      return '';
+    }
+    return parsed.origin;
   } catch {
-    return raw.replace(/\/+$/, '');
+    return '';
   }
 }
 
@@ -82,6 +115,11 @@ function getUrls(env: Env) {
   };
 }
 
+function configurationError(): Response {
+  logger.error('MCP public origins are missing or invalid');
+  return jsonResponse({ error: 'MCP is not configured' }, 500);
+}
+
 /**
  * The 401 that tells an MCP client where to send the user to sign in.
  *
@@ -91,6 +129,7 @@ function getUrls(env: Env) {
  */
 function unauthorized(env: Env, message: string): Response {
   const { mcpPublicUrl } = getUrls(env);
+  if (!mcpPublicUrl) return configurationError();
   return jsonResponse(
     {
       jsonrpc: '2.0',
@@ -109,15 +148,47 @@ function unauthorized(env: Env, message: string): Response {
 // document served from this origin would have to declare `issuer` as this host,
 // and RFC 8414 §3.3 makes any other value a hard failure (opencode rejects the
 // connection with "Issuer mismatch"). The API publishes that document at its
-// own origin, and `authorization_servers` below points clients there.
+// own origin, `authorization_servers` below points clients there, and a client
+// that asks this origin for it anyway is redirected there
+// (`oauthAsDiscoveryRedirect`).
 function oauthProtectedResourceResponse(env: Env): Response {
   const { apiBaseUrl, mcpPublicUrl, siteUrl } = getUrls(env);
+  if (!apiBaseUrl || !mcpPublicUrl || !siteUrl) return configurationError();
   return jsonResponse({
     resource: `${mcpPublicUrl}/mcp`,
     authorization_servers: [apiBaseUrl],
     scopes_supported: ['mcp'],
     bearer_methods_supported: ['header'],
     resource_documentation: `${siteUrl}/account?tab=connected`,
+  });
+}
+
+/**
+ * Same-origin authorization-server discovery: 307 to the API's own URL.
+ *
+ * A client that looks for `/.well-known/oauth-authorization-server` or
+ * `/.well-known/openid-configuration` on this origin must not get a 404 —
+ * a client stuck on discovery retries the401 forever instead of ever
+ * signing in. The document is never copied here: the API owns it and the
+ * `issuer` inside it, and a copy served from this origin would have to
+ * declare this host as issuer, which RFC 8414 §3.3 rejects. After the
+ * redirect the effective URL is the API's well-known URL — exactly where
+ * the API serves the document — so issuer and metadata URL agree by
+ * construction, and there is no second copy to drift.
+ *
+ * Runs before the config check, like the resource document. Without an API
+ * URL there is nothing to redirect to, so the misconfiguration is reported
+ * as 500 — the endpoint exists, the deployment is broken — never 404.
+ */
+function oauthAsDiscoveryRedirect(env: Env, pathname: string): Response {
+  const { apiBaseUrl } = getUrls(env);
+  if (!apiBaseUrl) {
+    logger.error('FRESHERFLOW_API_URL is not configured');
+    return jsonResponse({ error: 'MCP is not configured' }, 500);
+  }
+  return new Response(null, {
+    status: 307,
+    headers: { ...MCP_CORS_HEADERS, Location: `${apiBaseUrl}${pathname}` },
   });
 }
 
@@ -134,6 +205,10 @@ const handler: ExportedHandler<Env> = {
     if (url.pathname.startsWith('/.well-known/oauth-protected-resource')) {
       return oauthProtectedResourceResponse(env);
     }
+    if (url.pathname === '/.well-known/oauth-authorization-server'
+      || url.pathname === '/.well-known/openid-configuration') {
+      return oauthAsDiscoveryRedirect(env, url.pathname);
+    }
     if (url.pathname === '/health') {
       return jsonResponse({ ok: true, service: 'fresherflow-mcp' });
     }
@@ -142,10 +217,7 @@ const handler: ExportedHandler<Env> = {
     }
 
     const { apiBaseUrl } = getUrls(env);
-    if (!apiBaseUrl) {
-      logger.error('FRESHERFLOW_API_URL is not configured');
-      return jsonResponse({ error: 'MCP is not configured' }, 500);
-    }
+    if (!apiBaseUrl) return configurationError();
     setApiBaseUrl(apiBaseUrl);
 
     const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
@@ -161,7 +233,13 @@ const handler: ExportedHandler<Env> = {
     }
 
     const token = bearerFromHeaders(request.headers);
-    if (!token) {
+    // Dev-only escape hatch: with `MCP_AUTH_MODE=local_noauth` a request with
+    // no bearer proceeds in a local-dev scope instead of being challenged, so
+    // a local client needs no OAuth round trip. A request that did bring a
+    // bearer still runs in the token scope, exactly as in any other mode —
+    // the flag only changes what happens when there is no token.
+    const localDev = !token && env.MCP_AUTH_MODE === LOCAL_NOAUTH;
+    if (!token && !localDev) {
       return unauthorized(
         env,
         'Sign in to FresherFlow to use this MCP server. Connect the server again and approve access.',
@@ -169,11 +247,14 @@ const handler: ExportedHandler<Env> = {
     }
 
     try {
-      return await runWithAccessToken(token, async () => {
-        // Resolving identity inside the token scope means every API call a tool
-        // makes is authenticated as this caller, and cannot observe another
+      const runScoped = (fn: () => Promise<Response>): Promise<Response> =>
+        (token ? runWithAccessToken(token, fn) : runWithLocalDevScope(fn));
+      return await runScoped(async () => {
+        // Resolving identity inside the request scope means every API call a
+        // tool makes is authenticated as this caller (or, in local-dev mode,
+        // marked as such via one header), and cannot observe another
         // request's token.
-        const identity = await resolveConnectionIdentity(token);
+        const identity = await resolveConnectionIdentity();
         const server = createFresherFlowMcpServer(identity);
         const transport = new WebStandardStreamableHTTPServerTransport({
           // Stateless: no session id, no resumability, no Durable Object.
@@ -187,12 +268,22 @@ const handler: ExportedHandler<Env> = {
       });
     } catch (error) {
       logger.error('MCP request failed', { error });
-      const message = error instanceof Error ? error.message : 'Internal server error';
-      const unusable = /signed-in|access token|not active|rejected/i.test(message);
-      if (unusable) {
+      if (error instanceof ApiHttpError && error.status === 401) {
         return unauthorized(
           env,
           'This FresherFlow connection could not confirm the signed-in account. Disconnect and reconnect FresherFlow, then sign in again.',
+        );
+      }
+      if (error instanceof ApiHttpError && error.status === 403) {
+        return jsonResponse(
+          { jsonrpc: '2.0', error: { code: -32003, message: error.message }, id: null },
+          403,
+        );
+      }
+      if (error instanceof ApiHttpError && error.status === 429) {
+        return jsonResponse(
+          { jsonrpc: '2.0', error: { code: -32000, message: 'FresherFlow is rate limiting this request. Please retry shortly.' }, id: null },
+          429,
         );
       }
       return jsonResponse(

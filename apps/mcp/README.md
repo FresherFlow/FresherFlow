@@ -21,7 +21,7 @@ calls one function from `src/api/`.
 | File | Purpose |
 |---|---|
 | `src/worker.ts` | Worker entry: `/health`, the OAuth discovery documents, the 401 challenge, rate limit, and the stateless streamable-HTTP endpoint |
-| `src/identity.ts` | resolves the OAuth caller into `moderator` / `user` plus capabilities, cached for 60s |
+| `src/identity.ts` | resolves the current OAuth caller into `moderator` / `user` plus capabilities on each request |
 | `src/server.ts` | builds a per-connection `McpServer`: role-specific instructions, and only the tools that role may use |
 | `src/http/token.ts` | the per-request access token (AsyncLocalStorage) and bearer parsing |
 | `src/http/client.ts` | the one authenticated `fetch`, plus upstream error mapping and scrubbing |
@@ -107,6 +107,20 @@ The API's `/api/internal/mcp` surface also accepts
 user identity. That path is not reachable through this server, because the
 transport requires a token before any tool runs — and this process never holds
 that secret, so it cannot act as an unattributable identity.
+
+### Local development auth
+
+`pnpm --filter fresherflow-mcp dev` starts the Worker with
+`MCP_AUTH_MODE=local_noauth`, which lets a local client open
+`http://localhost:8787/mcp` with no bearer: instead of the 401 challenge the
+request runs in a local-dev scope and every API call carries
+`x-mcp-local-dev: 1`, so the API resolves a fixed local identity (tools and
+roles stay RBAC-driven). The flag is dev-only — it is passed by the `dev`
+script and never appears in `wrangler.jsonc`, so a production deploy has no
+`MCP_AUTH_MODE` and every request takes the OAuth path unchanged; any value
+other than the exact `local_noauth` also falls back to OAuth, so the default is
+fail-closed. With the flag on, a request that does bring a bearer still runs in
+the normal token scope.
 
 ## Why the tools are shaped this way
 
@@ -206,5 +220,6 @@ match the API's `MCP_PUBLIC_URL` exactly or the two OAuth metadata documents
 disagree and clients refuse the connection.
 
 The transport is stateless — one server and transport per request, JSON
-responses, no session id — which is why this needs no Durable Object. The
-identity cache is a per-isolate optimisation only; nothing outlives a request.
+responses, no session id — which is why this needs no Durable Object. Identity
+is checked on every request, so token expiry, account suspension and RBAC
+changes take effect before the role-filtered tool list is built.

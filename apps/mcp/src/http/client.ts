@@ -1,5 +1,5 @@
 import { logger } from '../logger.js';
-import { currentAccessToken } from './token.js';
+import { currentAccessToken, isLocalDevScope } from './token.js';
 
 /**
  * The one authenticated HTTP client for the FresherFlow API.
@@ -41,7 +41,7 @@ async function toSafeApiError(res: Response): Promise<string> {
     const fallback = `FresherFlow API error (${res.status})`;
     try {
         const contentType = res.headers.get('content-type') ?? '';
-        const text = await res.text();
+        const text = await readBoundedText(res, 16_384);
         if (!text || contentType.includes('text/html') || /^\s*</.test(text)) return fallback;
         const body = JSON.parse(text) as { error?: { message?: unknown }; message?: unknown };
         const raw = body?.error?.message ?? body?.message;
@@ -52,18 +52,79 @@ async function toSafeApiError(res: Response): Promise<string> {
     }
 }
 
+/** Read a response without allowing an upstream body to consume unbounded memory. */
+async function readBoundedText(res: Response, maxBytes: number): Promise<string> {
+    if (!res.body) return '';
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let totalBytes = 0;
+    const chunks: string[] = [];
+    try {
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            totalBytes += value.byteLength;
+            if (totalBytes > maxBytes) {
+                await reader.cancel();
+                throw new Error('FresherFlow API response exceeded the configured size limit');
+            }
+            chunks.push(decoder.decode(value, { stream: true }));
+        }
+        chunks.push(decoder.decode());
+        return chunks.join('');
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+function discardResponseBody(res: Response): void {
+    if (!res.body) return;
+    try {
+        void res.body.cancel().catch(() => {});
+    } catch {
+        // Body cleanup is best-effort; the HTTP status remains authoritative.
+    }
+}
+
+/**
+ * A failure that carries the HTTP status it should be answered with.
+ *
+ * `worker.ts` maps this to a response by `status` — never by message text:
+ * the API's wording is human-readable and changes, and matching on it is what
+ * once turned an inactive account's 403 ("…not active…") into a 401
+ * "reconnect" challenge. Transport failures (unreachable, timeout,
+ * unparseable body) stay plain `Error`s: they have no upstream status and
+ * map to a generic internal error.
+ */
+export class ApiHttpError extends Error {
+    readonly status: number;
+
+    constructor(message: string, status: number) {
+        super(message);
+        this.name = 'ApiHttpError';
+        this.status = status;
+    }
+}
+
 let apiBaseUrl: string;
 
 export function setApiBaseUrl(url: string): void {
-    apiBaseUrl = url.replace(/\/$/, '');
+    const parsed = new URL(url);
+    if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:')
+        || parsed.username || parsed.password || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+        throw new Error('FresherFlow API URL must be a plain HTTP(S) origin');
+    }
+    apiBaseUrl = parsed.origin;
 }
 
 /** One authenticated request. Every API module goes through this. */
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+    if (!apiBaseUrl) throw new Error('FresherFlow API URL is not configured');
     const url = new URL(path, apiBaseUrl);
-    // Defense-in-depth: only allow http(s) to the configured API origin.
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        throw new Error('Unsupported API protocol');
+    // Tool modules pass fixed relative paths; enforce that invariant so a bad
+    // path cannot turn this authenticated client into an arbitrary fetch proxy.
+    if (url.origin !== apiBaseUrl || !path.startsWith('/')) {
+        throw new Error('FresherFlow API requests must stay on the configured origin');
     }
 
     const headers: Record<string, string> = {
@@ -73,13 +134,25 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 
     // The only credential this server ever holds is the caller's own token.
     const callerToken = currentAccessToken();
-    if (!callerToken) {
-        throw new Error(
-            'FresherFlow tools need a signed-in account. Ask the user to connect FresherFlow '
-            + 'and sign in, then retry.',
-        );
+    if (isLocalDevScope()) {
+        // Local-dev no-auth scope (`MCP_AUTH_MODE=local_noauth`): there is no
+        // bearer to send, so the request is marked instead and the API resolves
+        // a fixed local identity for it. The header is meaningless outside the
+        // API's own local-dev gate, and this branch is unreachable unless the
+        // Worker was started in that mode.
+        headers['x-mcp-local-dev'] = '1';
+    } else {
+        if (!callerToken) {
+            // No token in the request scope is a credential problem, not a server
+            // bug: answer with the same 401 challenge as an upstream rejection.
+            throw new ApiHttpError(
+                'FresherFlow tools need a signed-in account. Ask the user to connect FresherFlow '
+                + 'and sign in, then retry.',
+                401,
+            );
+        }
+        headers['Authorization'] = `Bearer ${callerToken}`;
     }
-    headers['Authorization'] = `Bearer ${callerToken}`;
 
     if (init.headers) {
         for (const [key, value] of Object.entries(init.headers as Record<string, string>)) {
@@ -95,38 +168,42 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
             ...init,
             headers,
             signal: controller.signal,
+            redirect: 'error',
         });
-    } catch {
-        logger.error('FresherFlow API unreachable', { path });
+        if (res.status === 404) {
+            discardResponseBody(res);
+            throw new ApiHttpError('The requested FresherFlow API endpoint was not found.', 404);
+        }
+        if (res.status === 401 || res.status === 403) {
+            logger.error('FresherFlow API rejected the caller credentials', { path, status: res.status });
+            // A 403 is an authorization decision, not a broken credential.
+            if (res.status === 403) {
+                throw new ApiHttpError(await toSafeApiError(res), 403);
+            }
+            discardResponseBody(res);
+            throw new ApiHttpError(
+                'FresherFlow rejected this connection\'s access token. Disconnect and reconnect '
+                + 'FresherFlow in your AI client to sign in again.',
+                401,
+            );
+        }
+        if (!res.ok) {
+            logger.error('FresherFlow API request failed', { path, status: res.status });
+            throw new ApiHttpError(await toSafeApiError(res), res.status);
+        }
+        try {
+            const contentType = res.headers.get('content-type') ?? '';
+            if (!contentType.includes('application/json')) throw new Error('Unexpected content type');
+            return JSON.parse(await readBoundedText(res, 5_242_880)) as T;
+        } catch {
+            logger.error('FresherFlow API returned an invalid or oversized JSON response', { path });
+            throw new Error('Unexpected response from the FresherFlow API. Please try again shortly.');
+        }
+    } catch (error) {
+        if (error instanceof ApiHttpError) throw error;
+        logger.error('FresherFlow API unreachable or timed out', { path });
         throw new Error('Cannot reach the FresherFlow API. Please try again shortly.');
     } finally {
         clearTimeout(timeoutId);
-    }
-    if (res.status === 404) {
-        throw new Error('The requested FresherFlow API endpoint was not found.');
-    }
-    if (res.status === 401 || res.status === 403) {
-        logger.error('FresherFlow API rejected the caller credentials', { path, status: res.status });
-        // With a caller token, a 403 is an authorization decision, not a broken
-        // credential: the API is saying which permission is missing. Forward that
-        // explanation — replacing it with "reconnect" would send the user to a
-        // login page that cannot fix a permission problem.
-        if (res.status === 403) {
-            throw new Error(await toSafeApiError(res));
-        }
-        throw new Error(
-            'FresherFlow rejected this connection\'s access token. Disconnect and reconnect '
-            + 'FresherFlow in your AI client to sign in again.',
-        );
-    }
-    if (!res.ok) {
-        logger.error('FresherFlow API request failed', { path, status: res.status });
-        throw new Error(await toSafeApiError(res));
-    }
-    try {
-        return (await res.json()) as T;
-    } catch {
-        logger.error('FresherFlow API returned a non-JSON response', { path });
-        throw new Error('Unexpected response from the FresherFlow API. Please try again shortly.');
     }
 }
