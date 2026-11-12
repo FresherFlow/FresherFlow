@@ -5,6 +5,8 @@ import { logger } from '@fresherflow/utils';
 
 // In-memory fallback store
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const MAX_FALLBACK_RATE_LIMIT_KEYS = 10_000;
+let nextFallbackCleanupAt = 0;
 
 /** Clears the in-memory fallback counters. Test-only helper so suites that make
  *  many writes from one IP do not leak rate-limit state into later cases. */
@@ -49,16 +51,33 @@ export function createRateLimiter(options: RateLimitOptions) {
 
         if (isRedisEnabled()) {
             try {
-                const count = await redis.incr(key);
-                if (count === 1) {
-                    await redis.pexpire(key, options.windowMs);
+                // Keep increment + expiry atomic. If the process dies between
+                // separate INCR/PEXPIRE calls, the bucket could otherwise stay
+                // in Redis forever and permanently reject that identity.
+                let count: number;
+                let ttl: number;
+                if ('eval' in redis) {
+                    const result = await redis.eval(
+                        "local count = redis.call('INCR', KEYS[1]); "
+                        + "local ttl = redis.call('PTTL', KEYS[1]); "
+                        + "if ttl < 0 then redis.call('PEXPIRE', KEYS[1], ARGV[1]); ttl = redis.call('PTTL', KEYS[1]); end; "
+                        + "return { count, ttl };",
+                        1,
+                        key,
+                        options.windowMs,
+                    ) as [number, number];
+                    [count, ttl] = result;
+                } else {
+                    // The lightweight in-memory Redis stand-in used by local
+                    // tests does not implement Lua; preserve its compatible path.
+                    count = await redis.incr(key);
+                    if (count === 1) await redis.pexpire(key, options.windowMs);
+                    ttl = await redis.pttl(key);
                 }
-
-                const ttl = await redis.pttl(key);
 
                 res.setHeader('X-RateLimit-Limit', options.max);
                 res.setHeader('X-RateLimit-Remaining', Math.max(0, options.max - count));
-                res.setHeader('X-RateLimit-Reset', new Date(now + ttl).toUTCString());
+                res.setHeader('X-RateLimit-Reset', new Date(now + Math.max(0, ttl)).toUTCString());
 
                 if (count > options.max) {
                     return next(new AppError(options.message, 429));
@@ -70,9 +89,23 @@ export function createRateLimiter(options: RateLimitOptions) {
         }
 
         // Fallback to in-memory store
+        if (now >= nextFallbackCleanupAt) {
+            for (const [storedKey, storedEntry] of rateLimitStore) {
+                if (storedEntry.resetAt <= now) rateLimitStore.delete(storedKey);
+            }
+            nextFallbackCleanupAt = now + 60_000;
+        }
         const entry = rateLimitStore.get(key);
 
         if (!entry || entry.resetAt < now) {
+            // Redis outages must not turn an attacker-controlled key space into
+            // unbounded process memory. Evict oldest entries at a hard ceiling;
+            // Redis remains the authoritative shared limiter in production.
+            while (rateLimitStore.size >= MAX_FALLBACK_RATE_LIMIT_KEYS) {
+                const oldest = rateLimitStore.keys().next().value;
+                if (oldest === undefined) break;
+                rateLimitStore.delete(oldest);
+            }
             const newEntry = {
                 count: 1,
                 resetAt: now + options.windowMs
@@ -99,11 +132,5 @@ export function createRateLimiter(options: RateLimitOptions) {
 
         next();
 
-        // Background cleanup (very simple)
-        if (rateLimitStore.size > 1000) {
-            for (const [k, v] of rateLimitStore.entries()) {
-                if (v.resetAt < now) rateLimitStore.delete(k);
-            }
-        }
     };
 }

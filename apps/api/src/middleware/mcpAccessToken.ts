@@ -20,8 +20,68 @@ import { verifyAccessToken as verifyMcpAccessToken } from '../infrastructure/ser
  * Order matters: a bearer token is checked as an MCP access token first, and the
  * service key second. A token that is neither is rejected — the surface never
  * falls back to anonymous access.
+ *
+ * One exception exists, and it is fail-closed: `tryLocalDevIdentity` below. It
+ * answers only when every local-dev gate holds, so in any other deployment the
+ * bearer/service-key order above runs exactly as written.
  */
+
+const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
+/**
+ * Resolve a local development identity for the MCP worker running on this
+ * machine, so it can call the API without an OAuth bearer.
+ *
+ * Mirrors open-seo's `AUTH_MODE=local_noauth`: unset means normal auth, and
+ * the mode only ever applies locally. Every gate is required — a missing one
+ * returns null and the caller's existing credential logic runs unchanged:
+ *
+ *   1. the request opted in with `x-mcp-local-dev` (a header an external
+ *      client would not know to send, and which we still do not trust alone);
+ *   2. this is not a production process;
+ *   3. `MCP_AUTH_MODE=local_noauth` was set deliberately;
+ *   4. the peer is loopback — the mode is unreachable off this machine even
+ *      if the flag leaked into another environment;
+ *   5. `MCP_LOCAL_DEV_USER_EMAIL` names an existing ACTIVE account. Unset or
+ *      unresolvable means no identity, so the caller gets the normal 401.
+ *
+ * The environment drives everything: no user or host is hardcoded here.
+ */
+export async function tryLocalDevIdentity(req: Request): Promise<string | null> {
+    if (!req.headers['x-mcp-local-dev']) return null;
+    if (process.env.NODE_ENV === 'production') return null;
+    if (process.env.MCP_AUTH_MODE !== 'local_noauth') return null;
+    const remoteAddress = req.socket.remoteAddress ?? '';
+    if (!LOOPBACK_ADDRESSES.has(remoteAddress)) return null;
+
+    const email = process.env.MCP_LOCAL_DEV_USER_EMAIL?.trim();
+    if (!email) {
+        // Names the missing variable only — never a credential.
+        logger.error('[mcpSurfaceAuth] MCP_AUTH_MODE=local_noauth is set but MCP_LOCAL_DEV_USER_EMAIL is not; local dev identity disabled.');
+        return null;
+    }
+
+    const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true, status: true },
+    });
+    if (!user) return null;
+    if (user.status !== 'ACTIVE') return null;
+    return user.id;
+}
+
 export async function mcpSurfaceAuth(req: Request, res: Response, next: NextFunction) {
+    // Tried before any credential is read: a local dev call carries neither a
+    // bearer nor a service key by design, and the helper's gates decide whether
+    // that is acceptable here at all.
+    const localDevUserId = await tryLocalDevIdentity(req);
+    if (localDevUserId) {
+        req.userId = localDevUserId;
+        req.isAnonymous = false;
+        next();
+        return;
+    }
+
     const header = req.headers.authorization;
     const bearer = header?.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
 
@@ -51,10 +111,13 @@ export async function mcpSurfaceAuth(req: Request, res: Response, next: NextFunc
         }
         // A present-but-unusable bearer token must not silently become a service
         // key attempt; the client needs to know to re-authorize.
-        res.setHeader(
-            'WWW-Authenticate',
-            `Bearer error="invalid_token", resource_metadata="${resourceMetadataUrl(req)}"`,
-        );
+        const metadataUrl = resourceMetadataUrl();
+        if (metadataUrl) {
+            res.setHeader(
+                'WWW-Authenticate',
+                `Bearer error="invalid_token", resource_metadata="${metadataUrl}"`,
+            );
+        }
         next(new AppError('Invalid or expired access token', 401));
         return;
     }
@@ -67,7 +130,10 @@ export async function mcpSurfaceAuth(req: Request, res: Response, next: NextFunc
         return;
     }
     if (!apiKey) {
-        res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl(req)}"`);
+        const metadataUrl = resourceMetadataUrl();
+        if (metadataUrl) {
+            res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${metadataUrl}"`);
+        }
         next(new AppError('Unauthorized: missing credential', 401));
         return;
     }
@@ -86,7 +152,30 @@ export async function mcpSurfaceAuth(req: Request, res: Response, next: NextFunc
  * WWW-Authenticate so a client that has never seen this server can still find
  * the authorization server.
  */
-export function resourceMetadataUrl(req: Request): string {
-    const origin = process.env.MCP_PUBLIC_URL?.replace(/\/+$/, '') || `https://${req.headers.host ?? ''}`;
-    return `${origin}/.well-known/oauth-protected-resource`;
+let reportedInvalidMcpPublicUrl = false;
+
+export function resourceMetadataUrl(): string | null {
+    const raw = process.env.MCP_PUBLIC_URL?.trim();
+    if (!raw) {
+        if (!reportedInvalidMcpPublicUrl) {
+            logger.error('[mcpSurfaceAuth] MCP_PUBLIC_URL is missing; OAuth metadata challenge cannot be advertised.');
+            reportedInvalidMcpPublicUrl = true;
+        }
+        return null;
+    }
+
+    try {
+        const parsed = new URL(raw);
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password
+            || parsed.pathname !== '/' || parsed.search || parsed.hash) {
+            throw new Error('MCP_PUBLIC_URL must be an HTTPS origin');
+        }
+        return `${parsed.origin}/.well-known/oauth-protected-resource`;
+    } catch {
+        if (!reportedInvalidMcpPublicUrl) {
+            logger.error('[mcpSurfaceAuth] MCP_PUBLIC_URL is invalid; OAuth metadata challenge cannot be advertised.');
+            reportedInvalidMcpPublicUrl = true;
+        }
+        return null;
+    }
 }
