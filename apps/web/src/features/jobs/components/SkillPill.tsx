@@ -31,7 +31,6 @@ function normalizeSkill(skill: string) {
   return lower.replace(/[^a-z0-9]/g, '');
 }
 
-import { HashtagIcon } from '@heroicons/react/24/outline';
 
 export function useSkillIcon(skill: string) {
   const [iconName, setIconName] = useState<string | null>(null);
@@ -95,7 +94,10 @@ function SkillIconView({
   }
 
   if (!iconName) {
-    return <HashtagIcon className={cn("text-muted-foreground", className)} aria-hidden="true" />;
+    // No brand mark for this skill: show the word on its own. The old fallback
+    // was a `#` glyph, which read as part of the skill's name ("# Data
+    // analysis") on every chip in the detail pane.
+    return null;
   }
   
   return <Icon icon={iconName} className={className} />;

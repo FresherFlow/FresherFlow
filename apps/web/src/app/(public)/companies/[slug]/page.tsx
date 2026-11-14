@@ -493,7 +493,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
                 <div className="flex shrink-0 items-center gap-2">
                     {safePortalUrl && (
-                        <BrandButton asChild variant="outline" size="sm">
+                        <BrandButton asChild variant="outline" size="md">
                             <a href={safePortalUrl} target="_blank" rel="noopener noreferrer">
                                 Careers page
                                 <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />

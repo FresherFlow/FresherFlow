@@ -59,7 +59,9 @@ export default function CompanyFollowButton({ companySlug }: Props) {
             // next to the solid-outline Careers page one.
             disabled={isUpdating}
             variant={isFollowing ? 'selected' : 'outline'}
-            size="sm"
+            // Same height as the "Careers page" button beside it and as the job
+            // page's action row: one control height across the two pages.
+            size="md"
             className="shrink-0"
         >
             {/* `gap-2` and a 14px icon to match `BrandButton`'s own icon rhythm,

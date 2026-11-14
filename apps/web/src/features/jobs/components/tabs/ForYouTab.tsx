@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useFeedHeader } from '@/lib/providers/FeedHeaderProvider';
 import { useOpportunitiesFeed } from '@/features/jobs/hooks/useOpportunitiesFeed';
 import { JobCardResponsive } from '@/features/jobs/components/JobCard';
-import { OpportunityRow } from '@/features/jobs/components/OpportunityRow';
+import { JobRow } from '@/features/jobs/components/JobCard';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
@@ -26,7 +26,7 @@ import { EmptyState } from '@/ui/EmptyState';
  * not-eligible roles sink to the bottom, newer listings break ties. Hydrates
  * from the same CDN feed as everything else — no separate server cache.
  *
- * Desktop renders the same `OpportunityRow` the Split view sidebar uses, a page
+ * Desktop renders the same `JobRow` the jobs feed uses, a page
  * at a time. It used to render every ranked match at once as a full card tree,
  * which is the same cost the List view was paying (hidden measurement strip,
  * ResizeObserver, a layout pass per card, an icon load per skill) multiplied by
@@ -171,9 +171,9 @@ export default function ForYouTab() {
                                 </div>
                             )}
                             {isRowLayout === true ? (
-                                <OpportunityRow
+                                <JobRow
                                     opp={opp}
-                                    layout="wide"
+                                    layout="list"
                                     isSaved={opp.isSaved || false}
                                     onToggleSave={() => toggleSave(opp.id)}
                                     onClick={() => router.push(getOpportunityPathFromItem(opp))}

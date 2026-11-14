@@ -34,7 +34,7 @@ const MD_MIN_WIDTH = '(min-width: 48rem)';
  * ResizeObservers and measurement strips in AutoFitBadges, two rounds of skill
  * icon loads, two saved/tracker subscriptions. On a long feed that is what made
  * the List view crawl while Split view — which renders a single hook-less
- * `OpportunityRow` per row — stayed smooth.
+ * `JobRow` per row — stayed smooth.
  *
  * The breakpoint is not known during SSR, so the first client render still emits
  * both (matching the server HTML); once mounted, the variant CSS would have

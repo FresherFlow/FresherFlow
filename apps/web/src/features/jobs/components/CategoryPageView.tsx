@@ -1,6 +1,7 @@
 /* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 import { cn } from '@fresherflow/ui/utils/cn';
 import { useMemo, useEffect, useState, useCallback, Suspense, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
 import { useFeedHeader } from '@/lib/providers/FeedHeaderProvider';
 import Link from 'next/link';
@@ -12,7 +13,7 @@ import dynamic from 'next/dynamic';
 
 const OpportunityDetailPane = dynamic(() => import('./OpportunityDetailPane').then(m => m.OpportunityDetailPane));
 import { JobCardResponsive } from '@/features/jobs/components/JobCard';
-import { OpportunityRow } from '@/features/jobs/components/OpportunityRow';
+import { JobRow } from '@/features/jobs/components/JobCard';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
@@ -419,24 +420,70 @@ export function CategoryPageView({
         };
     }, []);
     const [hoveredOppId, setHoveredOppId] = useState<string | null>(null);
-    // Sliding hover highlight geometry — glides between rows instead of snapping.
-    const [hoverRect, setHoverRect] = useState<{ top: number; height: number } | null>(null);
     const [mobileMapView, setMobileMapView] = useState(false);
     useEffect(() => {
         const stored = localStorage.getItem('ff:showDetail');
         if (stored === 'true') setShowDetail(true);
     }, []);
-    const toggleShowDetail = useCallback(() => {
-        setShowDetail(prev => {
-            const next = !prev;
+    /**
+     * List ↔ Split.
+     *
+     * This is a layout change, not a state change: the whole feed reflows from
+     * a centred reading column to a two-pane workspace. Animating that with CSS
+     * transitions means re-laying out every mounted row on every frame, which
+     * is why it used to stutter. Instead the swap happens in one synchronous
+     * commit and the browser's View Transition API animates between a snapshot
+     * of the old layout and a snapshot of the new one — compositor work only.
+     *
+     * Falls back to an instant switch where the API or the user's motion
+     * preference says no; a snap is honest, a stutter is not.
+     */
+    const applyShowDetail = useCallback((next: boolean) => {
+        const persist = () => {
             localStorage.setItem('ff:showDetail', String(next));
             if (typeof document !== 'undefined') {
                 document.documentElement.setAttribute('data-show-detail', String(next));
             }
             if (!next) handleCloseOpportunityPane();
-            return next;
-        });
-    }, [handleCloseOpportunityPane]);
+        };
+        const commit = () => {
+            flushSync(() => {
+                setShowDetail(next);
+                // Opening Split with nothing selected used to show an empty pane
+                // asking the reader to pick a job they had not been shown yet.
+                // Open the first one instead — the list still decides what is
+                // available, and clicking any other row changes the selection.
+                if (next && !selectedOpp && visibleOpps.length > 0) {
+                    handleSelectOpportunity(visibleOpps[0]);
+                }
+            });
+            persist();
+        };
+        if (typeof document === 'undefined') return;
+
+        const doc = document as Document & {
+            startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+        };
+        const prefersReducedMotion =
+            typeof window !== 'undefined' &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (typeof doc.startViewTransition !== 'function' || prefersReducedMotion) {
+            commit();
+            return;
+        }
+        /* Mark the switch so the transition CSS only applies here. Without it
+           the detail pane kept a permanent `view-transition-name`, and since
+           the theme switcher runs its own view transition, that one box
+           animated separately from the page every time the theme changed. */
+        const root = doc.documentElement;
+        root.setAttribute('data-ff-view-switch', '');
+        const transition = doc.startViewTransition(commit);
+        void transition.finished.finally(() => root.removeAttribute('data-ff-view-switch'));
+    }, [handleCloseOpportunityPane, handleSelectOpportunity, selectedOpp, visibleOpps]);
+
+    const toggleShowDetail = useCallback(() => {
+        applyShowDetail(!showDetail);
+    }, [applyShowDetail, showDetail]);
 
     // Manual filters + search — what the save-this-search nudge reacts to.
     const activeFilterTally = useMemo(
@@ -863,7 +910,7 @@ export function CategoryPageView({
             // isDesktop is null on the server AND on the client's first render
             // (viewport can't be known during SSR). Without this gate the feed
             // branch below evaluates desktopRows=false and paints the MOBILE
-            // card UI for one frame, then swaps to OpportunityRow when the
+            // card UI for one frame, then swaps to JobRow when the
             // effect sets isDesktop — a visible flash of the wrong layout on
             // every desktop reload. Holding the skeleton until the viewport is
             // known matches the SSR HTML, so nothing re-flashes either way.
@@ -873,7 +920,7 @@ export function CategoryPageView({
                         {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant={isDesktop === false ? 'compact' : 'wide'} />)}
                     </div>
                 ) : (
-                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:ff-detail-split pt-3.5 lg:pt-0 lg:gap-0 lg:h-full lg:min-h-0">
+                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:ff-feed-cols-split pt-3.5 lg:pt-0 lg:gap-0 lg:h-full lg:min-h-0">
                         <div className="min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:px-6">
                             <div className="grid grid-cols-1 gap-4 md:gap-6">
                                 {[1,2,3,4,5].map(i => <SkeletonJobCard key={i} variant="compact" />)}
@@ -946,11 +993,19 @@ export function CategoryPageView({
                 </div>
             ) : (
                 // ── Flat grid (filtered by phase / search) ─────────────────────
+                /* One shell for both views, so switching only moves the column
+                   boundary: list = `100% 0%`, split = `45% 55%`. Both are
+                   percentage tracks, which is the only shape grid can
+                   interpolate, so the pane eases open instead of snapping. */
                 <div className={cn(
-                    "w-full grid gap-2 items-start",
+                    'w-full mx-auto grid items-start',
+                    // List is a reading column; split is the full page box. The
+                    // switch between them is animated by the view transition in
+                    // `applyShowDetail`, not by a CSS transition here — see the
+                    // note there.
                     (type !== 'GOVERNMENT' && showDetail)
-                        ? "grid-cols-1 lg:ff-detail-split lg:gap-0 lg:h-full lg:min-h-0 lg:bg-card lg:border lg:border-border/50 lg:rounded-2xl lg:overflow-hidden lg:shadow-sm [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:ff-reading-col [:root[data-show-detail='false']_&]:mx-auto [:root[data-show-detail='false']_&]:lg:bg-transparent [:root[data-show-detail='false']_&]:lg:border-0 [:root[data-show-detail='false']_&]:lg:shadow-none"
-                        : "grid-cols-1 ff-reading-col mx-auto"
+                        ? 'grid-cols-1 lg:ff-feed-cols-split lg:max-w-7xl lg:gap-0 lg:h-full lg:min-h-0 lg:bg-card lg:border lg:border-border/60 lg:rounded-xl lg:overflow-hidden'
+                        : 'grid-cols-1 lg:ff-feed-cols-list lg:ff-reading-col'
                 )}>
                     {/* Left Column: list grid */}
                     <div
@@ -958,27 +1013,29 @@ export function CategoryPageView({
                         ref={gridContainerRef}
                         onScroll={handleScroll}
                         className={cn(
-                            "min-w-0 pt-3.5",
-                            type !== 'GOVERNMENT' && showDetail && "lg:pt-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:px-6 [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible [:root[data-show-detail='false']_&]:lg:px-0"
+                            'min-w-0 pt-3',
+                            type !== 'GOVERNMENT' && showDetail && 'lg:pt-0 lg:h-full lg:min-h-0 lg:overflow-y-auto'
                         )}
                     >
                         <div className={cn(
-                            "grid grid-cols-1 gap-3",
-                            desktopRows && !showDetail && "gap-0 divide-y divide-border/60",
-                            type !== 'GOVERNMENT' && showDetail && "gap-2 relative lg:gap-0 lg:divide-y lg:divide-border"
+                            // Desktop: one straight, connected stack. Rows never
+                            // draw their own border or radius, so the hairlines
+                            // run edge to edge and the outlines line up.
+                            'grid grid-cols-1',
+                            desktopRows
+                                ? 'divide-y divide-border/60'
+                                : 'gap-3',
+                            desktopRows && !showDetail && 'lg:rounded-xl lg:border lg:border-border/60 lg:bg-card lg:overflow-hidden',
+                            desktopRows && showDetail && 'lg:divide-border',
+                            !desktopRows && 'lg:pt-0',
                         )}>
-                            {(type !== 'GOVERNMENT' && showDetail) && (
-                                <div
-                                    aria-hidden
-                                    className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden bg-muted/40 opacity-0 ff-pane-transition duration-200 ease-out lg:block"
-                                    style={{
-                                        top: hoverRect?.top ?? 0,
-                                        height: hoverRect?.height ?? 0,
-                                        opacity: hoverRect && hoveredOppId !== selectedOpp?.id ? 1 : 0,
-                                    }}
-                                />
-                            )}
-                            {visibleOpps.map((opp, index) => (
+                            {/* Paged, not the whole feed. Every row that is
+                                mounted re-renders when the view switches, so
+                                rendering all 581 made List ↔ Split freeze the
+                                tab. `visibleCount` was already wired to the
+                                scroll sentinel below — it just was not applied
+                                to the list. */}
+                            {visibleOpps.slice(0, visibleCount).map((opp, index) => (
                                 // One row implementation for the whole desktop
                                 // feed — List and Split render the same thing.
                                 //
@@ -996,24 +1053,18 @@ export function CategoryPageView({
                                 // split leaks into phone widths where its detail
                                 // column cannot display. Mobile is cards, always.
                                 desktopRows ? (
-                                    <OpportunityRow
+                                    <JobRow
                                         key={opp.id}
                                         opp={opp}
-                                        // Split = narrow sidebar column; List = full-width desktop rows.
-                                        layout={showDetail ? 'stacked' : 'wide'}
+                                        // Split = the feed's sidebar column; List = the full-width
+                                        // desktop list. One row component, two densities.
+                                        layout={showDetail ? 'split' : 'list'}
                                         isSaved={isJobSaved(opp)}
                                         isApplied={isJobApplied(opp)}
                                         onToggleSave={() => toggleSave(opp.id)}
                                         isSelected={Boolean(showDetail && selectedOpp && opp.id === selectedOpp.id)}
-                                        onMouseEnter={showDetail ? (e) => {
-                                            const el = e.currentTarget as HTMLElement;
-                                            setHoverRect({ top: el.offsetTop, height: el.offsetHeight });
-                                            setHoveredOppId(opp.id);
-                                        } : undefined}
-                                        onMouseLeave={showDetail ? () => {
-                                            setHoveredOppId(null);
-                                            setHoverRect(null);
-                                        } : undefined}
+                                        onMouseEnter={showDetail ? () => setHoveredOppId(opp.id) : undefined}
+                                        onMouseLeave={showDetail ? () => setHoveredOppId(null) : undefined}
                                         onClick={() => {
                                             // Split selects into its pane; List
                                             // opens the job page. One paradigm
@@ -1069,7 +1120,10 @@ priority={index < 4}
                             </div>
                         )}
                         
-                        {visibleOpps.length > 0 && type !== 'GOVERNMENT' && (
+                        {/* List only. Inside the split sidebar this block sat under
+                            the last row of a fixed-height pane, so it read as a
+                            gap between the feed and a stray chip cloud. */}
+                        {visibleOpps.length > 0 && type !== 'GOVERNMENT' && !showDetail && (
                             <RelatedSearches 
                                 opportunities={opportunities} 
                                 search={search} 
@@ -1087,13 +1141,16 @@ priority={index < 4}
                             </div>
                         )}
                         
-                        {/* Spacer so the last card doesn't stick to bottom */}
-                        <div className="h-16 md:h-20 shrink-0" />
+                        {/* Spacer so the last card doesn't stick to bottom.
+                            List only — the split pane is a fixed-height
+                            scroller, so the spacer was just dead space under
+                            the last row. */}
+                        {!showDetail && <div className="h-16 md:h-20 shrink-0" />}
                     </div>
 
                     {/* Right Column: Map for Walk-ins / Detail Panel for Jobs (desktop) */}
                     {type !== 'GOVERNMENT' && showDetail && (
-                        <div className="hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 lg:mt-0 lg:border-0 lg:border-l lg:rounded-none lg:shadow-none [:root[data-show-detail='false']_&]:!hidden">
+                        <div className="ff-view-detail hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 lg:mt-0 lg:border-0 lg:border-l lg:rounded-none lg:shadow-none">
                             {type === 'WALKIN' ? (
                                 <WalkinMapPane
                                     opportunity={selectedOpp}
@@ -1340,7 +1397,7 @@ function RelatedSearches({
 
     return (
         <div className="pt-8 pb-8 border-t border-border/50 mt-8 mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground mb-4">People also searched</h3>
+            <h2 className="text-sm font-medium text-muted-foreground mb-4">People also searched</h2>
             <div className="flex flex-wrap gap-2">
                 {relatedTerms.map((term) => (
                     <BrandButton

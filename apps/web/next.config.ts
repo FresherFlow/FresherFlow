@@ -95,10 +95,10 @@ if (IS_PRODUCTION && !PUBLIC_API_ORIGIN) {
     + "Set NEXT_PUBLIC_API_URL in the deployment environment."
   );
 }
-const ADMIN_HOST = resolveHost(
-  process.env.ADMIN_WEB_HOST,
-  IS_PRODUCTION ? "" : "localhost"
-);
+// No `localhost` dev fallback: this host only gates the blanket noindex rule
+// in `headers()`, which must apply only when ADMIN_WEB_HOST is explicitly
+// configured. See the comment at that rule.
+const ADMIN_HOST = resolveHost(process.env.ADMIN_WEB_HOST, "");
 /**
  * The app origin the browser bundle gets, read from the environment and never
  * hardcoded. It is the public site origin: there is no separate `app.` host.
@@ -212,6 +212,12 @@ const nextConfig: NextConfig = {
     ];
 
     return [
+      // Host-based blanket noindex, only when ADMIN_WEB_HOST is explicitly
+      // configured. The dev `localhost` fallback was dropped on purpose: a
+      // crawler can never reach a developer's localhost (a tunneled dev server
+      // presents a different Host header anyway), so the rule protected nothing
+      // in dev — it only stamped every local page with `noindex` and failed
+      // local Lighthouse/SEO audits ("Page is blocked from indexing").
       ...(ADMIN_HOST
         ? [{
             source: "/:path*",

@@ -1,9 +1,0 @@
-# *
-User-agent: *
-Allow: /
-
-# Host
-Host: https://fresherflow.in
-
-# Sitemaps
-Sitemap: https://fresherflow.in/sitemap.xml

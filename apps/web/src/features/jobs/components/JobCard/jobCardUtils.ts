@@ -149,16 +149,16 @@ export function reorderSkillsBySearch(skills: string[] = [], searchQuery?: strin
 export function getPostedLabel(job: Opportunity): string | null {
     const postedAt = job.postedAt ? new Date(job.postedAt) : null;
     if (!postedAt || Number.isNaN(postedAt.getTime())) return null;
-    const days = Math.max(0, Math.floor((Date.now() - postedAt.getTime()) / (24 * 60 * 60 * 1000)));
-    if (days === 0) return 'Today';
-    if (days === 1) return '1 day ago';
-    // Past a week the day count stops informing anyone, and a listing that was
-    // published a year ago reading "412 days ago" looks current. Switch to the
-    // month it was posted instead.
-    if (days >= 7) {
-        return postedAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-    }
-    return `${days} days ago`;
+    // The date the listing was posted, as a date. Not "Nov 2026" (which hid
+    // the day), not "last week" (which is a guess rounded from it) — the same
+    // format the detail pane prints, so the row and the page agree.
+    // A day is exact at any distance; a relative label is only exact today.
+    const sameYear = postedAt.getFullYear() === new Date().getFullYear();
+    return postedAt.toLocaleDateString('en-GB',
+        sameYear
+            ? { day: 'numeric', month: 'short' }
+            : { day: 'numeric', month: 'short', year: 'numeric' },
+    );
 }
 
 export function isFreshlyPosted(job: Opportunity): boolean {

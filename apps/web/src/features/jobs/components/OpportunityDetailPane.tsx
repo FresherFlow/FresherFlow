@@ -6,9 +6,9 @@ import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
-import ArrowsPointingOutIcon from '@heroicons/react/24/outline/ArrowsPointingOutIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
+import CheckIcon from '@heroicons/react/24/outline/CheckIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
@@ -21,7 +21,7 @@ import { cn } from '@/ui/cn';
 import Link from 'next/link';
 import { Button } from '@/ui/Button';
 import { Hint } from '@/ui/Tooltip';
-import { CopyButton } from '@/ui/CopyButton';
+import { ApplyAction, ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 
 // Subcomponents from detail page
 import { DetailRequirements } from '@/features/jobs/components/detail/DetailRequirements';
@@ -68,11 +68,18 @@ function getPostedLabel(postedAtVal?: string | Date | null) {
 }
 
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+
+/** Shared geometry for the pane header's icon controls. */
+const PANE_ICON_BUTTON =
+    'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1';
 
 export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = false, allOpps = [] }: OpportunityDetailPaneProps) {
     const { user, profile } = useAuth();
     const scrollRef = useRef<HTMLDivElement>(null);
+    /* Copy keeps its toast — that was never the thing to remove. The icon swap
+       stays as a second, quieter cue and is plain ink: no green fill. */
+    const [justCopied, setJustCopied] = useState(false);
 
     // Reset scroll position when oppId changes instead of completely unmounting the component
     useEffect(() => {
@@ -150,52 +157,51 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         </h2>
                     </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                        type="button"
-                        onClick={() => void handleToggleSave()}
-                        aria-pressed={isOppSaved}
-                        className={cn(
-                            'h-9 px-3.5 rounded-lg border text-sm font-bold flex items-center justify-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                            isOppSaved
-                                ? 'border-border bg-accent text-accent-foreground'
-                                : 'border-border bg-background text-foreground hover:bg-muted'
-                        )}
-                    >
-                        {isOppSaved ? (
-                            <BookmarkSolidIcon className="w-4 h-4" />
-                        ) : (
-                            <BookmarkIcon className="w-4 h-4" />
-                        )}
-                        {isOppSaved ? 'Saved' : 'Save'}
-                    </button>
-                    {showApply && (
+                {/* All actions in one right-hand area: the icon controls as one
+                    group (save, copy, open, close), then Apply last so the
+                    primary action owns the right edge. Apply used to sit in the
+                    middle of the icons, which split the group in two. */}
+                <div className="flex shrink-0 items-center gap-1.5">
+                    <Hint label={isOppSaved ? 'Saved' : 'Save'} side="top" avoidCollisions={false}>
                         <button
                             type="button"
-                            onClick={handleApply}
-                            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm transition motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => void handleToggleSave()}
+                            aria-pressed={isOppSaved}
+                            aria-label={isOppSaved ? 'Saved' : 'Save'}
+                            className={cn(
+                                PANE_ICON_BUTTON,
+                                isOppSaved && 'border-transparent bg-accent text-accent-foreground'
+                            )}
                         >
-                            Apply
-                            <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                            {isOppSaved ? (
+                                <BookmarkSolidIcon className="w-4 h-4" />
+                            ) : (
+                                <BookmarkIcon className="w-4 h-4" />
+                            )}
                         </button>
-                    )}
-                    <Hint label="Copy link" side="top" avoidCollisions={false}>
-                        <CopyButton
-                            variant="ghost"
-                            value={typeof window !== 'undefined' ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : ''}
-                            icon={LinkIcon}
-                            iconClassName="w-4 h-4"
-                            className="hidden sm:flex"
-                        />
+                    </Hint>
+                    <Hint label={justCopied ? 'Copied' : 'Copy link'} side="top" avoidCollisions={false}>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                await handleCopyLink();
+                                setJustCopied(true);
+                                window.setTimeout(() => setJustCopied(false), 1600);
+                            }}
+                            aria-label={justCopied ? 'Copied' : 'Copy link'}
+                            className={cn(PANE_ICON_BUTTON, 'hidden sm:inline-flex')}
+                        >
+                            {justCopied ? <CheckIcon className="w-4 h-4" /> : <LinkIcon className="w-4 h-4" />}
+                        </button>
                     </Hint>
                     <Hint label="Open full page" side="top" avoidCollisions={false}>
                         <Link
                             href={getOpportunityPathFromItem(opp)}
                             target="_blank"
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                             aria-label="Open full page"
+                            className={cn(PANE_ICON_BUTTON, 'hidden sm:inline-flex')}
                         >
-                            <ArrowsPointingOutIcon className="w-5 h-5" />
+                            <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                         </Link>
                     </Hint>
                     <Hint label="Close details panel" side="top" avoidCollisions={false}>
@@ -207,6 +213,14 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             <XMarkIcon className="w-5 h-5" />
                         </button>
                     </Hint>
+                    {showApply && (
+                        <ApplyAction
+                            size="pane"
+                            applyLink={opp.applyLink}
+                            isGovernment={isGovernmentJob}
+                            onApply={handleApply}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -387,20 +401,26 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                 onClick={handleApply}
                                 className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.97] rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition motion-reduce:transform-none"
                             >
-                                {isGovernmentJob ? 'Apply on Official Portal' : 'Apply on Website'}
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                </svg>
+                                {/* Same ATS-aware label and mark as the desktop
+                                    pane: the phone was told "Apply on Website"
+                                    for a Greenhouse posting. */}
+                                <ApplyActionContent
+                                    applyLink={opp.applyLink}
+                                    isGovernment={isGovernmentJob}
+                                    showDestination
+                                    showArrow
+                                />
                             </button>
                         )}
                     </div>
-                    <CopyButton
-                        variant="ghost"
-                        value={typeof window !== 'undefined' ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : ''}
-                        icon={LinkIcon}
-                        iconClassName="w-5 h-5"
-                        className="shrink-0 w-12 h-12 flex items-center justify-center active:scale-[0.97] motion-reduce:transform-none"
-                    />
+                    <button
+                        type="button"
+                        onClick={() => void handleCopyLink()}
+                        aria-label="Copy link"
+                        className="shrink-0 w-12 h-12 inline-flex items-center justify-center rounded-xl border border-border text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted"
+                    >
+                        <LinkIcon className="w-5 h-5" />
+                    </button>
                 </div>
             )}
         </div>

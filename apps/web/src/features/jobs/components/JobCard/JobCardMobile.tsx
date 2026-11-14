@@ -12,6 +12,14 @@ import { detectAtsProvider } from '@/features/jobs/utils/atsProvider';
 import { ArrowUpRight } from 'lucide-react';
 import { useJobCardActions, type JobCardOpportunity } from './useJobCardActions';
 
+function MetaDot() {
+    return (
+        <span aria-hidden="true" className="shrink-0 text-muted-foreground/50">
+            ·
+        </span>
+    );
+}
+
 interface MobileJobCardProps {
     job: JobCardOpportunity;
     jobId: string;
@@ -103,23 +111,26 @@ export function JobCardMobile({
                     <p className="mt-0.5 truncate text-xs text-muted-foreground" title={job.company} dir="auto">
                         {job.company}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                        {[locationInfo.shortLabel, postedLabel].filter(Boolean).join(' · ')}
-                        {atsProvider ? (
+                    {/* Separators are elements between parts, not characters
+                        joined into a string: a listing with no location and no
+                        posted date used to print a leading ·, and a listing
+                        whose ATS logo did not resolve printed a trailing one. */}
+                    <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                        {locationInfo.shortLabel && (
+                            <span className="min-w-0 truncate">{locationInfo.shortLabel}</span>
+                        )}
+                        {locationInfo.shortLabel && postedLabel && <MetaDot />}
+                        {postedLabel && <span className="shrink-0 whitespace-nowrap">{postedLabel}</span>}
+                        {showApplied && (
                             <>
-                                {' · '}
-                                <AtsLogo applyLink={job.applyLink} />
-                            </>
-                        ) : null}
-                        {showApplied ? (
-                            <>
-                                {' · '}
-                                <span className="inline-flex items-center gap-0.5 text-success dark:text-success">
+                                <MetaDot />
+                                <span className="inline-flex shrink-0 items-center gap-0.5 text-success dark:text-success">
                                     <CheckIcon className="w-3 h-3" aria-hidden />
                                     Applied
                                 </span>
                             </>
-                        ) : null}
+                        )}
+                        {atsProvider ? <AtsLogo applyLink={job.applyLink} /> : null}
                     </p>
                 </div>
                 <button

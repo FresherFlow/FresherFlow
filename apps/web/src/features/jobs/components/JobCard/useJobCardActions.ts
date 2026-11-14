@@ -74,7 +74,7 @@ export function useJobCardActions({
     const targetId = jobId || job.id;
     const isJobSaved = isSaved !== undefined ? isSaved : Boolean(savedJobsMap[targetId] || savedJobsMap[job.id]);
 
-    // Shared with `OpportunityRow`, so the list card and the split-view sidebar
+    // Shared with `JobRow`, so the list card and the split-view sidebar
     // cannot disagree about the same row.
     const showApplied = resolveShowApplied(job, isApplied);
 

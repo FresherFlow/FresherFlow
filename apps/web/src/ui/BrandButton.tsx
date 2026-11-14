@@ -52,7 +52,10 @@ const SIZES: Record<BrandSize, string> = {
     // cards, chip groups - where the full CTA height is too tall.
     sm: 'px-3 py-2 text-xs',
     md: 'px-[18px] py-[10px] text-[13.5px]',
-    icon: 'px-2.5 py-[10px]',
+    // Square at the `md` height. It used to be `px-2.5 py-[10px]`, which is
+    // 36px around a 16px glyph and left an icon button 4px shorter than the
+    // labelled buttons it sits beside.
+    icon: 'h-10 w-10 px-0 py-0',
 }
 
 export interface BrandButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

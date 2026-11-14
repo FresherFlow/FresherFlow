@@ -43,7 +43,7 @@ export function EmptyState({
             <div className="w-12 h-12 bg-muted rounded-xs flex items-center justify-center mx-auto mb-4 text-muted-foreground animate-in zoom-in-50 duration-500 delay-100 ease-[cubic-bezier(0.34,1.56,0.64,1)]" style={{animationFillMode:'both'}}>
                 <Icon className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-foreground tracking-tight">{title}</h3>
+            <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
             {description && (
                 <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">{description}</p>
             )}

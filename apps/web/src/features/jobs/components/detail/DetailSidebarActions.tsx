@@ -5,7 +5,6 @@ import { BrandButton } from '@/ui/BrandButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Select';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
-import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
@@ -23,8 +22,7 @@ import { useState, useEffect, useId } from 'react';
 import { communityApi } from '@fresherflow/api-client';
 import type { Room } from '@fresherflow/types';
 import { getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
-import { AtsLogo } from '@/features/jobs/components/AtsLogo';
-import { getApplyDestination } from '@/features/jobs/utils/atsProvider';
+import { ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 import { getPrimaryEmploymentType } from '@/features/jobs/utils/walkinMapUtils';
 import { SkeletonListRow } from '@/features/jobs/components/OpportunitySkeletons';
 
@@ -92,10 +90,6 @@ export function DetailSidebarActions({
         handleSetAction(value as ActionType);
     };
     const locationsGrouped = getGroupedLocations(opp.locations);
-    /* ATS-aware Apply label: "Apply on Greenhouse" + mark when the apply
-        link lives on a known ATS host, portal wording for government jobs,
-        generic company-site wording otherwise. */
-    const applyDest = getApplyDestination(opp.applyLink, Boolean(opp.governmentJobDetails));
     const hasSalary = !!opp.salaryMax;
     const salaryText = hasSalary ? `₹${opp.salaryMin} – ₹${opp.salaryMax}` : null;
     const experience = opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax} yrs` : 'Freshers';
@@ -159,9 +153,14 @@ export function DetailSidebarActions({
                        flow continues" and loses the landing hero's meaning. The
                        label says where it goes. */
                     <BrandButton variant="neutral" onClick={handleApply} className="flex-1">
-                        <AtsLogo applyLink={opp.applyLink} />
-                        {applyDest.label}
-                        <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                        {/* ATS-aware label + mark, from the same definition the
+                            feed row and the split pane use. */}
+                        <ApplyActionContent
+                            applyLink={opp.applyLink}
+                            isGovernment={Boolean(opp.governmentJobDetails)}
+                            showDestination
+                            showArrow
+                        />
                     </BrandButton>
                 ) : hasApplyLink && listingState === 'EXPIRED' ? (
                     <div className="flex-1 inline-flex items-center justify-center gap-2 rounded-xs border border-muted bg-muted/50 px-4.5 py-2.5 text-meta font-semibold text-muted-foreground select-none">

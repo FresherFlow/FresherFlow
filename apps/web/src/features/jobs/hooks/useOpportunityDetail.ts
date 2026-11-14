@@ -425,7 +425,10 @@ export function useOpportunityDetail(
         try {
             const jobUrl = opp ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : window.location.href;
             await navigator.clipboard.writeText(getCleanShareUrl(jobUrl));
-            toast.success('Link copied to clipboard!');
+            // Stable id: a second click replaces the toast in place instead of
+            // stacking one on top of it, which the limit-dismiss effect then
+            // tore down — that is what read as the toast blinking.
+            toast.success('Link copied to clipboard!', { id: 'copy-link' });
         } catch (err: unknown) {
             toastError(err, 'Failed to copy link');
         }

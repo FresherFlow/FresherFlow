@@ -931,7 +931,7 @@ html.ff-smooth {
   transition: color 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .tagline-armed .tagline-word {
-  color: color-mix(in oklab, var(--color-foreground) 30%, transparent);
+  color: color-mix(in oklab, var(--color-foreground) 37%, transparent);
 }
 .tagline-armed .tagline-word.is-on {
   color: var(--color-foreground);
@@ -1302,6 +1302,53 @@ html.ff-smooth {
 
 @utility ff-detail-split {
   grid-template-columns: 45% 55%;
+}
+
+/* ── Jobs feed view switcher ──────────────────────────────
+   List and Split are the same grid, one column boundary apart. Both states
+   are two percentage tracks — the only shape CSS can interpolate — so the
+   detail pane eases open instead of snapping in. */
+@utility ff-feed-cols-split {
+  grid-template-columns: 45% 55%;
+}
+
+@utility ff-feed-cols-list {
+  grid-template-columns: 100% 0%;
+}
+
+/* ── List ↔ Split view transition ─────────────────────────
+   The detail pane is a named view-transition group, so switching views
+   crossfades the feed and brings the pane in rather than snapping. The
+   duration matches the rest of the feed's motion. */
+/* Every rule below is scoped to `data-ff-view-switch`, which only exists for
+   the few hundred ms of a list ↔ split switch. The View Transition API is
+   shared with the theme switcher: an unscoped `view-transition-name` on the
+   pane and unscoped `::view-transition-group` durations meant a theme change
+   animated this one box on its own timing while the rest of the page did the
+   theme reveal. Scoping keeps the two switches from touching each other. */
+:root[data-ff-view-switch] .ff-view-detail {
+  view-transition-name: ff-feed-detail;
+}
+
+/* The feed itself swaps fast (180ms) so the two layouts overlap for as short
+   a time as possible; the detail pane gets the full 240ms to come in. */
+:root[data-ff-view-switch] ::view-transition-group(root) {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+:root[data-ff-view-switch] ::view-transition-group(ff-feed-detail) {
+  animation-duration: 240ms;
+  animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-ff-view-switch] ::view-transition-group(root),
+  :root[data-ff-view-switch] ::view-transition-group(ff-feed-detail),
+  :root[data-ff-view-switch] ::view-transition-old(root),
+  :root[data-ff-view-switch] ::view-transition-new(root) {
+    animation: none;
+  }
 }
 
 @utility ff-pane-transition {

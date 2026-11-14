@@ -42,7 +42,7 @@ const MAX_META_ITEMS = 5;
  * The label vocabulary must still match that map, hence 'On-site' rather than
  * 'Onsite' — the split-view row renders the same job's mode.
  */
-function getWorkModeMetaLabel(mode: string | null): string | null {
+export function getWorkModeMetaLabel(mode: string | null): string | null {
     if (!mode) return null;
     const normalized = mode.toLowerCase().replace(/_/g, ' ');
     if (normalized === 'in office' || normalized === 'onsite' || normalized === 'in-office') return 'On-site';

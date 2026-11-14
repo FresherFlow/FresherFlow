@@ -83,5 +83,5 @@ export function getApplyDestination(
     const provider = detectAtsProvider(applyLink);
     if (provider) return { label: `Apply on ${provider.name}`, provider };
     if (isGovernment) return { label: 'Apply on official portal', provider: null };
-    return { label: 'Apply on company site', provider: null };
+    return { label: 'Apply on company website', provider: null };
 }

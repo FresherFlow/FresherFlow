@@ -52,13 +52,13 @@ export const metadata: Metadata = {
  * hydrated, /jobs served an empty <main>.
  *
  * This fallback mirrors the loaded desktop list rather than approximating it:
- * same header height, same 832px reading column, same 64px row rhythm. The
- * point is that hydration replaces rows in place — a differently-shaped
- * skeleton read as the page loading twice.
+ * same header height, same full-width connected row box, same single-line row
+ * rhythm. The point is that hydration replaces rows in place — a
+ * differently-shaped skeleton read as the page loading twice.
  */
 function JobsShellFallback() {
     return (
-        <div className="w-full max-w-7xl mx-auto px-3 md:px-6" role="status" aria-label="Loading jobs">
+        <div className="w-full px-3 md:px-6" role="status" aria-label="Loading jobs">
             <div className="flex h-[50px] items-center justify-between gap-3 border-b border-border/50">
                 <Skeleton className="h-4 w-28" />
                 <div className="flex items-center gap-2">
@@ -67,10 +67,10 @@ function JobsShellFallback() {
                     <Skeleton className="h-8 w-24 rounded-xl" />
                 </div>
             </div>
-            <div className="ff-reading-col mx-auto">
+            <div className="mt-2 overflow-hidden rounded-xl border border-border/60 bg-card">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <div key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
-                        <Skeleton className="h-10 w-10 shrink-0 rounded-md" />
+                    <div key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0">
+                        <Skeleton className="h-9 w-9 shrink-0 rounded-md" />
                         <div className="min-w-0 flex-1 space-y-1.5">
                             <Skeleton className="h-3.5 w-2/5" />
                             <Skeleton className="h-3 w-3/5" />

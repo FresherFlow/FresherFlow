@@ -126,7 +126,7 @@ function SiteHeaderContent() {
                         <div className="flex items-center gap-2">
                             <Link
                                 href="/login"
-                                className="px-3 py-1.5 text-xs font-semibold text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shrink-0"
+                                className="inline-flex h-8 shrink-0 items-center rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:border-foreground/40 hover:bg-muted"
                             >
                                 Log in
                             </Link>
