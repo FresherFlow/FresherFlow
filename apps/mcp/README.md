@@ -41,9 +41,11 @@ calls one function from `src/api/`.
 
 ## Runtime configuration
 
-Set these Worker bindings in the Cloudflare dashboard (or with Wrangler's
-environment-specific secret/variable commands) before deployment. They are
-intentionally not production defaults in `wrangler.jsonc`:
+Production values are declared in `wrangler.jsonc` under `vars` and must match
+the API's and the web's values exactly. Keep them there rather than setting
+them only in the dashboard: a deploy from this repo would otherwise leave the
+Worker without bindings, and every endpoint would answer
+`{"error":"MCP is not configured"}`.
 
 - `FRESHERFLOW_API_URL`, `PUBLIC_SITE_URL`, `MCP_PUBLIC_URL`, and
   `PUBLIC_FEED_BASE_URL` are required origin URLs. `MCP_PUBLIC_URL` must match
@@ -241,7 +243,7 @@ The `run` is load-bearing: `pnpm --filter fresherflow-mcp deploy` is pnpm's own
 `deploy` command, which expects a target directory and dies with
 `ERR_PNPM_INVALID_DEPLOY_TARGET` before the package script is reached.
 
-There are no secrets to set. The three vars are plain `vars` in
+There are no secrets to set. The four vars are plain `vars` in
 `wrangler.jsonc`, and the Worker deliberately holds no service key. The
 `custom_domain` route publishes it at `https://mcp.fresherflow.in`, which must
 match the API's `MCP_PUBLIC_URL` exactly or the two OAuth metadata documents

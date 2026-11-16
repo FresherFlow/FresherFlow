@@ -4,6 +4,15 @@
   "main": "src/worker.ts",
   "compatibility_date": "2024-12-01",
   "compatibility_flags": ["nodejs_compat"],
+  // Must match the API's and web's values exactly: OAuth clients compare the
+  // issuer and resource identifier as strings. MCP_PUBLIC_URL must equal the
+  // API's MCP_PUBLIC_URL, or sign-in fails with a resource/issuer mismatch.
+  "vars": {
+    "FRESHERFLOW_API_URL": "https://api.fresherflow.in",
+    "PUBLIC_SITE_URL": "https://fresherflow.in",
+    "MCP_PUBLIC_URL": "https://mcp.fresherflow.in",
+    "PUBLIC_FEED_BASE_URL": "https://api.fresherflow.in",
+  },
   "routes": [{ "pattern": "mcp.fresherflow.in", "custom_domain": true }],
   "observability": {
     "enabled": true,
