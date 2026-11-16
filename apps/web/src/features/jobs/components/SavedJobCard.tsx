@@ -3,13 +3,13 @@
 import Link from 'next/link';
 import type { Opportunity } from '@fresherflow/types';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
-import { ArrowUpRight, Bookmark } from 'lucide-react';
+import { Bookmark } from 'lucide-react';
 import { BrandButton } from '@/ui/BrandButton';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getPostedLabel } from '@/features/jobs/components/JobCard/jobCardUtils';
-import { AtsLogo } from '@/features/jobs/components/AtsLogo';
+import { ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 
 export interface SavedJobCardProps {
@@ -97,7 +97,6 @@ export default function SavedJobCard({
                             </span>
                         ) : null}
                         <span className="min-w-0 truncate">{metaText}</span>
-                        <AtsLogo applyLink={(opp as { applyLink?: string }).applyLink} />
                     </div>
                 </div>
             </div>
@@ -120,15 +119,17 @@ export default function SavedJobCard({
                     aria-label={isSaved ? `Remove ${opp.title} from saved` : `Save ${opp.title}`}
                     title={isSaved ? 'Remove from saved' : 'Save job'}
                     aria-pressed={isSaved}
-                    className="flex size-8 shrink-0 items-center justify-center rounded-xs border border-border text-primary transition-colors hover:bg-muted"
+                    className="flex size-8 shrink-0 items-center justify-center rounded-xs border border-border text-primary [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted ff-press motion-reduce:transform-none"
                 >
                     <Bookmark className="size-4" fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
                 </button>
                 {resolvedApplyHref ? (
                     <BrandButton asChild variant="neutral" size="sm" className="shrink-0">
                         <a href={resolvedApplyHref} target="_blank" rel="noreferrer">
-                            Apply
-                            <ArrowUpRight className="size-3.5 shrink-0" aria-hidden="true" />
+                            <ApplyActionContent
+                                applyLink={(opp as { applyLink?: string }).applyLink}
+                                showArrow
+                            />
                         </a>
                     </BrandButton>
                 ) : null}

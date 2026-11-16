@@ -22,15 +22,17 @@ type BrandVariant = 'solid' | 'neutral' | 'outline' | 'selected' | 'ghost'
 type BrandSize = 'sm' | 'md' | 'icon'
 
 const VARIANTS: Record<BrandVariant, string> = {
-    // Primary CTA. Hover lifts by a pixel; active presses in.
+    // Primary CTA. Press feedback comes from `ff-press` on the base, and every
+    // hover is gated behind `@media (hover: hover) and (pointer: fine)` so a tap
+    // on a phone does not leave the button stuck in its hover state.
     // Label is navy, not paper: paper on the brand orange is 3.2:1 and fails AA
     // at this size. See --color-ff-accent-ink in globals.css.
-    solid: 'bg-[var(--ff-accent)] text-[var(--color-ff-accent-ink)] hover:opacity-90 active:scale-[0.98]',
+    solid: 'bg-[var(--ff-accent)] text-[var(--color-ff-accent-ink)] [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-90',
     // Solid but brand-neutral. For actions that leave the site, so the loud
     // brand accent is not spent on a click through to someone else's page.
-    neutral: 'bg-foreground text-background hover:opacity-90 active:scale-[0.98]',
+    neutral: 'bg-foreground text-background [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-90',
     // Secondary CTA: a hairline that darkens on hover.
-    outline: 'border border-border text-foreground hover:border-foreground/40 active:scale-[0.98]',
+    outline: 'border border-border text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-foreground/40',
     // Selected/toggled-on state. Mirrors the sidebar's active row
     // (`data-[active=true]:bg-sidebar-accent`): a near-neutral warm fill with
     // navy ink, where the tonal step does the separating. It was
@@ -42,9 +44,9 @@ const VARIANTS: Record<BrandVariant, string> = {
     // accent surface to near-white, and in dark `--color-foreground` is also
     // near-white, so `text-foreground` on `bg-accent` would be invisible.
     // `accent-foreground` is the paired ink (navy in light, dark in dark).
-    selected: 'border border-border bg-accent text-accent-foreground font-medium active:scale-[0.98]',
+    selected: 'border border-border bg-accent text-accent-foreground font-medium',
     // Icon-only control at the same height as a labelled button.
-    ghost: 'border border-border text-foreground hover:border-foreground/40 active:scale-[0.98]',
+    ghost: 'border border-border text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:border-foreground/40',
 }
 
 const SIZES: Record<BrandSize, string> = {
@@ -78,7 +80,7 @@ export const BrandButton = React.forwardRef<HTMLButtonElement, BrandButtonProps>
                 ref={ref}
                 {...(asChild ? {} : { type: type ?? 'button' })}
                 className={cn(
-                    'inline-flex items-center justify-center gap-2 rounded-[2px] font-semibold transition-all duration-150 ease-out',
+                    'inline-flex items-center justify-center gap-2 rounded-[2px] font-semibold ff-press motion-reduce:transform-none',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ff-accent)] focus-visible:ring-offset-2',
                     'disabled:pointer-events-none disabled:opacity-50',
                     VARIANTS[variant],

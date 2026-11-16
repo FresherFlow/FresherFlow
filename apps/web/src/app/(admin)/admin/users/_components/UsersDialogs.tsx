@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import type { DirectoryUser } from '@/features/admin/moderators/moderationContract';
 import { useModerators } from '@/features/admin/moderators/useModerators';
 import { AlertDialog } from '@/ui/AlertDialog';
 import { Button } from '@/ui/Button';
@@ -18,13 +20,13 @@ import { displayName } from './userDisplay';
 
 type UsersDialogsProps = Pick<
     ReturnType<typeof useModerators>,
-    'actingId' | 'bulkPending' | 'grantCandidates' | 'grant' | 'revoke' | 'suspend' | 'reactivate' | 'suspendMany' | 'reactivateMany'
+    'actingId' | 'bulkPending' | 'searchUsers' | 'grant' | 'revoke' | 'suspend' | 'reactivate' | 'suspendMany' | 'reactivateMany'
 >;
 
 export default function UsersDialogs({
     actingId,
     bulkPending,
-    grantCandidates,
+    searchUsers,
     grant,
     revoke,
     suspend,
@@ -53,7 +55,37 @@ export default function UsersDialogs({
         setBulkReactivateTargets,
     } = useUsersDialogs();
 
-    const candidates = grantCandidates(grantQuery);
+    // Server-backed search: the picker must find any registered account, not
+    // only the newest page the table happens to hold.
+    const [candidates, setCandidates] = useState<DirectoryUser[]>([]);
+    const [searching, setSearching] = useState(false);
+
+    useEffect(() => {
+        const q = grantQuery.trim();
+        if (q.length < 2) {
+            setCandidates([]);
+            setSearching(false);
+            return;
+        }
+        let cancelled = false;
+        setSearching(true);
+        const timer = setTimeout(() => {
+            void searchUsers(q)
+                .then((found) => {
+                    if (!cancelled) setCandidates(found);
+                })
+                .catch(() => {
+                    if (!cancelled) setCandidates([]);
+                })
+                .finally(() => {
+                    if (!cancelled) setSearching(false);
+                });
+        }, 250);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [grantQuery, searchUsers]);
 
     return (
         <>
@@ -85,10 +117,13 @@ export default function UsersDialogs({
                                 onChange={(e) => setGrantQuery(e.target.value)}
                                 placeholder="Search by email, username, or name…"
                             />
-                            {grantQuery.trim() && candidates.length === 0 ? (
+                            {grantQuery.trim().length >= 2 && !searching && candidates.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
                                     No eligible users match. Current moderators are excluded.
                                 </p>
+                            ) : null}
+                            {grantQuery.trim().length > 0 && grantQuery.trim().length < 2 ? (
+                                <p className="text-sm text-muted-foreground">Type at least 2 characters.</p>
                             ) : null}
                             {candidates.length > 0 ? (
                                 <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border/60">

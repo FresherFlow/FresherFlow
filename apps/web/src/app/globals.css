@@ -1351,6 +1351,23 @@ html.ff-smooth {
   }
 }
 
+/* ── Press feedback ────────────────────────────────────────
+   One transition + one press scale for every pressable control, so Apply,
+   the log-in control and the card actions all respond identically. The
+   properties are listed explicitly instead of `transition: all`: only the
+   press scale and the colour change tween, nothing else on the element gets
+   dragged into the transition. Call sites add `motion-reduce:transform-none`
+   to drop the scale while keeping the colour change. */
+@utility ff-press {
+  transition-property: transform, background-color, border-color, color, opacity;
+  transition-duration: 150ms;
+  transition-timing-function: var(--ease-out-strong);
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
 @utility ff-pane-transition {
   transition-property: top, height, opacity;
 }

@@ -8,7 +8,6 @@ import { type Opportunity } from '@fresherflow/types';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
-import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import { BrandButton } from '@/ui/BrandButton';
 import { DidYouApplyCard } from '@/features/jobs/components/detail/DidYouApplyCard';
 import AuthModal from '@/features/auth/components/AuthModal';
@@ -38,8 +37,7 @@ import {
 import { DetailTimeline } from '@/features/jobs/components/detail/DetailTimeline';
 import { DetailHeroSection } from '@/features/jobs/components/detail/DetailHeroSection';
 import { DetailSidebarActions } from '@/features/jobs/components/detail/DetailSidebarActions';
-import { AtsLogo } from '@/features/jobs/components/AtsLogo';
-import { getApplyDestination } from '@/features/jobs/utils/atsProvider';
+import { ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 import { DescriptionSection } from '@/features/jobs/components/detail/DescriptionSection';
 import {
     CampusDriveInfoIfCampus,
@@ -572,9 +570,12 @@ export default function OpportunityDetailClient({
                                 onClick={handleApply}
                                 className="h-12 w-full"
                             >
-                                <AtsLogo applyLink={opp.applyLink} />
-                                {getApplyDestination(opp.applyLink, isGovernmentJob).label}
-                                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                                <ApplyActionContent
+                                    applyLink={opp.applyLink}
+                                    isGovernment={isGovernmentJob}
+                                    showDestination
+                                    showArrow
+                                />
                             </BrandButton>
                         )}
                     </div>

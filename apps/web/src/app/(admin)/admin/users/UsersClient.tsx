@@ -56,12 +56,25 @@ function UsersPageBody({ data }: { data: ModeratorsData }) {
     const {
         moderators,
         users,
+        directoryTotal,
+        directoryQuery,
+        directoryStatus,
+        directoryRole,
+        directoryPageIndex,
+        directoryPageCount,
+        directoryPageSize,
+        directoryLoading,
+        searchDirectory,
+        setDirectoryStatus,
+        setDirectoryRole,
+        setDirectoryPageIndex,
+        setDirectoryPageSize,
         loading,
         loadError,
         actingId,
         bulkPending,
         moderatorIds,
-        grantCandidates,
+        searchUsers,
         refresh,
         grant,
         revoke,
@@ -136,6 +149,19 @@ function UsersPageBody({ data }: { data: ModeratorsData }) {
             <div className="flex min-h-0 flex-1 flex-col">
                 <UsersTable
                     users={users}
+                    total={directoryTotal}
+                    searchValue={directoryQuery}
+                    onSearchChange={searchDirectory}
+                    statusValue={directoryStatus}
+                    onStatusChange={setDirectoryStatus}
+                    roleValue={directoryRole}
+                    onRoleChange={setDirectoryRole}
+                    pageIndex={directoryPageIndex}
+                    pageCount={directoryPageCount}
+                    pageSize={directoryPageSize}
+                    onPageChange={setDirectoryPageIndex}
+                    onPageSizeChange={setDirectoryPageSize}
+                    isLoading={directoryLoading}
                     moderatorIds={moderatorIds}
                     actingId={actingId}
                     onSuspend={setSuspendTarget}
@@ -148,7 +174,7 @@ function UsersPageBody({ data }: { data: ModeratorsData }) {
             <UsersDialogs
                 actingId={actingId}
                 bulkPending={bulkPending}
-                grantCandidates={grantCandidates}
+                searchUsers={searchUsers}
                 grant={grant}
                 revoke={revoke}
                 suspend={suspend}
