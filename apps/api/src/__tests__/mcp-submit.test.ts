@@ -21,6 +21,9 @@ const prismaMock = {
         findFirst: vi.fn(),
         create: vi.fn(),
     },
+    userAccessRole: {
+        findFirst: vi.fn(),
+    },
     // The identity resolver reads RBAC grants through this raw join.
     $queryRaw: vi.fn(),
 };
@@ -101,6 +104,7 @@ beforeEach(() => {
     prismaMock.jobSubmission.create.mockResolvedValue({ id: 'sub-mcp' });
     prismaMock.user.findUnique.mockResolvedValue({ id: 'user-member', status: 'ACTIVE' });
     prismaMock.user.findFirst.mockResolvedValue({ id: 'community-bot' });
+    prismaMock.userAccessRole.findFirst.mockResolvedValue(null);
 });
 
 function submittedOpportunityData(): Record<string, unknown> {
