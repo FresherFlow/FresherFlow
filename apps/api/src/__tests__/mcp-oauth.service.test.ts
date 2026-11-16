@@ -11,6 +11,7 @@ const prismaMock = {
         create: vi.fn(),
         findUnique: vi.fn(),
         update: vi.fn(),
+        updateMany: vi.fn(),
     },
     oAuthAccessToken: {
         create: vi.fn(),
@@ -64,9 +65,10 @@ function pendingCode(overrides: Record<string, unknown> = {}) {
         id: 'code-row-1',
         clientId: 'ffc_abc',
         userId: 'user-1',
-        redirectUri: 'https://chatgpt.com/callback',
+        redirectUri: 'http://127.0.0.1:9000/callback',
         codeChallenge: CHALLENGE,
         scope: MCP_OAUTH_SCOPE,
+        resource: 'http://127.0.0.1:8787/mcp',
         expiresAt: new Date(Date.now() + 60_000),
         usedAt: null,
         ...overrides,
@@ -75,6 +77,8 @@ function pendingCode(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    prismaMock.oAuthAuthorizationCode.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.oAuthRefreshToken.updateMany.mockResolvedValue({ count: 1 });
 });
 
 describe('verifyPkceChallenge', () => {
@@ -95,19 +99,19 @@ describe('registerClient', () => {
         prismaMock.oAuthClient.create.mockImplementation(({ data }: { data: { clientId: string } }) => ({
             clientId: data.clientId,
             clientName: 'ChatGPT',
-            redirectUris: ['https://chatgpt.com/callback'],
+            redirectUris: ['http://127.0.0.1:9000/callback'],
         }));
 
         const client = await registerClient({
             clientName: 'ChatGPT',
-            redirectUris: ['https://chatgpt.com/callback', 'https://chatgpt.com/callback'],
+            redirectUris: ['http://127.0.0.1:9000/callback', 'http://127.0.0.1:9000/callback'],
         });
 
         expect(client.clientId).toMatch(/^ffc_/);
         const created = prismaMock.oAuthClient.create.mock.calls[0][0] as {
             data: { redirectUris: string[] };
         };
-        expect(created.data.redirectUris).toEqual(['https://chatgpt.com/callback']);
+        expect(created.data.redirectUris).toEqual(['http://127.0.0.1:9000/callback']);
     });
 
     it('refuses a client with no redirect URIs', async () => {
@@ -121,9 +125,9 @@ describe('registerClient', () => {
 
 describe('assertRedirectUriAllowed', () => {
     it('matches exactly, so a near-miss URI is refused', () => {
-        const client = { redirectUris: ['https://chatgpt.com/callback'] };
-        expect(() => assertRedirectUriAllowed(client, 'https://chatgpt.com/callback')).not.toThrow();
-        expect(() => assertRedirectUriAllowed(client, 'https://chatgpt.com/callback/extra')).toThrow(OAuthError);
+        const client = { redirectUris: ['http://127.0.0.1:9000/callback'] };
+        expect(() => assertRedirectUriAllowed(client, 'http://127.0.0.1:9000/callback')).not.toThrow();
+        expect(() => assertRedirectUriAllowed(client, 'http://127.0.0.1:9000/callback/extra')).toThrow(OAuthError);
         expect(() => assertRedirectUriAllowed(client, 'https://evil.test/callback')).toThrow(OAuthError);
     });
 });
@@ -132,8 +136,9 @@ describe('exchangeAuthorizationCode', () => {
     const request = {
         code: 'raw-code',
         clientId: 'ffc_abc',
-        redirectUri: 'https://chatgpt.com/callback',
+        redirectUri: 'http://127.0.0.1:9000/callback',
         codeVerifier: VERIFIER,
+        resource: 'http://127.0.0.1:8787/mcp',
     };
 
     it('issues an access and refresh token and burns the code', async () => {
@@ -147,11 +152,16 @@ describe('exchangeAuthorizationCode', () => {
         expect(tokens.scope).toBe(MCP_OAUTH_SCOPE);
         // Stored hashed, never raw.
         const accessCreate = prismaMock.oAuthAccessToken.create.mock.calls[0][0] as {
-            data: { tokenHash: string };
+            data: { tokenHash: string; resource: string; scope: string };
         };
         expect(accessCreate.data.tokenHash).toBe(sha256(tokens.access_token));
-        expect(prismaMock.oAuthAuthorizationCode.update).toHaveBeenCalledWith(
-            expect.objectContaining({ data: { usedAt: expect.any(Date) } }),
+        expect(accessCreate.data).toMatchObject({ resource: request.resource, scope: MCP_OAUTH_SCOPE });
+        const refreshCreate = prismaMock.oAuthRefreshToken.create.mock.calls[0][0] as {
+            data: { resource: string; scope: string };
+        };
+        expect(refreshCreate.data).toMatchObject({ resource: request.resource, scope: MCP_OAUTH_SCOPE });
+        expect(prismaMock.oAuthAuthorizationCode.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { id: 'code-row-1', usedAt: null }, data: { usedAt: expect.any(Date) } }),
         );
     });
 
@@ -180,6 +190,9 @@ describe('exchangeAuthorizationCode', () => {
         await expect(
             exchangeAuthorizationCode({ ...request, redirectUri: 'https://evil.test/callback' }),
         ).rejects.toMatchObject({ error: 'invalid_grant' });
+        await expect(
+            exchangeAuthorizationCode({ ...request, resource: 'http://127.0.0.1:8787/other' }),
+        ).rejects.toMatchObject({ error: 'invalid_target' });
         expect(prismaMock.oAuthAccessToken.create).not.toHaveBeenCalled();
     });
 
@@ -190,10 +203,20 @@ describe('exchangeAuthorizationCode', () => {
             exchangeAuthorizationCode({ ...request, codeVerifier: 'b'.repeat(64) }),
         ).rejects.toMatchObject({ error: 'invalid_grant' });
 
-        expect(prismaMock.oAuthAuthorizationCode.update).toHaveBeenCalledWith(
-            expect.objectContaining({ data: { usedAt: expect.any(Date) } }),
+        expect(prismaMock.oAuthAuthorizationCode.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { id: 'code-row-1', usedAt: null }, data: { usedAt: expect.any(Date) } }),
         );
         expect(prismaMock.oAuthAccessToken.create).not.toHaveBeenCalled();
+    });
+
+    it('does not issue two token pairs when code exchanges race', async () => {
+        prismaMock.oAuthAuthorizationCode.findUnique.mockResolvedValue(pendingCode());
+        prismaMock.oAuthAuthorizationCode.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(exchangeAuthorizationCode(request)).rejects.toMatchObject({ error: 'invalid_grant' });
+        expect(prismaMock.oAuthAccessToken.create).not.toHaveBeenCalled();
+        expect(prismaMock.oAuthRefreshToken.create).not.toHaveBeenCalled();
+        expect(prismaMock.oAuthAccessToken.updateMany).toHaveBeenCalled();
     });
 });
 
@@ -206,20 +229,25 @@ describe('refreshAccessToken', () => {
             scope: MCP_OAUTH_SCOPE,
             expiresAt: new Date(Date.now() + 1000_000),
             revokedAt: null,
+            resource: 'http://127.0.0.1:8787/mcp',
         });
 
         const tokens = await refreshAccessToken('old-refresh', 'ffc_abc');
 
         expect(tokens.access_token).toBeTruthy();
-        expect(prismaMock.oAuthRefreshToken.update).toHaveBeenCalledWith(
-            expect.objectContaining({ where: { id: 'rt-1' }, data: { revokedAt: expect.any(Date) } }),
+        expect(prismaMock.oAuthRefreshToken.updateMany).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { id: 'rt-1', revokedAt: null, expiresAt: { gt: expect.any(Date) } }, data: { revokedAt: expect.any(Date) } }),
         );
+        expect(prismaMock.oAuthAccessToken.create).toHaveBeenCalledWith(expect.objectContaining({
+            data: expect.objectContaining({ resource: 'http://127.0.0.1:8787/mcp', scope: MCP_OAUTH_SCOPE }),
+        }));
     });
 
     it('refuses a revoked, expired, or foreign-client refresh token', async () => {
         const base = {
             id: 'rt-1', clientId: 'ffc_abc', userId: 'user-1', scope: MCP_OAUTH_SCOPE,
             expiresAt: new Date(Date.now() + 1000_000), revokedAt: null,
+            resource: 'http://127.0.0.1:8787/mcp',
         };
 
         prismaMock.oAuthRefreshToken.findUnique.mockResolvedValue({ ...base, revokedAt: new Date() });
@@ -233,35 +261,55 @@ describe('refreshAccessToken', () => {
 
         expect(prismaMock.oAuthAccessToken.create).not.toHaveBeenCalled();
     });
+
+    it('does not rotate a refresh token twice when refresh requests race', async () => {
+        prismaMock.oAuthRefreshToken.findUnique.mockResolvedValue({
+            id: 'rt-1', clientId: 'ffc_abc', userId: 'user-1', scope: MCP_OAUTH_SCOPE,
+            resource: 'http://127.0.0.1:8787/mcp', expiresAt: new Date(Date.now() + 1000_000), revokedAt: null,
+        });
+        prismaMock.oAuthRefreshToken.updateMany.mockResolvedValue({ count: 0 });
+
+        await expect(refreshAccessToken('old-refresh', 'ffc_abc')).rejects.toMatchObject({ error: 'invalid_grant' });
+        expect(prismaMock.oAuthAccessToken.create).not.toHaveBeenCalled();
+        expect(prismaMock.oAuthRefreshToken.create).not.toHaveBeenCalled();
+    });
 });
 
 describe('verifyAccessToken', () => {
     const liveToken = {
         id: 'at-1', userId: 'user-1', clientId: 'ffc_abc', scope: MCP_OAUTH_SCOPE,
+        resource: 'http://127.0.0.1:8787/mcp',
         expiresAt: new Date(Date.now() + 60_000), revokedAt: null, lastUsedAt: new Date(),
     };
 
     it('returns the identity behind a live token', async () => {
         prismaMock.oAuthAccessToken.findUnique.mockResolvedValue(liveToken);
 
-        await expect(verifyAccessToken('live')).resolves.toEqual({
+        await expect(verifyAccessToken('live', liveToken.resource)).resolves.toEqual({
             userId: 'user-1',
             clientId: 'ffc_abc',
             scope: MCP_OAUTH_SCOPE,
+            resource: liveToken.resource,
         });
     });
 
     it('returns null for a revoked, expired, or unknown token', async () => {
         prismaMock.oAuthAccessToken.findUnique.mockResolvedValue({ ...liveToken, revokedAt: new Date() });
-        await expect(verifyAccessToken('revoked')).resolves.toBeNull();
+        await expect(verifyAccessToken('revoked', liveToken.resource)).resolves.toBeNull();
 
         prismaMock.oAuthAccessToken.findUnique.mockResolvedValue({ ...liveToken, expiresAt: new Date(Date.now() - 1) });
-        await expect(verifyAccessToken('expired')).resolves.toBeNull();
+        await expect(verifyAccessToken('expired', liveToken.resource)).resolves.toBeNull();
 
         prismaMock.oAuthAccessToken.findUnique.mockResolvedValue(null);
-        await expect(verifyAccessToken('unknown')).resolves.toBeNull();
+        await expect(verifyAccessToken('unknown', liveToken.resource)).resolves.toBeNull();
 
-        await expect(verifyAccessToken('')).resolves.toBeNull();
+        await expect(verifyAccessToken('', liveToken.resource)).resolves.toBeNull();
+
+        prismaMock.oAuthAccessToken.findUnique.mockResolvedValue(liveToken);
+        await expect(verifyAccessToken('wrong-audience', 'http://127.0.0.1:8787/other')).resolves.toBeNull();
+
+        prismaMock.oAuthAccessToken.findUnique.mockResolvedValue({ ...liveToken, scope: 'profile' });
+        await expect(verifyAccessToken('missing-scope', liveToken.resource)).resolves.toBeNull();
     });
 });
 

@@ -48,6 +48,22 @@ import { setAuthCookies } from './auth';
 
 const router: Router = express.Router();
 
+/**
+ * OpenAI hosts ask for `offline_access mcp` so they can keep a refresh token.
+ * This surface grants only the `mcp` scope and issues a refresh token on every
+ * exchange, so accept the extra scope but keep the stored scope canonical.
+ * Anything else is still rejected rather than silently stripped.
+ */
+const OFFLINE_ACCESS_SCOPE = 'offline_access';
+const SUPPORTED_OAUTH_SCOPES = [MCP_OAUTH_SCOPE, OFFLINE_ACCESS_SCOPE];
+
+function normalizeAuthorizeScope(value: string): string | null {
+    const requested = value.trim().split(/\s+/).filter(Boolean);
+    if (requested.length === 0 || requested.some((scope) => !SUPPORTED_OAUTH_SCOPES.includes(scope))) return null;
+    if (!requested.includes(MCP_OAUTH_SCOPE)) return null;
+    return MCP_OAUTH_SCOPE;
+}
+
 // The consent form and the token endpoint are unauthenticated entry points, so
 // both are rate limited. Token exchange is cheap to check and expensive to
 // brute-force, so it gets a tighter budget than metadata reads.
@@ -337,7 +353,7 @@ function redirectWithError(res: Response, redirectUri: string, state: string, er
 }
 
 /** Validate everything that must hold before a code may ever be issued. */
-async function validateAuthorizeRequest(params: AuthorizeParams): Promise<{ clientName: string }> {
+async function validateAuthorizeRequest(params: AuthorizeParams): Promise<{ clientName: string; scope: string }> {
     if (params.responseType !== 'code') {
         throw new OAuthError(400, 'unsupported_response_type', 'Only response_type=code is supported');
     }
@@ -349,24 +365,21 @@ async function validateAuthorizeRequest(params: AuthorizeParams): Promise<{ clie
     if (!params.codeChallenge) {
         throw new OAuthError(400, 'invalid_request', 'code_challenge is required (PKCE S256)');
     }
+    const scope = normalizeAuthorizeScope(params.scope);
+    if (!scope) {
+        throw new OAuthError(400, 'invalid_scope', `Only the ${MCP_OAUTH_SCOPE} scope (optionally with ${OFFLINE_ACCESS_SCOPE}) is supported`);
+    }
     const resource = getMcpPublicUrl();
-    if (resource && params.resource) {
-        let paramsOrigin: string;
-        try {
-            paramsOrigin = new URL(params.resource).origin;
-        } catch {
-            throw new OAuthError(400, 'invalid_target', 'resource does not match this authorization server');
-        }
-        if (paramsOrigin !== resource) {
-            throw new OAuthError(400, 'invalid_target', 'resource does not match this authorization server');
-        }
+    const expectedResource = resource ? `${resource}/mcp` : '';
+    if (!expectedResource || params.resource !== expectedResource) {
+        throw new OAuthError(400, 'invalid_target', 'resource must exactly match this MCP server');
     }
     const client = await getClient(params.clientId);
     if (!client) {
         throw new OAuthError(400, 'invalid_client', 'Unknown client_id');
     }
     assertRedirectUriAllowed(client, params.redirectUri);
-    return { clientName: client.clientName || 'An AI assistant' };
+    return { clientName: client.clientName || 'An AI assistant', scope };
 }
 
 /** GET /oauth/authorize — the entry point the AI client opens in a browser.
@@ -480,8 +493,9 @@ router.post('/oauth/authorize', authorizeLimiter, express.urlencoded({ extended:
     const presentedToken = str(body.consent_token);
 
     let clientName: string;
+    let grantedScope: string;
     try {
-        ({ clientName } = await validateAuthorizeRequest(params));
+        ({ clientName, scope: grantedScope } = await validateAuthorizeRequest(params));
     } catch (error) {
         sendOAuthError(res, error);
         return;
@@ -520,7 +534,7 @@ router.post('/oauth/authorize', authorizeLimiter, express.urlencoded({ extended:
         userId,
         redirectUri: params.redirectUri,
         codeChallenge: params.codeChallenge,
-        scope: params.scope,
+        scope: grantedScope,
         resource: params.resource || null,
     });
 
@@ -546,6 +560,7 @@ router.post('/oauth/token', tokenLimiter, express.urlencoded({ extended: false }
                 clientId: str(body.client_id),
                 redirectUri: str(body.redirect_uri),
                 codeVerifier: str(body.code_verifier),
+                resource: str(body.resource),
             });
             res.json(tokens);
             return;

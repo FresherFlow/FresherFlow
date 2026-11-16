@@ -4,6 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // No Redis in tests: rate limiting falls back to the in-memory store.
 process.env.REDIS_ENABLED = 'false';
+process.env.MCP_PUBLIC_URL = 'http://127.0.0.1:8787';
 
 const prismaMock = {
     opportunity: {

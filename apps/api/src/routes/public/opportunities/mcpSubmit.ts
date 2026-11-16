@@ -5,6 +5,7 @@ import { mcpSubmitOpportunitySchema } from '../../../utils/validation';
 import { createRateLimiter } from '../../../middleware/rateLimit';
 import { submitJob } from '../../../infrastructure/services/community/community.service';
 import { verifyAccessToken as verifyMcpAccessToken } from '../../../infrastructure/services/platform/mcpOAuth.service';
+import { getMcpPublicUrl } from '../../../utils/runtimeConfig';
 import { resolveMcpIdentity } from '../../../application/mcp/identity';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { AppError } from '../../../middleware/errorHandler';
@@ -54,7 +55,10 @@ const requireMcpUser: RequestHandler = async (req, res, next) => {
     }
 
     try {
-        const identity = await verifyMcpAccessToken(bearer);
+        const mcpPublicUrl = getMcpPublicUrl();
+        const identity = mcpPublicUrl
+            ? await verifyMcpAccessToken(bearer, `${mcpPublicUrl}/mcp`)
+            : null;
         if (!identity) {
             // Never fall back to a staged submission here: the caller believes it
             // is signed in, and silently degrading would misreport who owns the row.

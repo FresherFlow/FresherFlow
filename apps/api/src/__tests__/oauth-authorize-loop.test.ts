@@ -22,10 +22,10 @@ import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.API_URL = 'https://api.fresherflow.in';
-process.env.PUBLIC_FRONTEND_URL = 'https://fresherflow.in';
-process.env.APP_FRONTEND_URL = 'https://app.fresherflow.in';
-process.env.MCP_PUBLIC_URL = 'https://mcp.fresherflow.in';
+process.env.API_URL = 'http://127.0.0.1:5000';
+process.env.PUBLIC_FRONTEND_URL = 'http://127.0.0.1:3000';
+process.env.APP_FRONTEND_URL = 'http://127.0.0.1:3000';
+process.env.MCP_PUBLIC_URL = 'http://127.0.0.1:8787';
 process.env.REDIS_ENABLED = 'false';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -75,9 +75,11 @@ function buildApp(): express.Application {
 const VALID_AUTHORIZE =
     '/oauth/authorize?response_type=code'
     + '&client_id=ffc_loop'
-    + '&redirect_uri=https%3A%2F%2Fchatgpt.com%2Fcallback'
+    + '&redirect_uri=http%3A%2F%2F127.0.0.1%3A9000%2Fcallback'
     + '&code_challenge=abc123'
-    + '&state=st1';
+    + '&state=st1'
+    + '&scope=mcp'
+    + '&resource=http%3A%2F%2F127.0.0.1%3A8787%2Fmcp';
 
 beforeEach(async () => {
     await loadModules();
@@ -86,11 +88,25 @@ beforeEach(async () => {
     prismaMock.oAuthClient.findUnique.mockResolvedValue({
         clientId: 'ffc_loop',
         clientName: 'ChatGPT',
-        redirectUris: ['https://chatgpt.com/callback'],
+        redirectUris: ['http://127.0.0.1:9000/callback'],
     });
 });
 
 describe('MCP sign-in handoff', () => {
+    it('rejects a scope the server does not advertise', async () => {
+        const res = await request(buildApp()).get(VALID_AUTHORIZE.replace('scope=mcp', 'scope=profile'));
+
+        expect(res.status).toBe(302);
+        expect(new URL(res.headers.location).searchParams.get('error')).toBe('invalid_scope');
+    });
+
+    it('rejects a resource URI that only shares the MCP origin', async () => {
+        const res = await request(buildApp()).get(VALID_AUTHORIZE.replace('%2Fmcp', '%2Fother'));
+
+        expect(res.status).toBe(302);
+        expect(new URL(res.headers.location).searchParams.get('error')).toBe('invalid_target');
+    });
+
     it('sends a signed-out browser to the login host with a single-return marker', async () => {
         const res = await request(buildApp()).get(VALID_AUTHORIZE);
 
@@ -100,11 +116,11 @@ describe('MCP sign-in handoff', () => {
         const login = new URL(res.headers.location);
         // The public host, which is the one that always exists. A deployment
         // that splits login onto another host adds its own single 308 hop there.
-        expect(login.origin).toBe('https://fresherflow.in');
+        expect(login.origin).toBe('http://127.0.0.1:3000');
         expect(login.pathname).toBe('/login');
 
         const nested = new URL(login.searchParams.get('redirect') as string);
-        expect(nested.origin).toBe('https://api.fresherflow.in');
+        expect(nested.origin).toBe('http://127.0.0.1:5000');
         expect(nested.pathname).toBe('/oauth/authorize');
         // The marker that makes a second failure terminate instead of bounce.
         expect(nested.searchParams.get('oauth_retry')).toBe('1');
@@ -118,7 +134,7 @@ describe('MCP sign-in handoff', () => {
         expect(res.status).toBe(302);
 
         const consent = new URL(res.headers.location as string);
-        expect(consent.origin).toBe('https://fresherflow.in');
+        expect(consent.origin).toBe('http://127.0.0.1:3000');
         expect(consent.pathname).toBe('/oauth/consent');
         // The marker the consent page renders its sign-in card from.
         expect(consent.searchParams.get('error')).toBe('session_expired');
@@ -126,7 +142,7 @@ describe('MCP sign-in handoff', () => {
         // browser back to it — but never a consent_token: this handoff grants
         // no authority, only enough to rebuild the return leg.
         expect(consent.searchParams.get('client_id')).toBe('ffc_loop');
-        expect(consent.searchParams.get('redirect_uri')).toBe('https://chatgpt.com/callback');
+        expect(consent.searchParams.get('redirect_uri')).toBe('http://127.0.0.1:9000/callback');
         expect(consent.searchParams.get('code_challenge')).toBe('abc123');
         expect(consent.searchParams.get('state')).toBe('st1');
         expect(consent.searchParams.get('scope')).toBe('mcp');
@@ -142,6 +158,6 @@ describe('MCP sign-in handoff', () => {
         // the retry marker never leaks into the client redirect.
         const res = await request(buildApp()).get(`${VALID_AUTHORIZE}&oauth_retry=1`);
         expect(res.status).toBe(302);
-        expect(res.headers.location).not.toContain('https://chatgpt.com/callback?code=');
+        expect(res.headers.location).not.toContain('http://127.0.0.1:9000/callback?code=');
     });
 });

@@ -4,7 +4,8 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.REDIS_ENABLED = 'false';
 process.env.INTERNAL_API_SECRET = 'test-service-key';
-process.env.FRONTEND_URL = 'https://fresherflow.in';
+process.env.FRONTEND_URL = 'http://127.0.0.1:3000';
+process.env.MCP_PUBLIC_URL = 'http://127.0.0.1:8787';
 
 const prismaMock = {
     user: { findUnique: vi.fn() },
@@ -97,7 +98,7 @@ describe('GET /api/internal/mcp/jobs', () => {
         expect(res.body.jobs[0]).toMatchObject({
             title: 'Software Engineer',
             company: 'Acme',
-            url: 'https://fresherflow.in/jobs/software-engineer-at-acme',
+            url: 'http://127.0.0.1:3000/jobs/software-engineer-at-acme',
         });
     });
 

@@ -3,10 +3,12 @@ import request from 'supertest';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.REDIS_ENABLED = 'false';
+process.env.MCP_PUBLIC_URL = 'http://127.0.0.1:8787';
 process.env.INTERNAL_API_SECRET = 'test-service-key';
 
 const prismaMock = {
     user: { findUnique: vi.fn() },
+    userAccessRole: { findFirst: vi.fn() },
     jobSubmission: {
         findMany: vi.fn(),
         findUnique: vi.fn(),
@@ -63,6 +65,7 @@ beforeEach(() => {
         id: 'user-1', username: 'tarun', fullName: 'Tarun', email: 't@example.com',
         role: 'USER', trustLevel: 'NEW', status: 'ACTIVE',
     });
+    prismaMock.userAccessRole.findFirst.mockResolvedValue(null);
     prismaMock.jobSubmission.findMany.mockResolvedValue([]);
     prismaMock.jobSubmission.count.mockResolvedValue(0);
 });
@@ -111,6 +114,22 @@ describe('MCP contribution routes: authentication', () => {
         expect(res.body.capabilities.reviewSubmissions).toBe(true);
         // Not granted, so it must not read as granted.
         expect(res.body.capabilities.approveSubmissions).toBe(false);
+    });
+
+    it('labels a bare access-role grant as staff but promises no capability', async () => {
+        // Granting the MODERATOR role creates the grant row first. If the role's
+        // permission rows are missing, the account is still staff — but it must
+        // not be presented as able to moderate.
+        prismaMock.userAccessRole.findFirst.mockResolvedValue({ roleId: 'role-moderator' });
+
+        const res = await request(app)
+            .get('/api/internal/mcp/whoami')
+            .set('Authorization', 'Bearer member-token');
+
+        expect(res.status).toBe(200);
+        expect(res.body.mcpRole).toBe('moderator');
+        expect(res.body.capabilities.reviewSubmissions).toBe(false);
+        expect(res.body.capabilities.createFullListing).toBe(false);
     });
 });
 

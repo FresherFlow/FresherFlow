@@ -151,6 +151,7 @@ export interface ExchangeCodeInput {
     clientId: string;
     redirectUri: string;
     codeVerifier: string;
+    resource: string;
 }
 
 export interface TokenResponse {
@@ -171,7 +172,7 @@ function toTokenResponse(accessToken: string, refreshToken: string, scope: strin
     };
 }
 
-async function issueTokens(clientId: string, userId: string, scope: string): Promise<TokenResponse> {
+async function issueTokens(clientId: string, userId: string, scope: string, resource: string): Promise<TokenResponse> {
     const accessToken = randomToken(32);
     const refreshToken = randomToken(32);
     await prisma.$transaction(async (tx) => {
@@ -181,6 +182,7 @@ async function issueTokens(clientId: string, userId: string, scope: string): Pro
                 clientId,
                 userId,
                 scope,
+                resource,
                 expiresAt: new Date(Date.now() + ACCESS_TOKEN_TTL_MS),
             },
         });
@@ -190,6 +192,7 @@ async function issueTokens(clientId: string, userId: string, scope: string): Pro
                 clientId,
                 userId,
                 scope,
+                resource,
                 expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL_MS),
             },
         });
@@ -211,7 +214,7 @@ export async function exchangeAuthorizationCode(input: ExchangeCodeInput): Promi
         where: { codeHash: sha256(input.code) },
         select: {
             id: true, clientId: true, userId: true, redirectUri: true,
-            codeChallenge: true, scope: true, expiresAt: true, usedAt: true,
+            codeChallenge: true, scope: true, resource: true, expiresAt: true, usedAt: true,
         },
     });
 
@@ -232,17 +235,36 @@ export async function exchangeAuthorizationCode(input: ExchangeCodeInput): Promi
     if (row.redirectUri !== input.redirectUri) {
         throw new OAuthError(400, 'invalid_grant', 'redirect_uri does not match the authorization request');
     }
+    if (!row.resource || row.resource !== input.resource) {
+        throw new OAuthError(400, 'invalid_target', 'resource does not match the authorization request');
+    }
 
     const pkceOk = verifyPkceChallenge(input.codeVerifier, row.codeChallenge);
-    await prisma.oAuthAuthorizationCode.update({
-        where: { id: row.id },
-        data: { usedAt: new Date() },
-    });
     if (!pkceOk) {
+        // Consume a bad-PKCE code too, but do so with compare-and-set so
+        // concurrent exchanges cannot both proceed from the same read.
+        await prisma.oAuthAuthorizationCode.updateMany({
+            where: { id: row.id, usedAt: null },
+            data: { usedAt: new Date() },
+        });
         throw new OAuthError(400, 'invalid_grant', 'PKCE verification failed');
     }
 
-    return issueTokens(row.clientId, row.userId, row.scope || MCP_OAUTH_SCOPE);
+    const consumed = await prisma.oAuthAuthorizationCode.updateMany({
+        where: { id: row.id, usedAt: null },
+        data: { usedAt: new Date() },
+    });
+    if (consumed.count !== 1) {
+        // A code that lost the compare-and-set race was replayed. Match the
+        // existing replay policy and revoke this client's tokens for the user.
+        await revokeClientTokensForUser(row.userId, row.clientId);
+        throw new OAuthError(400, 'invalid_grant', 'Authorization code has already been used');
+    }
+
+    if (row.scope !== MCP_OAUTH_SCOPE || !row.resource) {
+        throw new OAuthError(400, 'invalid_grant', 'Authorization code is missing a supported scope or resource');
+    }
+    return issueTokens(row.clientId, row.userId, row.scope, row.resource);
 }
 
 /**
@@ -252,7 +274,7 @@ export async function exchangeAuthorizationCode(input: ExchangeCodeInput): Promi
 export async function refreshAccessToken(refreshToken: string, clientId: string): Promise<TokenResponse> {
     const row = await prisma.oAuthRefreshToken.findUnique({
         where: { tokenHash: sha256(refreshToken) },
-        select: { id: true, clientId: true, userId: true, scope: true, expiresAt: true, revokedAt: true },
+        select: { id: true, clientId: true, userId: true, scope: true, resource: true, expiresAt: true, revokedAt: true },
     });
 
     if (!row || row.revokedAt || row.expiresAt.getTime() < Date.now()) {
@@ -262,14 +284,24 @@ export async function refreshAccessToken(refreshToken: string, clientId: string)
         throw new OAuthError(400, 'invalid_grant', 'Refresh token was issued to another client');
     }
 
-    await prisma.oAuthRefreshToken.update({ where: { id: row.id }, data: { revokedAt: new Date() } });
-    return issueTokens(row.clientId, row.userId, row.scope || MCP_OAUTH_SCOPE);
+    if (row.scope !== MCP_OAUTH_SCOPE || !row.resource) {
+        throw new OAuthError(400, 'invalid_grant', 'Refresh token is missing a supported scope or resource');
+    }
+    const consumed = await prisma.oAuthRefreshToken.updateMany({
+        where: { id: row.id, revokedAt: null, expiresAt: { gt: new Date() } },
+        data: { revokedAt: new Date() },
+    });
+    if (consumed.count !== 1) {
+        throw new OAuthError(400, 'invalid_grant', 'Refresh token is invalid or expired');
+    }
+    return issueTokens(row.clientId, row.userId, row.scope, row.resource);
 }
 
 export interface McpAccessIdentity {
     userId: string;
     clientId: string;
     scope: string;
+    resource: string;
 }
 
 /**
@@ -278,13 +310,14 @@ export interface McpAccessIdentity {
  * Returns null for anything unusable (unknown, revoked, expired) so the caller
  * answers with a 401 challenge rather than leaking which case it was.
  */
-export async function verifyAccessToken(token: string): Promise<McpAccessIdentity | null> {
+export async function verifyAccessToken(token: string, expectedResource: string): Promise<McpAccessIdentity | null> {
     if (!token) return null;
     const row = await prisma.oAuthAccessToken.findUnique({
         where: { tokenHash: sha256(token) },
-        select: { id: true, userId: true, clientId: true, scope: true, expiresAt: true, revokedAt: true, lastUsedAt: true },
+        select: { id: true, userId: true, clientId: true, scope: true, resource: true, expiresAt: true, revokedAt: true, lastUsedAt: true },
     });
-    if (!row || row.revokedAt || row.expiresAt.getTime() < Date.now()) return null;
+    if (!row || row.revokedAt || row.expiresAt.getTime() < Date.now()
+        || row.scope !== MCP_OAUTH_SCOPE || row.resource !== expectedResource) return null;
 
     // Best-effort usage stamp; a failure here must not fail the tool call.
     const stale = !row.lastUsedAt || Date.now() - row.lastUsedAt.getTime() > LAST_USED_WRITE_INTERVAL_MS;
@@ -296,7 +329,7 @@ export async function verifyAccessToken(token: string): Promise<McpAccessIdentit
         }
     }
 
-    return { userId: row.userId, clientId: row.clientId, scope: row.scope };
+    return { userId: row.userId, clientId: row.clientId, scope: row.scope, resource: row.resource };
 }
 
 /** RFC 7009 revocation. Unknown tokens are reported as success, per the spec. */

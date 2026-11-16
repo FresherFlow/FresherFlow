@@ -23,9 +23,9 @@ import express from 'express';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-process.env.API_URL = 'https://api.fresherflow.in';
-process.env.MCP_PUBLIC_URL = 'https://mcp.fresherflow.in';
-process.env.PUBLIC_SITE_URL = 'https://fresherflow.in';
+process.env.API_URL = 'http://127.0.0.1:5000';
+process.env.MCP_PUBLIC_URL = 'http://127.0.0.1:8787';
+process.env.PUBLIC_SITE_URL = 'http://127.0.0.1:3000';
 process.env.REDIS_ENABLED = 'false';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
@@ -87,11 +87,11 @@ describe('OAuth authorization-server discovery', () => {
 
         expect(res.status).toBe(200);
         expect(res.headers['content-type']).toMatch(/application\/json/);
-        expect(res.body.issuer).toBe('https://api.fresherflow.in');
-        expect(res.body.authorization_endpoint).toBe('https://api.fresherflow.in/oauth/authorize');
-        expect(res.body.token_endpoint).toBe('https://api.fresherflow.in/oauth/token');
-        expect(res.body.registration_endpoint).toBe('https://api.fresherflow.in/oauth/register');
-        expect(res.body.revocation_endpoint).toBe('https://api.fresherflow.in/oauth/revoke');
+        expect(res.body.issuer).toBe('http://127.0.0.1:5000');
+        expect(res.body.authorization_endpoint).toBe('http://127.0.0.1:5000/oauth/authorize');
+        expect(res.body.token_endpoint).toBe('http://127.0.0.1:5000/oauth/token');
+        expect(res.body.registration_endpoint).toBe('http://127.0.0.1:5000/oauth/register');
+        expect(res.body.revocation_endpoint).toBe('http://127.0.0.1:5000/oauth/revoke');
     });
 
     it('advertises only supported capabilities', async () => {
@@ -125,7 +125,7 @@ describe('OpenID Connect discovery', () => {
         const oidcRes = await request(app).get('/.well-known/openid-configuration');
 
         expect(oidcRes.status).toBe(200);
-        expect(oidcRes.body.issuer).toBe('https://api.fresherflow.in');
+        expect(oidcRes.body.issuer).toBe('http://127.0.0.1:5000');
         expect(oidcRes.body.issuer).toBe(asRes.body.issuer);
         expect(oidcRes.body.authorization_endpoint).toBe(asRes.body.authorization_endpoint);
         expect(oidcRes.body.token_endpoint).toBe(asRes.body.token_endpoint);
@@ -145,8 +145,8 @@ describe('Protected resource discovery', () => {
 
         expect(res.status).toBe(200);
         // Same identifier apps/mcp publishes: the resource is the /mcp endpoint.
-        expect(res.body.resource).toBe('https://mcp.fresherflow.in/mcp');
-        expect(res.body.authorization_servers).toEqual(['https://api.fresherflow.in']);
+        expect(res.body.resource).toBe('http://127.0.0.1:8787/mcp');
+        expect(res.body.authorization_servers).toEqual(['http://127.0.0.1:5000']);
         expect(res.body.scopes_supported).toEqual(['mcp']);
         expect(res.body.bearer_methods_supported).toEqual(['header']);
     });
@@ -155,7 +155,7 @@ describe('Protected resource discovery', () => {
 describe('Dynamic client registration (POST /oauth/register)', () => {
     const validBody = {
         client_name: 'ChatGPT (test)',
-        redirect_uris: ['https://chatgpt.com/callback'],
+        redirect_uris: ['http://127.0.0.1:9000/callback'],
     };
 
     it('registers a public client and returns client_id + metadata, no secret', async () => {
@@ -163,7 +163,7 @@ describe('Dynamic client registration (POST /oauth/register)', () => {
         prismaMock.oAuthClient.create.mockResolvedValue({
             clientId: 'ffc_abcd1234',
             clientName: 'ChatGPT (test)',
-            redirectUris: ['https://chatgpt.com/callback'],
+            redirectUris: ['http://127.0.0.1:9000/callback'],
         });
 
         const res = await request(app).post('/oauth/register').send(validBody);
@@ -171,7 +171,7 @@ describe('Dynamic client registration (POST /oauth/register)', () => {
         expect(res.status).toBe(201);
         expect(res.body.client_id).toBe('ffc_abcd1234');
         expect(res.body.client_name).toBe('ChatGPT (test)');
-        expect(res.body.redirect_uris).toEqual(['https://chatgpt.com/callback']);
+        expect(res.body.redirect_uris).toEqual(['http://127.0.0.1:9000/callback']);
         expect(res.body.token_endpoint_auth_method).toBe('none');
         expect(res.body.grant_types).toEqual(['authorization_code', 'refresh_token']);
         expect(res.body.response_types).toEqual(['code']);
@@ -183,7 +183,7 @@ describe('Dynamic client registration (POST /oauth/register)', () => {
             data: { clientId: string; clientName: string; redirectUris: string[] };
         };
         expect(created.data.clientId).toMatch(/^ffc_/);
-        expect(created.data.redirectUris).toEqual(['https://chatgpt.com/callback']);
+        expect(created.data.redirectUris).toEqual(['http://127.0.0.1:9000/callback']);
     });
 
     it('requires at least one redirect URI', async () => {
@@ -205,17 +205,17 @@ describe('Dynamic client registration (POST /oauth/register)', () => {
         expect(res.body.error).toBe('invalid_redirect_uri');
     });
 
-    it('supports the chatgpt.com style redirect URI used by custom MCP clients', async () => {
+    it('supports a custom local redirect URI for public MCP clients', async () => {
         const app = buildApp();
         prismaMock.oAuthClient.create.mockResolvedValue({
             clientId: 'ffc_chatgpt',
             clientName: 'FresherFlow ChatGPT',
-            redirectUris: ['https://chatgpt.com/callback'],
+            redirectUris: ['http://127.0.0.1:9000/callback'],
         });
 
         const res = await request(app)
             .post('/oauth/register')
-            .send({ client_name: 'FresherFlow ChatGPT', redirect_uris: ['https://chatgpt.com/callback'] });
+            .send({ client_name: 'FresherFlow ChatGPT', redirect_uris: ['http://127.0.0.1:9000/callback'] });
 
         expect(res.status).toBe(201);
         expect(res.body.client_id).toBe('ffc_chatgpt');
