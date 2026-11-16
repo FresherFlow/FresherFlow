@@ -537,6 +537,8 @@ model OAuthAccessToken {
   clientId   String
   userId     String
   scope      String    @default("")
+  /// Exact MCP resource URI this bearer token is valid for (RFC 8707).
+  resource   String    @default("")
   expiresAt  DateTime
   revokedAt  DateTime?
   lastUsedAt DateTime?
@@ -556,6 +558,8 @@ model OAuthRefreshToken {
   clientId  String
   userId    String
   scope     String    @default("")
+  /// Resource binding is preserved across refresh-token rotation.
+  resource  String    @default("")
   expiresAt DateTime
   revokedAt DateTime?
   createdAt DateTime  @default(now())
