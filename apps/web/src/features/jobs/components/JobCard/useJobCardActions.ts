@@ -192,11 +192,6 @@ export function useJobCardActions({
         else router.push(href);
     };
 
-    const handleAdminEditClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        router.push(`/admin/opportunities/edit/${job.slug || job.id}`);
-    };
-
     return {
         isDrive,
         isGovernment,
@@ -216,6 +211,5 @@ export function useJobCardActions({
         handleApplyClick,
         handleCardClick,
         handleLinkClick,
-        handleAdminEditClick,
     };
 }

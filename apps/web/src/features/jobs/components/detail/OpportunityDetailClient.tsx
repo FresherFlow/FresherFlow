@@ -392,15 +392,6 @@ export default function OpportunityDetailClient({
                             </div>
                         )}
 
-                        {isMounted && user?.role === 'ADMIN' && (
-                            <div className="lg:hidden bg-card p-4 border border-primary/20 rounded-xl space-y-2">
-                                <h4 className="text-xs font-bold text-primary">Admin Control</h4>
-                                <Link href={`/admin/opportunities/edit/${opp.id}`} className="block">
-                                    <Button size="sm" variant="outline" className="w-full">Edit Opportunity</Button>
-                                </Link>
-                            </div>
-                        )}
-
                         {opp.applicationDetails && opp.applicationDetails.method === 'ASSESSMENT' && (
                             <ComplexityCard applicationDetails={opp.applicationDetails} />
                         )}

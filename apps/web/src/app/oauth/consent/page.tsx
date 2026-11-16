@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { API_URL } from '@/lib/utils/runtimeConfig';
 import { Button } from '@/ui/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/ui/Card';
+import { ResumeOAuth } from './_components/ResumeOAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,20 +50,16 @@ function consentAction(): string {
 }
 
 /**
- * Where "Sign in again" goes on the API's `error=session_expired` handoff.
- *
- * That handoff carries the authorization request but no `consent_token` (it
- * grants nothing), so the link rebuilds the original `<api>/oauth/authorize`
- * URL — with `response_type`, which the API's own login handoff sets too —
- * and the login screen returns the browser there after a fresh sign-in. No
- * `oauth_retry`: the marker belongs to the API's automatic bounce, and this
- * path only moves on an explicit click, which is what keeps the
- * /login <-> /oauth/authorize cycle from redirecting on its own.
+ * Rebuild the original `<api>/oauth/authorize` URL from the session-expired
+ * handoff. That handoff carries the authorization request but no
+ * `consent_token` (it grants nothing), and deliberately omits `oauth_retry` —
+ * the marker belongs to the API's automatic bounce, so replaying it here would
+ * drop a still-signed-in user straight back on this page.
  *
  * Returns `''` when the forwarded request cannot produce a valid return leg,
  * so the caller falls through to the invalid-request state below.
  */
-function signInAgainUrl(source: Record<string, string | string[] | undefined>): string {
+function oauthAuthorizeUrl(source: Record<string, string | string[] | undefined>): string {
     if (!API_URL) return '';
     const clientId = readParam(source, 'client_id');
     const redirectUri = readParam(source, 'redirect_uri');
@@ -81,13 +77,20 @@ function signInAgainUrl(source: Record<string, string | string[] | undefined>): 
         if (scope) authorizeUrl.searchParams.set('scope', scope);
         const resource = readParam(source, 'resource');
         if (resource) authorizeUrl.searchParams.set('resource', resource);
-        // Same-origin, so it stays a path; the login form reads `redirect`,
-        // and isSafeInternalRedirect allows this one absolute API URL.
-        const loginQuery = new URLSearchParams({ redirect: authorizeUrl.toString() });
-        return `/login?${loginQuery.toString()}`;
+        return authorizeUrl.toString();
     } catch {
         return '';
     }
+}
+
+function signInAgainUrl(authorizeUrl: string): string {
+    if (!authorizeUrl) return '';
+    // Same-origin, so it stays a path; the login form reads `redirect`,
+    // and isSafeInternalRedirect allows this one absolute API URL.
+    // `expired=true` stops LoginForm from auto-redirecting on a dead cached
+    // session — without it, this link just cycles back to this same page.
+    const loginQuery = new URLSearchParams({ redirect: authorizeUrl, expired: 'true' });
+    return `/login?${loginQuery.toString()}`;
 }
 
 /**
@@ -127,11 +130,12 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
 
     // The API's session-expired handoff. It has no consent_token, so it is not
     // a consent form — and it must not read as "Invalid request" either: the
-    // request is intact, only the session is gone. Forwarded text renders as
-    // text here, and the onward step is a sign-in click, never an automatic
-    // bounce back to /oauth/authorize.
-    const expiredSignInUrl =
-        readParam(source, 'error') === 'session_expired' ? signInAgainUrl(source) : '';
+    // request is intact, only the API's cookies are missing. ResumeOAuth first
+    // tries to restore those cookies from the web session; the sign-in link is
+    // only the fallback when that fails.
+    const authorizeUrl =
+        readParam(source, 'error') === 'session_expired' ? oauthAuthorizeUrl(source) : '';
+    const expiredSignInUrl = signInAgainUrl(authorizeUrl);
 
     if (expiredSignInUrl) {
         return (
@@ -144,9 +148,7 @@ export default async function OAuthConsentPage({ searchParams }: ConsentPageProp
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <Button asChild className="w-full">
-                            <Link href={expiredSignInUrl}>Sign in again</Link>
-                        </Button>
+                        <ResumeOAuth authorizeUrl={authorizeUrl} signInUrl={expiredSignInUrl} />
                     </CardContent>
                 </Card>
             </main>

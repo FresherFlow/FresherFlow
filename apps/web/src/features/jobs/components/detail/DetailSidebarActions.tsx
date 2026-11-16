@@ -1,6 +1,5 @@
 import { ActionType, CommunityPostCategory, type Opportunity, type User, type OpportunityEvent } from '@fresherflow/types';
 import { cn } from '@/ui/cn';
-import { Button } from '@/ui/Button';
 import { BrandButton } from '@/ui/BrandButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Select';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
@@ -341,16 +340,6 @@ export function DetailSidebarActions({
                 </BrandButton>
             </div>
 
-            {/* -- Admin -- */}
-            {isMounted && user?.role === 'ADMIN' && (
-                <div className="pt-3 border-t border-border/40">
-                    <Link href={`/admin/opportunities/edit/${opp.id}`} className="block">
-                        <Button size="sm" variant="outline" className="w-full">
-                            Edit
-                        </Button>
-                    </Link>
-                </div>
-            )}
         </div>
     );
 }

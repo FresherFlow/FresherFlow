@@ -19,7 +19,6 @@ import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import { cn } from '@/ui/cn';
 import Link from 'next/link';
-import { Button } from '@/ui/Button';
 import { Hint } from '@/ui/Tooltip';
 import { ApplyAction, ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 
@@ -368,17 +367,6 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             timelineEvents={ds.timelineEvents}
                             upcomingTimelineEvents={ds.upcomingTimelineEvents}
                         />
-
-                        {user?.role === 'ADMIN' && (
-                            <div className="bg-card p-4 border border-primary/20 rounded-xl space-y-2">
-                                <h4 className="text-xs font-bold text-primary">Admin Control</h4>
-                                <Link href={`/admin/opportunities/edit/${opp.id}`} className="block">
-                                    <Button variant="outline" size="sm" className="w-full">
-                                        Edit Opportunity
-                                    </Button>
-                                </Link>
-                            </div>
-                        )}
 
                     </div>
                 )}
