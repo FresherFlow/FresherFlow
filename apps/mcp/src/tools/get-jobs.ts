@@ -1,6 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { getJobs } from '../api/jobs.js';
+import { logger } from '../logger.js';
 
 /**
  * Read tool: browse the live FresherFlow listings.
@@ -13,20 +14,20 @@ import { getJobs } from '../api/jobs.js';
  * - readOnlyHint: true
  * - openWorldHint: false (reads our own bounded service)
  */
-export function registerGetJobs(server: McpServer): void {
+export function registerGetJobs(server: McpServer, feedBaseUrl: string, cdnSignatureSecret?: string, siteUrl = ''): void {
     server.registerTool(
         'get_jobs',
         {
             title: 'Browse live FresherFlow jobs',
             description:
-                'Search the jobs that are live on FresherFlow right now — fresher jobs, internships, '
+            'Search the public feed of live FresherFlow jobs without signing in — fresher jobs, internships, '
                 + 'walk-in drives and government vacancies. Use this before submitting to check whether '
                 + 'a job is already listed, and whenever a user asks what is open, what a company has '
                 + 'posted, or what is available in a city. '
                 + 'Filters: `q` matches title or company, `city` matches a listed location exactly, '
                 + '`company` matches the company name exactly, and `type` accepts internship, walk-in '
                 + 'or government. Results are newest first and paginated (default 20, max 50). '
-                + 'Every result carries a canonical `url` on fresherflow.in. Only published, unexpired '
+                + 'Every result carries a canonical FresherFlow listing URL. Only published, unexpired '
                 + 'listings are returned, so an empty result means nothing live currently matches — '
                 + 'it does not mean the site has no jobs.',
             inputSchema: {
@@ -66,6 +67,8 @@ export function registerGetJobs(server: McpServer): void {
                     .max(50)
                     .optional()
                     .describe('Results per page, default 20'),
+                response_format: z.enum(['markdown', 'json']).optional()
+                    .describe('Text rendering for the result. Structured output is returned in either format.'),
             },
             outputSchema: {
                 jobs: z.array(
@@ -92,6 +95,7 @@ export function registerGetJobs(server: McpServer): void {
                 page: z.number(),
                 limit: z.number(),
                 hasMore: z.boolean(),
+                nextPage: z.number().nullable(),
             },
             annotations: {
                 readOnlyHint: true,
@@ -100,14 +104,23 @@ export function registerGetJobs(server: McpServer): void {
             },
         },
         async (input) => {
-            const result = await getJobs({
-                ...(input.q ? { q: input.q } : {}),
-                ...(input.city ? { city: input.city } : {}),
-                ...(input.company ? { company: input.company } : {}),
-                ...(input.type ? { type: input.type } : {}),
-                ...(input.page ? { page: input.page } : {}),
-                ...(input.limit ? { limit: input.limit } : {}),
-            });
+            let result;
+            try {
+                result = await getJobs({
+                    ...(input.q ? { q: input.q } : {}),
+                    ...(input.city ? { city: input.city } : {}),
+                    ...(input.company ? { company: input.company } : {}),
+                    ...(input.type ? { type: input.type } : {}),
+                    ...(input.page ? { page: input.page } : {}),
+                    ...(input.limit ? { limit: input.limit } : {}),
+                }, feedBaseUrl, cdnSignatureSecret, siteUrl);
+            } catch (error) {
+                logger.error('Public MCP job search failed', { error });
+                return {
+                    isError: true,
+                    content: [{ type: 'text' as const, text: 'FresherFlow public job data is temporarily unavailable. Retry shortly.' }],
+                };
+            }
 
             const preview = result.jobs.slice(0, 5).map(
                 (job) => `- ${job.title} at ${job.company}${job.locations.length ? ` (${job.locations.join(', ')})` : ''} — ${job.url ?? job.id}`,
@@ -118,7 +131,9 @@ export function registerGetJobs(server: McpServer): void {
                 content: [
                     {
                         type: 'text' as const,
-                        text: result.jobs.length === 0
+                        text: input.response_format === 'json'
+                            ? JSON.stringify(result)
+                            : result.jobs.length === 0
                             ? 'No live FresherFlow listings match those filters.'
                             : `${result.total} live listing${result.total === 1 ? '' : 's'} match. First ${result.jobs.slice(0, 5).length}:\n${preview.join('\n')}`
                                 + (result.hasMore ? `\n(More available — ask for page ${result.page + 1}.)` : ''),

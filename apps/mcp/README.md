@@ -4,10 +4,9 @@ MCP service that exposes the FresherFlow API to AI clients (ChatGPT, Claude,
 Cursor, Codex): browse live jobs, submit a job, create or edit a full listing,
 and — for a moderator — review, approve or reject community submissions.
 
-Every connection is authenticated through the FresherFlow app with OAuth 2.1.
-The caller's role is resolved from RBAC on each request, so a moderator's
-submission publishes while everyone else's is saved as a draft, and the tool
-list itself is filtered to what that role may use.
+Public job discovery works without sign-in. Connecting a FresherFlow account
+with OAuth 2.1 adds account tools; moderator tools are resolved from RBAC on
+each request. A supplied but invalid token is always rejected.
 
 Thin wrapper over the existing FresherFlow API — no business logic, no database
 access, no direct Firebase access.
@@ -20,13 +19,13 @@ calls one function from `src/api/`.
 
 | File | Purpose |
 |---|---|
-| `src/worker.ts` | Worker entry: `/health`, the OAuth discovery documents, the 401 challenge, rate limit, and the stateless streamable-HTTP endpoint |
+| `src/worker.ts` | Worker entry: `/health`, OAuth discovery, origin guard, rate limit, and separate stateless public and OAuth endpoints |
 | `src/identity.ts` | resolves the current OAuth caller into `moderator` / `user` plus capabilities on each request |
 | `src/server.ts` | builds a per-connection `McpServer`: role-specific instructions, and only the tools that role may use |
 | `src/http/token.ts` | the per-request access token (AsyncLocalStorage) and bearer parsing |
 | `src/http/client.ts` | the one authenticated `fetch`, plus upstream error mapping and scrubbing |
 | `src/api/identity.ts` | `whoami` |
-| `src/api/jobs.ts` | live job browse (`/api/internal/mcp/jobs`) |
+| `src/api/jobs.ts` | public CDN feed and listing-shard reads |
 | `src/api/listings.ts` | listing schema, create, update, read |
 | `src/api/submissions.ts` | submit, own submissions, withdraw, review queue and decisions |
 | `src/tools/*.ts` | one file per tool: its schema, description, annotations, and handler |
@@ -39,6 +38,25 @@ calls one function from `src/api/`.
 | `README.md` | this file |
 
 `/health` is a liveness check for the deployed Worker. It is not an MCP feature.
+
+## Runtime configuration
+
+Set these Worker bindings in the Cloudflare dashboard (or with Wrangler's
+environment-specific secret/variable commands) before deployment. They are
+intentionally not production defaults in `wrangler.jsonc`:
+
+- `FRESHERFLOW_API_URL`, `PUBLIC_SITE_URL`, `MCP_PUBLIC_URL`, and
+  `PUBLIC_FEED_BASE_URL` are required origin URLs. `MCP_PUBLIC_URL` must match
+  the API OAuth resource configuration exactly.
+- `MCP_ALLOWED_ORIGINS` is a comma-separated list of exact HTTPS origins
+  allowed to call `/mcp` and `/mcp/public` from browsers. Requests without an `Origin` header
+  remain supported. Local HTTP deployments accept loopback origins only.
+- `CDN_SIGNATURE_SECRET` is a secret binding when the feed CDN requires signed
+  requests; use the same signing secret as the feed publisher.
+
+For local development, copy `.dev.vars.example` to `.dev.vars` and set the
+loopback API/feed URLs. `.dev.vars` is gitignored. `pnpm --filter
+fresherflow-mcp dev` uses the single `wrangler.jsonc` configuration.
 
 `get_listing_template` is the local one: it makes no API call, because the
 payload skeleton and the filling rules are ours. It exists because the admin
@@ -53,7 +71,8 @@ reference is kept in `templates/listing-templates.md`.
 | Tool | Calls | Needs | Registered for | Annotations |
 |---|---|---|---|---|
 | `whoami` | `GET /api/internal/mcp/whoami` | signed-in connection | every account | `readOnlyHint: true` |
-| `get_jobs` | `GET /api/internal/mcp/jobs` | signed-in connection | every account | `readOnlyHint: true` |
+| `get_jobs` | versioned public CDN feed | public | `/mcp/public` and authenticated `/mcp` | `readOnlyHint: true` |
+| `get_job` | versioned public CDN listing shard | public | `/mcp/public` and authenticated `/mcp` | `readOnlyHint: true`, `idempotentHint: true` |
 | `submit_opportunity` | `POST /api/opportunities/mcp-submit` | signed-in connection | every account | `readOnlyHint: false` |
 | `list_my_submissions` | `GET /api/internal/mcp/submissions` | signed in; own rows | every account | `readOnlyHint: true` |
 | `withdraw_submission` | `POST /api/internal/mcp/submissions/:id/withdraw` | signed in; own `PENDING_REVIEW` rows | every account | `destructiveHint: true` |
@@ -83,15 +102,17 @@ The MCP server is the OAuth 2.1 **resource server**; the FresherFlow API is the
 will not accept a static key or a custom header for an MCP connector, so caller
 identity can only come from an authorization-code + PKCE flow.
 
-- Every request to `/mcp` must carry `Authorization: Bearer <token>`. Without
-  one the request is rejected with `401` and
-  `WWW-Authenticate: Bearer resource_metadata="<mcp>/.well-known/oauth-protected-resource"`,
-  which is how a client discovers where to send the user to sign in.
+- `/mcp/public` is the anonymous endpoint and exposes only read-only public
+  job search and detail. `/mcp` always requires `Authorization: Bearer <token>`;
+  without one it returns `401` with the OAuth resource metadata challenge so
+  standard clients can begin sign-in and discover account tools.
+- A malformed or invalid supplied token is never treated as anonymous. It is
+  rejected by the API during identity resolution.
 - The caller's token travels with the request through `AsyncLocalStorage`
   (`apiClient.ts`), so every API call a tool makes is authenticated as that
   caller. A module-level variable would race between concurrent callers.
-- There is **no anonymous path** through this server, and the server holds no
-  service key: a request without a bearer never reaches a tool.
+- Neither endpoint holds a service key. Public tools read the configured CDN
+  feed; account tools call the API with the caller's token.
 - The account is re-checked on every call, so a suspended account's still-valid
   token is refused (`403`) rather than left usable until the token expires.
 - The caller's role is resolved once per request (`src/identity.ts`) and decides
@@ -108,19 +129,17 @@ user identity. That path is not reachable through this server, because the
 transport requires a token before any tool runs — and this process never holds
 that secret, so it cannot act as an unattributable identity.
 
-### Local development auth
+### Local development authentication
 
-`pnpm --filter fresherflow-mcp dev` starts the Worker with
-`MCP_AUTH_MODE=local_noauth`, which lets a local client open
-`http://localhost:8787/mcp` with no bearer: instead of the 401 challenge the
-request runs in a local-dev scope and every API call carries
-`x-mcp-local-dev: 1`, so the API resolves a fixed local identity (tools and
-roles stay RBAC-driven). The flag is dev-only — it is passed by the `dev`
-script and never appears in `wrangler.jsonc`, so a production deploy has no
-`MCP_AUTH_MODE` and every request takes the OAuth path unchanged; any value
-other than the exact `local_noauth` also falls back to OAuth, so the default is
-fail-closed. With the flag on, a request that does bring a bearer still runs in
-the normal token scope.
+Local development uses the same OAuth 2.1 bearer flow as every other
+environment. The local Wrangler config contains only loopback URLs and the
+development command does not enable an unauthenticated mode. Start the local
+API and web app with `API_URL=http://127.0.0.1:5001`,
+`MCP_PUBLIC_URL=http://127.0.0.1:8787`, and
+`PUBLIC_FRONTEND_URL=http://127.0.0.1:3000`, then connect through the local
+sign-in and consent flow. The API access token is bound to the exact
+`http://127.0.0.1:8787/mcp` resource and `mcp` scope; missing credentials,
+unsupported scopes, and mismatched resources are rejected.
 
 ## Why the tools are shaped this way
 
@@ -137,32 +156,41 @@ Two write contracts, deliberately not interchangeable:
   `opportunity.create` / `opportunity.edit` are moderator-level grants on this
   surface; `create_listing` defaults to `PUBLISHED` for them.
 
-`get_jobs` is the read half: live listings only, through the same
-`liveOpportunityWhere` rule the public feed and CDN snapshot use, so the tool
-cannot report a job that a visitor cannot open. It returns listings, not the job
-discussion the apps render from **Firebase RTDB** (`/comments/{id}`) — that data
-is deliberately not exposed here.
+`get_jobs` searches the versioned public feed index. `get_job` reads a detail
+shard for an exact public id or slug. Both tools are available anonymously and
+return only published, unexpired opportunities. They do not expose job
+discussion from **Firebase RTDB** (`/comments/{id}`).
 
 ## Run
 
-```bash
+```powershell
+# Terminal 1: local API and database configuration
+& '.\apps\api\scripts\dev-mcp-local.ps1'
+
+# Terminal 2: local MCP Worker
 pnpm --filter fresherflow-mcp dev
 ```
 
-`wrangler dev` serves the Worker on `http://localhost:8787` using the vars in
-`apps/mcp/wrangler.jsonc`. To point it at a local API instead, run
-`pnpm --filter fresherflow-mcp dev --var FRESHERFLOW_API_URL:http://localhost:5000`.
+`pnpm --filter fresherflow-mcp dev` serves the Worker on
+`http://127.0.0.1:8787`; it calls the local API on port `5001`. Copy
+`.dev.vars.example` to `.dev.vars` first. Wrangler uses the single
+`wrangler.jsonc`; `.dev.vars` supplies local bindings without deployment
+domains or production URLs. The OAuth issuer and web consent UI must be served
+by local API and web instances.
 
 | Env var | Default | Purpose |
 |---|---|---|
-| `FRESHERFLOW_API_URL` | `https://api.fresherflow.in` | Existing FresherFlow API base URL |
-| `PUBLIC_SITE_URL` | `https://fresherflow.in` | Public site URL, used in tool descriptions |
-| `MCP_PUBLIC_URL` | `https://mcp.fresherflow.in` | This server's public origin; must equal the API's `MCP_PUBLIC_URL` |
-No service key is configured on purpose: every call this process makes is
-authenticated as the connected user, and a shared secret here would be a second,
-unattributable identity any connected account could borrow.
+| `FRESHERFLOW_API_URL` | `http://127.0.0.1:5001` | Local API base URL |
+| `PUBLIC_SITE_URL` | `http://127.0.0.1:3000` | Local web origin |
+| `MCP_PUBLIC_URL` | `http://127.0.0.1:8787` | Local MCP resource origin; must equal the API's `MCP_PUBLIC_URL` |
+| `PUBLIC_FEED_BASE_URL` | `http://127.0.0.1:5001` | Local public feed origin |
+| `MCP_ALLOWED_ORIGINS` | Loopback web origins | Exact browser origins; loopback MCP development accepts loopback origins |
+`PUBLIC_FEED_BASE_URL` points to the local API feed endpoint. Anonymous job
+discovery uses this public feed; protected API calls use the connected
+account's OAuth token. The MCP Worker has no shared service key.
 
-Health: `GET /health`. MCP endpoint: `/mcp` (Streamable HTTP).
+Health: `GET /health`. Public MCP endpoint: `/mcp/public`. OAuth MCP endpoint:
+`/mcp` (both use Streamable HTTP with JSON POST responses and no SSE stream).
 
 The API side needs `MCP_PUBLIC_URL` set to this server's public origin. Without
 it, `/.well-known/oauth-protected-resource` answers `503` and no client can

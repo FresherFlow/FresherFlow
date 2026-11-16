@@ -1,7 +1,7 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { createFresherFlowMcpServer } from './server.js';
 import { resolveConnectionIdentity } from './identity.js';
-import { bearerFromHeaders, runWithAccessToken, runWithLocalDevScope } from './http/token.js';
+import { bearerFromHeaders, runWithAccessToken } from './http/token.js';
 import { ApiHttpError, setApiBaseUrl } from './http/client.js';
 import { logger } from './logger.js';
 
@@ -12,31 +12,23 @@ import { logger } from './logger.js';
  * survive between requests, because the tool list is built from the caller's
  * role on each request. That is also why this needs no Durable Object.
  *
- * Every request must carry an OAuth 2.1 bearer token. There is no anonymous
- * tier and the Worker holds no service key: a request without a bearer is
- * answered with a 401 challenge pointing at the API's protected-resource
- * metadata, which is how ChatGPT/Claude start the sign-in flow.
+ * Public discovery tools are available without a bearer. A supplied bearer is
+ * always validated and resolved before protected tools are registered.
  *
- * The single exception is the dev-only `MCP_AUTH_MODE=local_noauth`, which
- * skips the challenge so a local client can reach `http://localhost:8787/mcp`
- * without an OAuth round trip. Anything other than that exact value — including
- * an unset variable on production — is the OAuth path above, unchanged.
  */
 
 interface Env {
   FRESHERFLOW_API_URL: string;
   PUBLIC_SITE_URL: string;
   MCP_PUBLIC_URL: string;
-  /** Only ever `local_noauth` (set by the dev script); absent in production. */
-  MCP_AUTH_MODE?: string;
+  PUBLIC_FEED_BASE_URL?: string;
+  CDN_SIGNATURE_SECRET?: string;
+  MCP_ALLOWED_ORIGINS?: string;
 }
-
-/** The one value that disables OAuth. Anything else is the normal auth path. */
-const LOCAL_NOAUTH = 'local_noauth';
 
 const MCP_CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, mcp-session-id, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Expose-Headers': 'mcp-session-id',
   'Access-Control-Max-Age': '86400',
@@ -107,6 +99,31 @@ function originOf(value: string | undefined): string {
   }
 }
 
+/** Protect the HTTP transport from DNS rebinding and unwanted browser origins. */
+function isAllowedTransportOrigin(value: string, env: Env): boolean {
+  if (value === 'null') return false;
+  let origin: URL;
+  try {
+    origin = new URL(value);
+    if (origin.origin !== value || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) return false;
+  } catch {
+    return false;
+  }
+
+  const local = origin.protocol === 'http:'
+    && ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
+  const mcpOrigin = originOf(env.MCP_PUBLIC_URL);
+  // Local clients commonly choose ephemeral ports; permit loopback origins
+  // only when this Worker itself is explicitly configured for local HTTP.
+  if (local && mcpOrigin.startsWith('http://')) return true;
+
+  const allowed = (env.MCP_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((item) => originOf(item.trim()))
+    .filter(Boolean);
+  return allowed.includes(origin.origin);
+}
+
 function getUrls(env: Env) {
   return {
     apiBaseUrl: originOf(env.FRESHERFLOW_API_URL),
@@ -118,6 +135,62 @@ function getUrls(env: Env) {
 function configurationError(): Response {
   logger.error('MCP public origins are missing or invalid');
   return jsonResponse({ error: 'MCP is not configured' }, 500);
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * The bare origin, for a human who opened it in a browser.
+ *
+ * `https://mcp.fresherflow.in` is the most common thing to paste into an AI
+ * client, and a bare 404 reads as "this server is broken". The transport
+ * accepts that origin as an MCP endpoint too (see `isMcpPath`), so the same
+ * URL works for a client; this page answers the browser with the exact URL to
+ * use and where the setup guide lives.
+ */
+function landingPage(env: Env): Response {
+  const { mcpPublicUrl, siteUrl } = getUrls(env);
+  const endpoint = mcpPublicUrl ? `${mcpPublicUrl}/mcp` : '/mcp';
+  const docs = siteUrl ? `${siteUrl}/docs/mcp` : 'https://fresherflow.in/docs/mcp';
+  const html = `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FresherFlow MCP server</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; font: 16px/1.6 ui-sans-serif, system-ui, sans-serif; background: Canvas; color: CanvasText; }
+  main { width: min(34rem, calc(100% - 3rem)); padding: 2rem 0; }
+  h1 { font-size: 1.25rem; margin: 0 0 .25rem; }
+  p { margin: 0 0 1rem; }
+  code { font: 600 .95rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; overflow-wrap: anywhere; }
+  pre { margin: 0 0 1rem; padding: .85rem 1rem; border: 1px solid color-mix(in srgb, CanvasText 18%, transparent); border-radius: .5rem; }
+  a { color: inherit; }
+  .muted { opacity: .7; font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>FresherFlow MCP server</h1>
+  <p>This address is the MCP endpoint, not a website. Point your AI client at:</p>
+  <pre><code>${escapeHtml(endpoint)}</code></pre>
+  <p><a href="${escapeHtml(docs)}">Setup guide</a></p>
+  <p class="muted">FresherFlow jobs and walk-in opportunities, read and written over MCP with your own account.</p>
+</main>
+</body>
+</html>`;
+  return new Response(html, {
+    status: 200,
+    headers: { ...MCP_CORS_HEADERS, 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+  });
 }
 
 /**
@@ -186,9 +259,14 @@ function oauthAsDiscoveryRedirect(env: Env, pathname: string): Response {
     logger.error('FRESHERFLOW_API_URL is not configured');
     return jsonResponse({ error: 'MCP is not configured' }, 500);
   }
+  // A client may ask for the document under the resource path
+  // (`/mcp/.well-known/…`). The API serves it at its origin root only, so
+  // forward the well-known path rather than the prefixed one the API does not
+  // have — a 404 there leaves discovery stuck and the client never signs in.
+  const apiPath = pathname.startsWith('/mcp/') ? pathname.slice('/mcp'.length) : pathname;
   return new Response(null, {
     status: 307,
-    headers: { ...MCP_CORS_HEADERS, Location: `${apiBaseUrl}${pathname}` },
+    headers: { ...MCP_CORS_HEADERS, Location: `${apiBaseUrl}${apiPath}` },
   });
 }
 
@@ -196,8 +274,43 @@ const handler: ExportedHandler<Env> = {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    const isPublicMcpPath = url.pathname === '/mcp/public';
+    const isRootPath = url.pathname === '/';
+    // The bare origin is the same endpoint as /mcp. Clients that are given
+    // `https://mcp.fresherflow.in` (no path) POST here; before this alias they
+    // got a 404 and the connection looked broken, even though /mcp worked.
+    const isMcpPath = url.pathname === '/mcp' || url.pathname === '/mcp/' || isPublicMcpPath || isRootPath;
+
+    if (isMcpPath) {
+      const origin = request.headers.get('Origin');
+      if (origin && !isAllowedTransportOrigin(origin, env)) {
+        return jsonResponse({ error: 'Forbidden origin' }, 403);
+      }
+    }
+
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: MCP_CORS_HEADERS });
+    }
+
+    // A browser opening the bare host gets the connect instructions instead of
+    // a 405. MCP clients POST here, so they never hit this branch.
+    if (isRootPath && request.method === 'GET') {
+      return landingPage(env);
+    }
+
+    if (isMcpPath && request.method !== 'POST') {
+      // OpenAI hosts open /mcp with GET during discovery. Without a bearer
+      // they need the OAuth challenge, not a bare 405 with no way forward.
+      if (!isPublicMcpPath && !bearerFromHeaders(request.headers)) {
+        return unauthorized(
+          env,
+          'Sign in to FresherFlow to access account tools. Connect the server again and approve access.',
+        );
+      }
+      return new Response(null, {
+        status: 405,
+        headers: { ...MCP_CORS_HEADERS, Allow: 'POST, OPTIONS' },
+      });
     }
 
     // Both the bare and the path-suffixed metadata URLs are valid for a resource
@@ -205,19 +318,24 @@ const handler: ExportedHandler<Env> = {
     if (url.pathname.startsWith('/.well-known/oauth-protected-resource')) {
       return oauthProtectedResourceResponse(env);
     }
-    if (url.pathname === '/.well-known/oauth-authorization-server'
-      || url.pathname === '/.well-known/openid-configuration') {
+    // OAuth discovery endpoints: ChatGPT may request these under /mcp/ or at the bare origin. Redirect both to the API so the issuer and metadata URL agree by construction.
+    // ChatGPT may request discovery endpoints at /mcp/.well-known/* (server root)
+    // or /.well-known/* (bare origin). Check both before the 405 gate.
+    if (url.pathname.startsWith('/.well-known/oauth-authorization-server')
+        || url.pathname.startsWith('/mcp/.well-known/oauth-authorization-server')
+        || url.pathname.startsWith('/.well-known/openid-configuration')
+        || url.pathname.startsWith('/mcp/.well-known/openid-configuration')) {
       return oauthAsDiscoveryRedirect(env, url.pathname);
     }
     if (url.pathname === '/health') {
       return jsonResponse({ ok: true, service: 'fresherflow-mcp' });
     }
-    if (url.pathname !== '/mcp') {
+    if (!isMcpPath) {
       return jsonResponse({ error: 'Not Found' }, 404);
     }
 
-    const { apiBaseUrl } = getUrls(env);
-    if (!apiBaseUrl) return configurationError();
+    const { apiBaseUrl, mcpPublicUrl, siteUrl } = getUrls(env);
+    if (!apiBaseUrl || !mcpPublicUrl || !siteUrl) return configurationError();
     setApiBaseUrl(apiBaseUrl);
 
     const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
@@ -233,29 +351,32 @@ const handler: ExportedHandler<Env> = {
     }
 
     const token = bearerFromHeaders(request.headers);
-    // Dev-only escape hatch: with `MCP_AUTH_MODE=local_noauth` a request with
-    // no bearer proceeds in a local-dev scope instead of being challenged, so
-    // a local client needs no OAuth round trip. A request that did bring a
-    // bearer still runs in the token scope, exactly as in any other mode —
-    // the flag only changes what happens when there is no token.
-    const localDev = !token && env.MCP_AUTH_MODE === LOCAL_NOAUTH;
-    if (!token && !localDev) {
+    if (!token && !isPublicMcpPath) {
       return unauthorized(
         env,
-        'Sign in to FresherFlow to use this MCP server. Connect the server again and approve access.',
+        'Sign in to FresherFlow to access account tools. Connect the server again and approve access.',
       );
     }
 
     try {
-      const runScoped = (fn: () => Promise<Response>): Promise<Response> =>
-        (token ? runWithAccessToken(token, fn) : runWithLocalDevScope(fn));
-      return await runScoped(async () => {
+      const run = async () => {
         // Resolving identity inside the request scope means every API call a
-        // tool makes is authenticated as this caller (or, in local-dev mode,
-        // marked as such via one header), and cannot observe another
+        // tool makes is authenticated as this caller and cannot observe another
         // request's token.
-        const identity = await resolveConnectionIdentity();
-        const server = createFresherFlowMcpServer(identity);
+        const verifiedIdentity = token ? await resolveConnectionIdentity() : null;
+        // The public endpoint remains read-only even if a client happens to
+        // send a valid account token to it.
+        const identity = isPublicMcpPath ? null : verifiedIdentity;
+        const feedBaseUrl = originOf(env.PUBLIC_FEED_BASE_URL) || '';
+        const server = createFresherFlowMcpServer(
+          identity,
+          siteUrl,
+          feedBaseUrl,
+          env.CDN_SIGNATURE_SECRET,
+          // Same document `unauthorized()` advertises below, so a tool-level
+          // challenge and the transport challenge point at one URL.
+          `${mcpPublicUrl}/.well-known/oauth-protected-resource/mcp`,
+        );
         const transport = new WebStandardStreamableHTTPServerTransport({
           // Stateless: no session id, no resumability, no Durable Object.
           sessionIdGenerator: undefined,
@@ -265,7 +386,9 @@ const handler: ExportedHandler<Env> = {
         });
         await server.connect(transport);
         return await transport.handleRequest(request);
-      });
+      };
+      // A supplied but invalid credential must never silently downgrade to anonymous.
+      return token ? await runWithAccessToken(token, run) : await run();
     } catch (error) {
       logger.error('MCP request failed', { error });
       if (error instanceof ApiHttpError && error.status === 401) {
@@ -299,3 +422,4 @@ const handler: ExportedHandler<Env> = {
 };
 
 export default handler;
+

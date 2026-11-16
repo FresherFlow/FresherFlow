@@ -1,5 +1,5 @@
 import { logger } from '../logger.js';
-import { currentAccessToken, isLocalDevScope } from './token.js';
+import { currentAccessToken } from './token.js';
 
 /**
  * The one authenticated HTTP client for the FresherFlow API.
@@ -134,25 +134,16 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 
     // The only credential this server ever holds is the caller's own token.
     const callerToken = currentAccessToken();
-    if (isLocalDevScope()) {
-        // Local-dev no-auth scope (`MCP_AUTH_MODE=local_noauth`): there is no
-        // bearer to send, so the request is marked instead and the API resolves
-        // a fixed local identity for it. The header is meaningless outside the
-        // API's own local-dev gate, and this branch is unreachable unless the
-        // Worker was started in that mode.
-        headers['x-mcp-local-dev'] = '1';
-    } else {
-        if (!callerToken) {
-            // No token in the request scope is a credential problem, not a server
-            // bug: answer with the same 401 challenge as an upstream rejection.
-            throw new ApiHttpError(
-                'FresherFlow tools need a signed-in account. Ask the user to connect FresherFlow '
-                + 'and sign in, then retry.',
-                401,
-            );
-        }
-        headers['Authorization'] = `Bearer ${callerToken}`;
+    if (!callerToken) {
+        // No token in the request scope is a credential problem, not a server
+        // bug: answer with the same 401 challenge as an upstream rejection.
+        throw new ApiHttpError(
+            'FresherFlow tools need a signed-in account. Ask the user to connect FresherFlow '
+            + 'and sign in, then retry.',
+            401,
+        );
     }
+    headers['Authorization'] = `Bearer ${callerToken}`;
 
     if (init.headers) {
         for (const [key, value] of Object.entries(init.headers as Record<string, string>)) {
@@ -168,7 +159,10 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
             ...init,
             headers,
             signal: controller.signal,
-            redirect: 'error',
+            // Cloudflare Workers supports `follow` and `manual`, not `error`.
+            // Manual keeps API calls on the configured origin and lets the
+            // status mapper fail closed on any redirect.
+            redirect: 'manual',
         });
         if (res.status === 404) {
             discardResponseBody(res);

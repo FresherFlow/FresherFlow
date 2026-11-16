@@ -5,8 +5,9 @@
   "description": "MCP server exposing FresherFlow submit_opportunity over the existing API",
   "main": "src/worker.ts",
   "scripts": {
-    "dev": "wrangler dev --var FRESHERFLOW_API_URL:http://localhost:5000 --var MCP_PUBLIC_URL:http://localhost:8787 --var PUBLIC_SITE_URL:http://localhost:3000 --var MCP_AUTH_MODE:local_noauth",
+    "dev": "wrangler dev",
     "build": "tsc --noEmit",
+    "smoke:local": "node scripts/smoke-local.mjs",
     "deploy": "wrangler deploy",
     "lint": "eslint \"src/**/*.ts\"",
     "typecheck": "tsc --noEmit"
