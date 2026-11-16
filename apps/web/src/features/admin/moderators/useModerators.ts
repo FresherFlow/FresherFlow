@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/utils/error';
 import {
@@ -14,9 +14,21 @@ import {
     type ModeratorListEntry,
 } from './moderationContract';
 
+type DirectoryState = {
+    q: string;
+    status: string;
+    role: string;
+    pageIndex: number;
+    pageSize: number;
+};
+
+const DEFAULT_DIRECTORY: DirectoryState = { q: '', status: '', role: '', pageIndex: 0, pageSize: 20 };
+
 type ModeratorsSnapshot = {
     moderators: ModeratorListEntry[];
     users: DirectoryUser[];
+    directoryTotal: number;
+    directoryPageCount: number;
     audit: ModeratorAuditRecord[];
 };
 
@@ -41,19 +53,61 @@ export function useModerators(isAuthenticated: boolean) {
         () => moderatorsSnapshot?.moderators ?? [],
     );
     const [users, setUsers] = useState<DirectoryUser[]>(() => moderatorsSnapshot?.users ?? []);
+    const [directory, setDirectory] = useState<DirectoryState>(DEFAULT_DIRECTORY);
+    const [directoryTotal, setDirectoryTotal] = useState<number>(() => moderatorsSnapshot?.directoryTotal ?? 0);
+    const [directoryPageCount, setDirectoryPageCount] = useState<number>(
+        () => moderatorsSnapshot?.directoryPageCount ?? 1,
+    );
+    const [directoryLoading, setDirectoryLoading] = useState(false);
+    // Read by `refresh` so an unrelated refresh (grant, revoke, suspend) keeps
+    // the current filters and page instead of jumping back to the first one.
+    const directoryRef = useRef<DirectoryState>(DEFAULT_DIRECTORY);
     const [audit, setAudit] = useState<ModeratorAuditRecord[]>(() => moderatorsSnapshot?.audit ?? []);
     const [loading, setLoading] = useState(() => moderatorsSnapshot === null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [actingId, setActingId] = useState<string | null>(null);
     const [bulkPending, setBulkPending] = useState(false);
 
+    /** One page of the directory, filtered and paged in the API. */
+    const fetchDirectory = useCallback(async (params: DirectoryState) => {
+        setDirectoryLoading(true);
+        try {
+            const page = await listDirectoryUsers({
+                q: params.q.trim() || undefined,
+                status: params.status || undefined,
+                role: params.role || undefined,
+                page: params.pageIndex + 1,
+                pageSize: params.pageSize,
+            });
+            setUsers(page.users);
+            setDirectoryTotal(page.total);
+            setDirectoryPageCount(page.pageCount);
+            moderatorsSnapshot = {
+                ...(moderatorsSnapshot ?? { moderators: [], audit: [], directoryTotal: 0, directoryPageCount: 1 }),
+                users: page.users,
+                directoryTotal: page.total,
+                directoryPageCount: page.pageCount,
+            };
+        } finally {
+            setDirectoryLoading(false);
+        }
+    }, []);
+
     const refresh = useCallback(async () => {
         setLoadError(null);
         try {
-            const [mods, directory] = await Promise.all([listModerators(), listDirectoryUsers()]);
+            const [mods] = await Promise.all([
+                listModerators(),
+                // One bounded page for the table. The grant picker searches the
+                // API instead of this page, so an account outside it is still
+                // selectable.
+                fetchDirectory(directoryRef.current),
+            ]);
             setModerators(mods);
-            setUsers(directory);
-            moderatorsSnapshot = { ...(moderatorsSnapshot ?? { audit: [] }), moderators: mods, users: directory };
+            moderatorsSnapshot = {
+                ...(moderatorsSnapshot ?? { users: [], audit: [], directoryTotal: 0, directoryPageCount: 1 }),
+                moderators: mods,
+            };
             moderatorsSnapshotAt = Date.now();
         } catch (err) {
             // Keep stale rows on failure — wiping to empty would blank the
@@ -67,7 +121,10 @@ export function useModerators(isAuthenticated: boolean) {
         try {
             const entries = await auditLog({ limit: 50 });
             setAudit(entries);
-            moderatorsSnapshot = { ...(moderatorsSnapshot ?? { moderators: [], users: [] }), audit: entries };
+            moderatorsSnapshot = {
+                ...(moderatorsSnapshot ?? { moderators: [], users: [], directoryTotal: 0, directoryPageCount: 1 }),
+                audit: entries,
+            };
         } catch {
             // Keep stale audit rows; see above.
         }
@@ -96,23 +153,57 @@ export function useModerators(isAuthenticated: boolean) {
     /** Spec §1: no-duplicate safeguard — a user already holding the role is never a grant candidate. */
     const moderatorIds = useMemo(() => new Set(moderators.map((m) => m.id)), [moderators]);
 
-    const grantCandidates = useCallback(
-        (query: string, limit = 8): DirectoryUser[] => {
-            const q = query.trim().toLowerCase();
-            if (!q) return [];
-            return users
-                .filter((u) => {
-                    if (moderatorIds.has(u.id)) return false;
-                    return (
-                        (u.email ?? '').toLowerCase().includes(q) ||
-                        (u.username ?? '').toLowerCase().includes(q) ||
-                        (u.fullName ?? '').toLowerCase().includes(q)
-                    );
-                })
-                .slice(0, limit);
+    /**
+     * Search every registered user for the grant picker.
+     *
+     * This hits the API rather than filtering `users`, because `users` is only
+     * the newest page. Filtering it meant an older account could not be granted
+     * the role at all — the picker simply reported no match.
+     */
+    const searchUsers = useCallback(
+        async (query: string, limit = 8): Promise<DirectoryUser[]> => {
+            const q = query.trim();
+            if (q.length < 2) return [];
+            const page = await listDirectoryUsers({ q, pageSize: limit });
+            return page.users.filter((u) => !moderatorIds.has(u.id));
         },
-        [moderatorIds, users],
+        [moderatorIds],
     );
+
+    useEffect(() => {
+        directoryRef.current = directory;
+    }, [directory]);
+
+    /** Any filter change returns to page 1; paging keeps the filters. */
+    const updateDirectory = useCallback((patch: Partial<DirectoryState>) => {
+        const filterChanged =
+            patch.q !== undefined || patch.status !== undefined || patch.role !== undefined || patch.pageSize !== undefined;
+        setDirectory((prev) => ({ ...prev, ...patch, ...(filterChanged ? { pageIndex: 0 } : {}) }));
+    }, []);
+
+    const searchDirectory = useCallback((query: string) => updateDirectory({ q: query }), [updateDirectory]);
+    const setDirectoryStatus = useCallback((status: string) => updateDirectory({ status }), [updateDirectory]);
+    const setDirectoryRole = useCallback((role: string) => updateDirectory({ role }), [updateDirectory]);
+    const setDirectoryPageIndex = useCallback((pageIndex: number) => updateDirectory({ pageIndex }), [updateDirectory]);
+    const setDirectoryPageSize = useCallback((pageSize: number) => updateDirectory({ pageSize }), [updateDirectory]);
+
+    // One fetch per settled state. The mount effect above owns the first load;
+    // text search is debounced, page and facet changes fetch immediately.
+    const directoryReady = useRef(false);
+    useEffect(() => {
+        if (!isAuthenticated) return;
+        if (!directoryReady.current) {
+            directoryReady.current = true;
+            return;
+        }
+        const timer = setTimeout(() => {
+            void fetchDirectory(directory).catch(() => {
+                // Keep the current rows; the page banner already reports a
+                // failed directory refresh.
+            });
+        }, directory.q.trim() ? 250 : 0);
+        return () => clearTimeout(timer);
+    }, [directory, isAuthenticated, fetchDirectory]);
 
     async function runActing(userId: string, label: string, fn: () => Promise<void>) {
         setActingId(userId);
@@ -168,13 +259,26 @@ export function useModerators(isAuthenticated: boolean) {
     return {
         moderators,
         users,
+        directoryTotal,
+        directoryQuery: directory.q,
+        directoryStatus: directory.status,
+        directoryRole: directory.role,
+        directoryPageIndex: directory.pageIndex,
+        directoryPageSize: directory.pageSize,
+        directoryPageCount,
+        directoryLoading,
+        searchDirectory,
+        setDirectoryStatus,
+        setDirectoryRole,
+        setDirectoryPageIndex,
+        setDirectoryPageSize,
         audit,
         loading,
         loadError,
         actingId,
         bulkPending,
         moderatorIds,
-        grantCandidates,
+        searchUsers,
         refresh,
         grant: (userId: string, reason?: string) =>
             runActing(userId, 'Moderator access granted', () => grantModerator(userId, reason)),

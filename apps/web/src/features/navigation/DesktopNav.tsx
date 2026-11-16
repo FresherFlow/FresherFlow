@@ -12,6 +12,7 @@ import { getNavRoutes } from './routeConfig';
 import { useMarqueeHidden } from '@/hooks/useMarqueeHidden';
 import { MARQUEE_ENABLED } from '@/features/landing/LandingMarquee';
 import { NavMegaMenu } from './NavMegaMenu';
+import { LoginButton } from './LoginButton';
 
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -166,9 +167,7 @@ export function DesktopNav() {
                                 sidebar user footer (NavUser). */}
                             {!isAuthRoute && (
                                 <div className="flex items-center gap-2.5">
-                                    <Link href="/login" className="ff-nav-btn">
-                                        Sign in
-                                    </Link>
+                                    <LoginButton />
                                     <Link href="/contribute" className="ff-nav-btn ff-nav-btn-primary">
                                         Contribute
                                     </Link>

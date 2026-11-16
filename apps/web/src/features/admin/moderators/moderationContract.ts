@@ -29,6 +29,14 @@ export interface DirectoryUser {
     createdAt?: string;
 }
 
+export interface DirectoryPage {
+    users: DirectoryUser[];
+    /** Total rows matching the query across every page. */
+    total: number;
+    /** Total pages for the current page size. */
+    pageCount: number;
+}
+
 export type ModeratorStatus = 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED';
 
 /** Spec §1: list with status + assigned-at. */
@@ -112,8 +120,23 @@ export async function auditLog(params?: {
     }));
 }
 
-/** Spec §1: directory of existing users eligible for a grant. */
-export async function listDirectoryUsers(): Promise<DirectoryUser[]> {
-    const res = (await adminApi.getUsers()) as { users: DirectoryUser[] };
-    return res.users ?? [];
+/** Spec §1: one page of the user directory, filtered in the API. */
+export async function listDirectoryUsers(params?: {
+    q?: string;
+    status?: string;
+    role?: string;
+    page?: number;
+    pageSize?: number;
+}): Promise<DirectoryPage> {
+    const res = (await adminApi.getUsers(params)) as {
+        users?: DirectoryUser[];
+        total?: number;
+        pageCount?: number;
+    };
+    const users = res.users ?? [];
+    return {
+        users,
+        total: res.total ?? users.length,
+        pageCount: res.pageCount ?? 1,
+    };
 }

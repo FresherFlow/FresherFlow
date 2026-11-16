@@ -11,6 +11,7 @@ import { SidebarTrigger } from '@/ui/sidebar';
 import { Separator } from '@/ui/separator';
 import { formatSegment, getAdminTitle, isFeedHeaderRoute } from './headerContent';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
+import { LoginButton } from './LoginButton';
 
 /**
  * Merged site header for sidebar routes (shadcn-admin `Header` pattern:
@@ -124,12 +125,7 @@ function SiteHeaderContent() {
                         </div>
                     ) : !resolvedUser ? (
                         <div className="flex items-center gap-2">
-                            <Link
-                                href="/login"
-                                className="inline-flex h-8 shrink-0 items-center rounded-lg border border-border bg-card px-3 text-xs font-semibold text-foreground transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:border-foreground/40 hover:bg-muted"
-                            >
-                                Log in
-                            </Link>
+                            <LoginButton />
                         </div>
                     ) : (
                         <div className="flex items-center gap-2">

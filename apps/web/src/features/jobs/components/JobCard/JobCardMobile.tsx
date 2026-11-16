@@ -7,9 +7,7 @@ import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CheckIcon from '@heroicons/react/24/solid/CheckIcon';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { JobCardBadges } from './JobCardBadges';
-import { AtsLogo } from '@/features/jobs/components/AtsLogo';
-import { detectAtsProvider } from '@/features/jobs/utils/atsProvider';
-import { ArrowUpRight } from 'lucide-react';
+import { ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 import { useJobCardActions, type JobCardOpportunity } from './useJobCardActions';
 
 function MetaDot() {
@@ -79,7 +77,6 @@ export function JobCardMobile({
     // lists become full-screen cards — the whole card is 5 short rows.
     const mobileSkills = orderedSkills.slice(0, 2);
     const mobileOverflow = Math.max(0, orderedSkills.length - mobileSkills.length);
-    const atsProvider = detectAtsProvider(job.applyLink);
 
     return (
         <div
@@ -113,8 +110,8 @@ export function JobCardMobile({
                     </p>
                     {/* Separators are elements between parts, not characters
                         joined into a string: a listing with no location and no
-                        posted date used to print a leading ·, and a listing
-                        whose ATS logo did not resolve printed a trailing one. */}
+                        posted date used to print a leading ·, and the ATS provider mark
+                        used to sit on this line, where it printed a trailing one. */}
                     <p className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
                         {locationInfo.shortLabel && (
                             <span className="min-w-0 truncate">{locationInfo.shortLabel}</span>
@@ -130,13 +127,12 @@ export function JobCardMobile({
                                 </span>
                             </>
                         )}
-                        {atsProvider ? <AtsLogo applyLink={job.applyLink} /> : null}
                     </p>
                 </div>
                 <button
                     type="button"
                     onClick={handleSaveClick}
-                    className="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                    className="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/60 ff-press motion-reduce:transform-none"
                     aria-label={isJobSaved ? 'Remove bookmark' : 'Save job'}
                 >
                     {isJobSaved ? (
@@ -160,7 +156,7 @@ export function JobCardMobile({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex items-center justify-center gap-1 px-2.5 h-7 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 hover:bg-warning/25 transition-colors"
+                                    className="inline-flex items-center justify-center gap-1 px-2.5 h-7 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-warning/25 ff-press motion-reduce:transform-none"
                                 >
                                     <MapPinIcon className="w-3 h-3" aria-hidden />
                                     Directions
@@ -169,7 +165,7 @@ export function JobCardMobile({
                             <button
                                 type="button"
                                 onClick={handleLinkClick(jobPath)}
-                                className="inline-flex items-center justify-center px-2.5 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                className="inline-flex items-center justify-center px-2.5 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none"
                             >
                                 View drive
                             </button>
@@ -180,10 +176,9 @@ export function JobCardMobile({
                             onClick={handleApplyClick}
                             disabled={!canApply}
                             title={canApply ? undefined : 'This listing has no application link'}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition duration-150 ease-out motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
                         >
-                            Apply
-                            <ArrowUpRight className="w-3.5 h-3.5" aria-hidden />
+                            <ApplyActionContent applyLink={job.applyLink} showArrow />
                         </button>
                     )}
                 </div>

@@ -54,7 +54,6 @@ const GROUPS: Array<{ title: string; links: Array<{ label: string; href: string 
         title: 'Explore',
         links: [
             { label: 'Companies', href: '/companies' },
-            { label: 'Deadlines', href: '/deadlines' },
             { label: 'Resources', href: '/resources' },
         ],
     },

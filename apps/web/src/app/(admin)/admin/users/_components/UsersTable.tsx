@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { DirectoryUser } from '@/features/admin/moderators/moderationContract';
 import { Badge } from '@/ui/Badge';
 import { Button } from '@/ui/Button';
@@ -19,6 +19,21 @@ import { displayName, formatAssignedAt, statusBadgeVariant } from './userDisplay
 
 interface UsersTableProps {
     users: DirectoryUser[];
+    /** Rows matching the directory query; may exceed the loaded page. */
+    total?: number;
+    /** Server-backed filters, search and paging (see `useModerators`). */
+    searchValue: string;
+    onSearchChange: (value: string) => void;
+    statusValue: string;
+    onStatusChange: (value: string) => void;
+    roleValue: string;
+    onRoleChange: (value: string) => void;
+    pageIndex: number;
+    pageCount: number;
+    pageSize: number;
+    onPageChange: (pageIndex: number) => void;
+    onPageSizeChange: (pageSize: number) => void;
+    isLoading?: boolean;
     moderatorIds: Set<string>;
     actingId: string | null;
     onSuspend: (target: { id: string; name: string }) => void;
@@ -59,6 +74,19 @@ const ROLE_OPTIONS = [
  */
 export default function UsersTable({
     users,
+    total,
+    searchValue,
+    onSearchChange,
+    statusValue,
+    onStatusChange,
+    roleValue,
+    onRoleChange,
+    pageIndex,
+    pageCount,
+    pageSize,
+    onPageChange,
+    onPageSizeChange,
+    isLoading = false,
     moderatorIds,
     actingId,
     onSuspend,
@@ -66,25 +94,6 @@ export default function UsersTable({
     onBulkSuspend,
     onBulkReactivate,
 }: UsersTableProps) {
-    const [statusFilter, setStatusFilter] = useState(ALL);
-    const [roleFilter, setRoleFilter] = useState(ALL);
-    const [search, setSearch] = useState('');
-    const [query, setQuery] = useState('');
-
-    // The grid filters only the rows it holds, and this list is the full
-    // directory, so the status facet is applied here rather than server-side.
-    const filtered = useMemo(() => {
-        const term = query.trim().toLowerCase();
-        return users.filter((user) => {
-            if (statusFilter !== ALL && (user.status ?? 'ACTIVE') !== statusFilter) return false;
-            if (roleFilter === 'MODERATOR' && !moderatorIds.has(user.id)) return false;
-            if (roleFilter === 'USER' && moderatorIds.has(user.id)) return false;
-            if (!term) return true;
-            return [user.fullName, user.email, user.username]
-                .some((field) => field?.toLowerCase().includes(term));
-        });
-    }, [users, statusFilter, roleFilter, moderatorIds, query]);
-
     const columns = useMemo<DataGridColumn<DirectoryUser>[]>(
         () => buildColumns({ moderatorIds, actingId, onSuspend, onReactivate }),
         [moderatorIds, actingId, onSuspend, onReactivate]
@@ -92,30 +101,37 @@ export default function UsersTable({
 
     return (
         <DataGrid<DirectoryUser>
-            data={filtered}
+            // Every filter, the search and the page live in the API, so the
+            // grid never holds a truncated copy of the directory.
+            data={users}
             columns={columns}
             getRowId={(row) => row.id}
             title="Registered users"
-            count={users.length}
+            count={total ?? users.length}
             countLabel="users"
+            isLoading={isLoading}
             enableSelection
             searchPlaceholder="Search name, email or username…"
-            statusValue={statusFilter}
+            statusValue={statusValue || ALL}
             statusOptions={STATUS_OPTIONS}
-            onStatusChange={(value) => setStatusFilter(value === ALL ? '' : value)}
-            roleValue={roleFilter}
+            onStatusChange={(value) => onStatusChange(value === ALL ? '' : value)}
+            roleValue={roleValue || ALL}
             roleOptions={ROLE_OPTIONS}
-            onRoleChange={(value) => setRoleFilter(value === ALL ? '' : value)}
-            searchValue={search}
-            onSearchChange={(value) => {
-                setSearch(value);
-                setQuery(value);
-            }}
+            onRoleChange={(value) => onRoleChange(value === ALL ? '' : value)}
+            searchValue={searchValue}
+            onSearchChange={onSearchChange}
             onClear={() => {
-                setStatusFilter(ALL);
-                setRoleFilter(ALL);
-                setSearch('');
-                setQuery('');
+                onStatusChange('');
+                onRoleChange('');
+                onSearchChange('');
+            }}
+            serverPagination={{
+                pageIndex,
+                pageCount,
+                onPageChange,
+                pageSize,
+                onPageSizeChange,
+                pageSizeOptions: [10, 20, 50, 100],
             }}
             defaultPageSize={20}
             showViewOptions

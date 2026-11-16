@@ -9,13 +9,12 @@ import CheckIcon from '@heroicons/react/24/solid/CheckIcon';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { Hint } from '@/ui/Tooltip';
 import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
-import { ArrowUpRight } from 'lucide-react';
 import { useCommentCount } from '@/features/jobs/hooks/useCommentCounts';
 import { AutoFitBadges } from './AutoFitBadges';
 import { JobCardMenu } from './JobCardMenu';
 import { buildMetaItems } from './JobCardMetaConfig';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
-import { AtsLogo } from '@/features/jobs/components/AtsLogo';
+import { ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 import { getJobTypeLabel, isFreshlyPosted } from './jobCardUtils';
 import { useJobCardActions, type JobCardOpportunity } from './useJobCardActions';
 
@@ -189,7 +188,6 @@ export default function JobCard({
                                 <span className="hidden sm:inline text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap shrink-0">
                                     {typeLabel}
                                 </span>
-                                <AtsLogo applyLink={job.applyLink} />
                                 {isWalkin && <WalkinDateChip opp={job} className="shrink-0 sm:ml-auto" />}
                             </div>
                         </div>
@@ -207,7 +205,7 @@ export default function JobCard({
                             <button
                                 type="button"
                                 onClick={handleSaveClick}
-                                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/60 ff-press motion-reduce:transform-none"
                                 aria-label={isJobSaved ? 'Remove bookmark' : 'Save job'}
                             >
                                 {isJobSaved ? (
@@ -234,7 +232,7 @@ export default function JobCard({
                     <a
                         href={discussionHref}
                         onClick={handleLinkClick(discussionHref)}
-                        className="inline-flex items-center gap-1 px-1 h-7 text-xs font-medium rounded-md text-muted-foreground hover:text-primary transition-colors shrink-0 whitespace-nowrap"
+                        className="inline-flex items-center gap-1 px-1 h-7 text-xs font-medium rounded-md text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary transition-colors shrink-0 whitespace-nowrap"
                         title={discussionCount > 0 ? `${discussionCount} discussing — Discuss this job` : 'Discuss this job'}
                         aria-label={discussionCount > 0 ? `Discuss this job (${discussionCount} discussing)` : 'Discuss this job'}
                     >
@@ -262,7 +260,7 @@ export default function JobCard({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex items-center justify-center gap-1 px-3 h-7 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 hover:bg-warning/25 transition-colors"
+                                    className="inline-flex items-center justify-center gap-1 px-3 h-7 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-warning/25 ff-press motion-reduce:transform-none"
                                 >
                                     <MapPinIcon className="w-3.5 h-3.5" aria-hidden />
                                     Directions
@@ -271,7 +269,7 @@ export default function JobCard({
                             <button
                                 type="button"
                                 onClick={handleLinkClick(jobPath)}
-                                className="inline-flex items-center justify-center px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                                className="inline-flex items-center justify-center px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none"
                             >
                                 View drive
                             </button>
@@ -282,10 +280,9 @@ export default function JobCard({
                                     onClick={handleApplyClick}
                                     disabled={!canApply}
                                     title={canApply ? undefined : 'This listing has no application link'}
-                                    className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition duration-150 ease-out motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
+                                    className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
                                 >
-                                    Apply
-                                    <ArrowUpRight className="w-3.5 h-3.5" aria-hidden />
+                                    <ApplyActionContent applyLink={job.applyLink} showArrow />
                                 </button>
                     )}
                 </div>

@@ -30,6 +30,7 @@ import { SkeletonTrackerTable } from '@/features/jobs/components/OpportunitySkel
 import { JobSearchField } from '@/features/jobs/components/JobSearchField';
 import { EmptyState } from '@/ui/EmptyState';
 import { BrandButton } from '@/ui/BrandButton';
+import { ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 
 // Primary Status Tabs
 type TrackerTabKey = 'ALL' | 'SAVED' | 'APPLIED' | 'INTERVIEWED' | 'SELECTED' | 'REJECTED' | 'PLANNED';
@@ -428,8 +429,7 @@ function TrackerPageContent() {
                                                 {applyHref ? (
                                                     <Button asChild size="xs" variant="outline">
                                                         <a href={applyHref} target="_blank" rel="noreferrer">
-                                                            Apply URL
-                                                            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                                                            <ApplyActionContent applyLink={item.applyLink} showArrow />
                                                         </a>
                                                     </Button>
                                                 ) : null}

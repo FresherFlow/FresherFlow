@@ -78,10 +78,10 @@ const SIZE_CLASSES: Record<ApplyActionSize, string> = {
     // 32px tall so it matches the bookmark control beside it, and sized by its
     // label ("Apply" or "Apply on Greenhouse") rather than a guessed fixed
     // width — a fixed box is what clipped it to "Ap…".
-    row: 'h-8 cursor-pointer gap-2 rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+    row: 'h-8 cursor-pointer gap-2 rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
     // 40px, matching the icon controls beside it and the detail page's action
     // row, so a pane header and a job page CTA are the same control height.
-    pane: 'h-10 cursor-pointer gap-1.5 rounded-lg bg-primary px-3.5 text-meta font-semibold text-primary-foreground transition-colors duration-150 hover:bg-primary/90 active:bg-primary/80',
+    pane: 'h-10 cursor-pointer gap-1.5 rounded-lg bg-primary px-3.5 text-meta font-semibold text-primary-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90',
 };
 
 export function ApplyAction({
@@ -96,7 +96,7 @@ export function ApplyAction({
 }: ApplyActionProps) {
     const destination = getApplyDestination(applyLink, isGovernment);
     const shared = cn(
-        'inline-flex shrink-0 items-center justify-center whitespace-nowrap transition-colors duration-150 ease-out',
+        'inline-flex shrink-0 items-center justify-center whitespace-nowrap',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         SIZE_CLASSES[size],
         className,

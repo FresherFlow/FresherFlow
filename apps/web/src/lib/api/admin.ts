@@ -26,9 +26,25 @@ export type OpportunityWriteResponse = {
 
 // Admin API methods using the centralized client (cookie-based auth)
 export const adminApi = {
-    // Users
-    getUsers: () =>
-        apiClient('/api/admin/users'),
+    // Users. `q` is a server-side search across email, username, full name and
+    // exact id, so the directory can find an account that is not on the loaded
+    // page instead of filtering only the newest rows in the browser.
+    getUsers: (params?: {
+        q?: string;
+        status?: string;
+        role?: string;
+        page?: number;
+        pageSize?: number;
+    }) => {
+        const query = new URLSearchParams();
+        if (params?.q) query.append('q', params.q);
+        if (params?.status) query.append('status', params.status);
+        if (params?.role) query.append('role', params.role);
+        if (params?.page !== undefined) query.append('page', String(params.page));
+        if (params?.pageSize !== undefined) query.append('pageSize', String(params.pageSize));
+        const queryString = query.toString();
+        return apiClient(`/api/admin/users${queryString ? `?${queryString}` : ''}`);
+    },
 
     setUserStatus: (userId: string, status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED', reason?: string) =>
         apiClient(`/api/admin/users/${userId}/status`, {
