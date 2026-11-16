@@ -365,7 +365,7 @@ export class FeedGeneratorService {
      * route project identical fields and cannot drift.
      */
     public static readonly FEED_INDEX_FIELDS: readonly string[] = [
-        'id', 'slug', 'type', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
+        'id', 'slug', 'type', 'recruitmentMethod', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
         'companyStage', 'companySize', 'companyIndustry', 'companyTopics',
         'locations', 'workMode', 'salaryMin', 'salaryMax', 'salaryRange', 'salaryPeriod',
         'stipend', 'incentives', 'employmentTypes', 'jobFunction',
@@ -383,7 +383,11 @@ export class FeedGeneratorService {
         return opportunities.map((opp) => {
             const light: Record<string, unknown> = {};
             for (const key of this.FEED_INDEX_FIELDS) {
-                const val = opp[key];
+                // The full listing contract calls this field `category`, while
+                // the stable CDN index contract exposes the same enum as
+                // `type`. Preserve the CDN shape without requiring MCP and web
+                // clients to fetch the larger detail payload.
+                const val = key === 'type' ? (opp.type ?? opp.category) : opp[key];
                 if (val !== undefined && val !== null) {
                     if (Array.isArray(val) && val.length === 0) continue;
                     light[key] = val;

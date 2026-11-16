@@ -30,31 +30,107 @@ function parseLimit(raw: unknown, fallback: number): number {
 }
 
 /**
- * GET /api/admin/users
- * List all registered users from the database.
+ * The directory search term, or '' for no filter.
+ *
+ * The admin page used to load one page and filter it in the browser, so any
+ * account outside that page could not be found at all — which made granting a
+ * role to an existing user impossible. Search runs in the database instead,
+ * across the same fields the UI lets you type.
+ */
+function parseSearch(raw: unknown): string {
+    if (typeof raw !== 'string') return '';
+    return raw.trim().slice(0, 120);
+}
+
+/**
+ * Page size, not a reachability cap: the directory pages through every row.
+ * 100 is the largest single response the grid offers.
+ */
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
+
+function parsePageSize(raw: unknown): number {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 1) return DEFAULT_PAGE_SIZE;
+    return Math.min(Math.floor(n), MAX_PAGE_SIZE);
+}
+
+/** 1-based page number; anything invalid is the first page. */
+function parsePage(raw: unknown): number {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 1) return 1;
+    return Math.floor(n);
+}
+
+function parseStatus(raw: unknown): 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED' | undefined {
+    return raw === 'ACTIVE' || raw === 'SUSPENDED' || raw === 'DEACTIVATED' ? raw : undefined;
+}
+
+/** Staff means holding any AccessRole grant, matching the rest of the admin UI. */
+function parseRole(raw: unknown): 'MODERATOR' | 'USER' | undefined {
+    return raw === 'MODERATOR' || raw === 'USER' ? raw : undefined;
+}
+
+/**
+ * GET /api/admin/users?q=&status=&role=&page=&pageSize=
+ * One page of registered users, newest first, filtered in the database.
  */
 router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const limit = parseLimit(req.query.limit, 100);
-        const users = await prisma.user.findMany({
-            orderBy: {
-                createdAt: 'desc'
-            },
-            take: limit,
-            select: {
-                id: true,
-                firebase_uid: true,
-                username: true,
-                fullName: true,
-                email: true,
-                role: true,
-                trustLevel: true,
-                status: true,
-                createdAt: true,
-            }
-        });
+        const pageSize = parsePageSize(req.query.pageSize ?? req.query.limit);
+        const page = parsePage(req.query.page);
+        const q = parseSearch(req.query.q);
+        const status = parseStatus(req.query.status);
+        const role = parseRole(req.query.role);
 
-        res.json({ users });
+        const where = {
+            ...(status ? { status } : {}),
+            ...(role === 'MODERATOR' ? { userRoles: { some: {} } } : {}),
+            ...(role === 'USER' ? { userRoles: { none: {} } } : {}),
+            ...(q
+                ? {
+                    OR: [
+                        { email: { contains: q, mode: 'insensitive' as const } },
+                        { username: { contains: q, mode: 'insensitive' as const } },
+                        { fullName: { contains: q, mode: 'insensitive' as const } },
+                        // Exact id, so pasting a user id always resolves.
+                        { id: q },
+                    ],
+                }
+                : {}),
+        };
+
+        const [users, total] = await Promise.all([
+            prisma.user.findMany({
+                where,
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                skip: (page - 1) * pageSize,
+                take: pageSize,
+                select: {
+                    id: true,
+                    firebase_uid: true,
+                    username: true,
+                    fullName: true,
+                    email: true,
+                    role: true,
+                    trustLevel: true,
+                    status: true,
+                    createdAt: true,
+                }
+            }),
+            prisma.user.count({ where }),
+        ]);
+
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({
+            users,
+            total,
+            page,
+            pageSize,
+            pageCount: Math.max(1, Math.ceil(total / pageSize)),
+        });
     } catch (error) {
         next(error);
     }
