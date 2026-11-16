@@ -6,9 +6,15 @@ import { whoami } from '../api/identity.js';
  * Identity tool. Read-only.
  *
  * The connection holds an opaque OAuth token, so without this the agent cannot
- * know whose account it is acting as or what that account may do. It exists so
- * the agent can answer "can you approve this?" with a fact instead of a failed
- * call, and so a permission refusal is explained before the user sees it.
+ * know whose account it is acting as. It is also this server's OpenAI profile
+ * tool: ChatGPT calls it to recognise a connected profile across reconnections
+ * and to label multi-account connections, so it returns the profile contract
+ * from developers.openai.com/plugins/build/auth verbatim — `_meta["openai/profile"]`
+ * plus `{ id, name?, email?, nickname? }`. Nothing else may appear in
+ * `structuredContent`: that schema is validated by the host and an extra field
+ * fails the whole connection. The role and permissions the agent needs are in
+ * this connection's `instructions`, which are rebuilt per request from the same
+ * identity.
  */
 export function registerWhoami(server: McpServer): void {
     server.registerTool(
@@ -16,28 +22,25 @@ export function registerWhoami(server: McpServer): void {
         {
             title: 'Who is connected to FresherFlow',
             description:
-                'Report the FresherFlow account this connection is signed in as, its role, and what '
-                + 'it is allowed to do. `mcpRole` is "moderator" or "user": a moderator publishes on '
-                + 'submit and can edit listings, while a normal account submits drafts. '
-                + 'Call this before any moderation action, and whenever the user asks what you can do '
-                + 'on FresherFlow, or why a tool is missing from this connection.',
+                'Return the FresherFlow profile this connection is signed in as. The opaque `id` is '
+                + 'stable across token refresh and reconnection, so the same account is recognised '
+                + 'again. Call this when you need to know which account you are acting for, or to '
+                + 'distinguish two connected accounts.',
             inputSchema: {},
             outputSchema: {
-                signedIn: z.boolean(),
-                mcpRole: z.enum(['moderator', 'user']).describe(
-                    'moderator: publishes on submit and may edit listings. user: submits drafts.',
+                id: z.string().min(1).describe(
+                    'Opaque FresherFlow profile identifier, unchanged across token refresh and reconnection.',
                 ),
-                user: z.object({
-                    id: z.string(),
-                    username: z.string().nullable(),
-                    fullName: z.string().nullable(),
-                    email: z.string().nullable(),
-                    role: z.string(),
-                    trustLevel: z.string().nullable(),
-                    status: z.string(),
-                }),
-                permissions: z.array(z.string()),
-                capabilities: z.record(z.string(), z.boolean()),
+                name: z.string().optional().describe('Display name for the connected profile.'),
+                email: z.string().optional().describe('Email for display; never used as the profile identity.'),
+                nickname: z.string().optional().describe(
+                    'Human label that distinguishes this connection, including its FresherFlow role.',
+                ),
+            },
+            _meta: {
+                // The marker OpenAI uses to find the profile tool. It is the
+                // whole key, not a nested flag: `{ profile: true }` is ignored.
+                'openai/profile': true,
             },
             annotations: {
                 readOnlyHint: true,
@@ -47,19 +50,18 @@ export function registerWhoami(server: McpServer): void {
         },
         async () => {
             const identity = await whoami();
-            const can = Object.entries(identity.capabilities)
-                .filter(([, allowed]) => allowed)
-                .map(([name]) => name);
+            const { user } = identity;
+            const handle = user.username ? `@${user.username}` : user.fullName ?? user.id;
+            const profile = {
+                id: user.id,
+                ...(user.fullName ? { name: user.fullName } : {}),
+                ...(user.email ? { email: user.email } : {}),
+                nickname: `${handle} — ${identity.mcpRole}`,
+            };
             return {
-                structuredContent: identity,
-                content: [
-                    {
-                        type: 'text' as const,
-                        text: `${identity.user.fullName ?? identity.user.username ?? identity.user.id} `
-                            + `— ${identity.mcpRole}`
-                            + ` — allowed: ${can.length ? can.join(', ') : 'none'}`,
-                    },
-                ],
+                structuredContent: profile,
+                // The same profile as JSON, for hosts that only read text.
+                content: [{ type: 'text' as const, text: JSON.stringify(profile) }],
             };
         },
     );
