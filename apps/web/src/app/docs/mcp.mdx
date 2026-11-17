@@ -22,7 +22,9 @@ The FresherFlow MCP (Model Context Protocol) server lets AI clients call Fresher
 |------|------|-----------|-------------|
 | `whoami` | ✅ | ✅ | Current connection identity, role, capabilities |
 | `get_jobs` | ✅ | ✅ | Search live job listings by keyword, city, company, type |
+| `get_job` | ✅ | ✅ | Full details for one listing by slug or id |
 | `submit_opportunity` | ✅ | ✅ | Submit a job (DRAFT for users, PUBLISHED for moderators) |
+| `get_submission_rules` | ✅ | ✅ | Content rules, field limits and traps before submitting |
 | `list_my_submissions` | ✅ | ✅ | Your submissions with status |
 | `withdraw_submission` | ✅ | ✅ | Withdraw a PENDING_REVIEW submission |
 | `get_listing_schema` | ❌ | ✅ | Full field contract for listings |
@@ -41,6 +43,20 @@ The FresherFlow MCP (Model Context Protocol) server lets AI clients call Fresher
 | `moderator` | Admin panel: `opportunity.review` + `opportunity.publish` | Publish on submit, full listing CRUD, moderation |
 
 **The tool list a connection sees already reflects its role.** A user never sees moderation tools. There is no anonymous tier: every connection resolves to a signed-in account.
+
+If a moderator was granted after the connector was created, use **Settings → Plugins → your FresherFlow connector → Refresh tools** (or reconnect it). ChatGPT caches the tool list, so `whoami` can show `moderator` while the visible tools are still the old set.
+
+## Skills
+
+The plugin ships workflow playbooks that tell an agent how to use these tools together. The tools expose capability; the skills carry the rules and sequence.
+
+| Skill | What it covers |
+|-------|----------------|
+| `submit-opportunity` | Go from a link or pasted posting to a complete submission: read the source, load `get_submission_rules`, check duplicates, extract only stated fields, then report DRAFT vs PUBLISHED and `duplicate` correctly. |
+| `job-search` | Search the live feed with accurate filters, read a listing by slug or id, and return canonical links. |
+| `review-submissions` | Moderator workflow: `review_queue` → approve, reject with a reason, or fix and publish — exactly one path per submission. |
+
+These are the tracked source under `plugins/fresherflow/skills/<name>/SKILL.md`. `pnpm skills:sync` installs them into `.agents/skills/` for agents working in this repo; `pnpm skills:check` verifies the two stay identical.
 
 ## Authentication
 
