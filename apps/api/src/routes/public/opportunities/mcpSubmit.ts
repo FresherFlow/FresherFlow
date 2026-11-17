@@ -130,7 +130,11 @@ router.post(
 
             const result = await submitJob({
                 userId: signedInUserId,
-                sourceUrl: body.jobUrl,
+                // The tool exposes sourceUrl as "original source if different
+                // from jobUrl". Honour it: jobUrl is the apply link, sourceUrl
+                // is the discovery/source link used for dedupe. Previously this
+                // ignored the caller's value entirely.
+                sourceUrl: body.sourceUrl || body.jobUrl,
                 applyUrl: body.jobUrl,
                 title: body.title,
                 company: body.companyName,

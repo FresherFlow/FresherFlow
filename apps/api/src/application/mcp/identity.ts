@@ -75,25 +75,6 @@ export function roleFromPermissions(permissions: readonly string[]): McpRole {
 }
 
 /**
- * The role label, using the same staff signals the rest of the admin surface
- * uses: an ADMIN account, or any AccessRole grant (`requireModerator` and the
- * moderator hub both treat a grant row as staff).
- *
- * Permissions still decide what the connection may do — this only fixes the
- * label. A bare grant with no permission rows is reported as staff with an
- * empty capability set, which `whoami` exposes instead of silently presenting
- * the account as an ordinary user and hiding the tools its grants imply.
- */
-export function roleFromAccess(input: {
-    permissions: readonly string[];
-    isAdmin: boolean;
-    hasAccessRoleGrant: boolean;
-}): McpRole {
-    if (input.isAdmin || input.hasAccessRoleGrant) return 'moderator';
-    return roleFromPermissions(input.permissions);
-}
-
-/**
  * Resolve a signed-in user into the MCP identity view.
  *
  * A missing or non-active account is rejected here rather than deeper in a
@@ -101,16 +82,16 @@ export function roleFromAccess(input: {
  * not keep publishing through a chat client because their token still verifies.
  */
 export async function resolveMcpIdentity(userId: string): Promise<McpIdentityView> {
-    const [user, permissions, grant] = await Promise.all([
+    // Only permissions decide the MCP role. The legacy `User.role` ADMIN value
+    // and bare AccessRole grants with no permissions do not make someone a
+    // moderator here — moderation is handled by the moderator role in the admin
+    // panel, and capability gates below enforce the same decision on the API.
+    const [user, permissions] = await Promise.all([
         prisma.user.findUnique({
             where: { id: userId },
-            select: { id: true, status: true, role: true },
+            select: { id: true, status: true },
         }),
         getUserPermissions(userId),
-        prisma.userAccessRole.findFirst({
-            where: { userId },
-            select: { roleId: true },
-        }),
     ]);
 
     if (!user) throw new AppError('User not found', 404);
@@ -120,11 +101,7 @@ export async function resolveMcpIdentity(userId: string): Promise<McpIdentityVie
 
     return {
         userId: user.id,
-        role: roleFromAccess({
-            permissions,
-            isAdmin: user.role === 'ADMIN',
-            hasAccessRoleGrant: grant !== null,
-        }),
+        role: roleFromPermissions(permissions),
         permissions,
         capabilities: capabilitiesFromPermissions(permissions),
     };

@@ -116,10 +116,11 @@ describe('MCP contribution routes: authentication', () => {
         expect(res.body.capabilities.approveSubmissions).toBe(false);
     });
 
-    it('labels a bare access-role grant as staff but promises no capability', async () => {
-        // Granting the MODERATOR role creates the grant row first. If the role's
-        // permission rows are missing, the account is still staff — but it must
-        // not be presented as able to moderate.
+    it('treats a bare access-role grant with no permissions as a normal user', async () => {
+        // MCP has only two roles and ADMIN is deliberately not one of them:
+        // moderation is handled by the moderator role in the admin panel.
+        // A grant row without permission rows carries no authority here, so the
+        // account must not be presented as staff or offered staff-only tools.
         prismaMock.userAccessRole.findFirst.mockResolvedValue({ roleId: 'role-moderator' });
 
         const res = await request(app)
@@ -127,7 +128,7 @@ describe('MCP contribution routes: authentication', () => {
             .set('Authorization', 'Bearer member-token');
 
         expect(res.status).toBe(200);
-        expect(res.body.mcpRole).toBe('moderator');
+        expect(res.body.mcpRole).toBe('user');
         expect(res.body.capabilities.reviewSubmissions).toBe(false);
         expect(res.body.capabilities.createFullListing).toBe(false);
     });
