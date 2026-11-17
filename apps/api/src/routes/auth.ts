@@ -146,6 +146,19 @@ function toAuthRouteError(
     return new AppError(fallbackMessage, fallbackStatus);
 }
 
+/**
+ * Refresh only the short-lived access-token cookie, without rotating the
+ * refresh token. The OAuth authorize path uses this when it has verified a
+ * still-live refresh cookie: calling setAuthCookies there would revoke the
+ * refresh token that the web app still holds in localStorage, silently
+ * logging the user out of the website a moment later.
+ */
+export function refreshAccessCookie(userId: string, res: Response): void {
+    const accessToken = generateAccessToken(userId);
+    res.cookie('accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE_MS });
+    res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
+}
+
 export async function setAuthCookies(user: User, res: Response) {
     const accessToken = generateAccessToken(user.id);
     const { token: refreshToken, hash: tokenHash } = generateRefreshToken(user.id);
@@ -317,7 +330,10 @@ router.post('/google', authVerifyLimiter, validate(googleAuthSchema), async (req
 router.post('/refresh', refreshLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const headerRefreshToken = req.header('x-refresh-token') || req.header('x-refresh-token'.toLowerCase());
-        const refreshToken = req.cookies.refreshToken || headerRefreshToken;
+        // Prefer an explicitly presented token over the cookie. The web app's
+        // session bridge sends its localStorage token here; a stale cookie
+        // from an earlier rotation must not defeat it.
+        const refreshToken = headerRefreshToken || req.cookies.refreshToken;
         if (!refreshToken) {
             // Do not clear cookies here. A parallel refresh may have just rotated
             // and Set-Cookie'd a live pair; wiping on this response races that win.

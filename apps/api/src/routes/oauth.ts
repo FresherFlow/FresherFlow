@@ -6,7 +6,6 @@ import {
     verifyAccessToken as verifySessionToken,
     verifyRefreshToken,
 } from '@fresherflow/utils';
-import type { User } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { createRateLimiter } from '../middleware/rateLimit';
@@ -24,7 +23,7 @@ import {
     revokeConnection,
     revokeToken,
 } from '../infrastructure/services/platform/mcpOAuth.service';
-import { setAuthCookies } from './auth';
+import { refreshAccessCookie } from './auth';
 
 /** OAuth 2.1 authorization server for the FresherFlow MCP server.
 
@@ -178,9 +177,11 @@ async function resolveSessionUserId(req: Request, res: Response): Promise<string
         });
         if (!account || account.status !== 'ACTIVE') return null;
 
-        await prisma.refreshToken.update({ where: { id: live.id }, data: { revokedAt: new Date() } });
-        // Reuses the one place that knows the cookie name, domain and lifetime.
-        await setAuthCookies(account as unknown as User, res);
+        // Do NOT rotate here. A full rotation would revoke the refresh token
+        // that the web app still holds in localStorage, so connecting an AI
+        // client would log the user out of the website moments later. Just
+        // refresh the short-lived access cookie; the refresh token stays live.
+        refreshAccessCookie(userId, res);
         return userId;
     } catch {
         return null;

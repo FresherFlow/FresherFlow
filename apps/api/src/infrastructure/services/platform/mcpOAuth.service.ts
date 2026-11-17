@@ -151,7 +151,8 @@ export interface ExchangeCodeInput {
     clientId: string;
     redirectUri: string;
     codeVerifier: string;
-    resource: string;
+    /** Optional at exchange: RFC 8707 clients may send it only on /authorize. */
+    resource?: string;
 }
 
 export interface TokenResponse {
@@ -235,7 +236,10 @@ export async function exchangeAuthorizationCode(input: ExchangeCodeInput): Promi
     if (row.redirectUri !== input.redirectUri) {
         throw new OAuthError(400, 'invalid_grant', 'redirect_uri does not match the authorization request');
     }
-    if (!row.resource || row.resource !== input.resource) {
+    // When the client omits `resource` at the token endpoint, bind the tokens
+    // to the resource already recorded on the authorization code. Only a
+    // *different* explicit value is a mismatch.
+    if (!row.resource || (input.resource && row.resource !== input.resource)) {
         throw new OAuthError(400, 'invalid_target', 'resource does not match the authorization request');
     }
 
