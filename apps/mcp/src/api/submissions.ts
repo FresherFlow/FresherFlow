@@ -25,6 +25,7 @@ export async function submitOpportunity(input: SubmitOpportunityInput): Promise<
     };
     if (input.location) body.location = input.location;
     if (input.employmentType) body.employmentType = input.employmentType;
+    if (input.employmentTypes) body.employmentTypes = input.employmentTypes;
     if (input.category) body.category = input.category;
     if (input.dates) body.dates = input.dates;
     if (input.dateRange) body.dateRange = input.dateRange;
@@ -37,6 +38,15 @@ export async function submitOpportunity(input: SubmitOpportunityInput): Promise<
     if (input.passoutYears) body.passoutYears = input.passoutYears;
     if (input.sourceUrl) body.sourceUrl = input.sourceUrl;
     if (input.contactEmail) body.contactEmail = input.contactEmail;
+    if (input.companyWebsite) body.companyWebsite = input.companyWebsite;
+    if (input.workMode) body.workMode = input.workMode;
+    if (input.salaryPeriod) body.salaryPeriod = input.salaryPeriod;
+    if (input.experienceMin !== undefined) body.experienceMin = input.experienceMin;
+    if (input.experienceMax !== undefined) body.experienceMax = input.experienceMax;
+    if (input.jobFunction) body.jobFunction = input.jobFunction;
+    if (input.allowedCourses) body.allowedCourses = input.allowedCourses;
+    if (input.allowedSpecializations) body.allowedSpecializations = input.allowedSpecializations;
+    if (input.expiresAt) body.expiresAt = input.expiresAt;
 
     const data = await apiFetch<SubmitOpportunityOutput>('/api/opportunities/mcp-submit', {
         method: 'POST',

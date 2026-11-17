@@ -12,7 +12,7 @@ import { createListing } from '../api/listings.js';
  * - readOnlyHint: false (it writes a listing)
  * - destructiveHint: false (creates; the update-existing duplicate path only
  *   ever touches a DRAFT, never a published listing)
- * - openWorldHint: false (writes to our own bounded database)
+ * - openWorldHint: true (publishing alerts people and rebuilds public feeds)
  */
 export function registerCreateListing(server: McpServer): void {
     server.registerTool(
@@ -70,7 +70,7 @@ export function registerCreateListing(server: McpServer): void {
             },
             annotations: {
                 readOnlyHint: false,
-                openWorldHint: false,
+                openWorldHint: true,
                 destructiveHint: false,
             },
         },

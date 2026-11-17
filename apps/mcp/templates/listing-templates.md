@@ -60,7 +60,8 @@ Google Form / portal example:
 - `expiresAt`: ISO local datetime (`YYYY-MM-DDTHH:mm`) or ISO timestamp
 - `startDate`, `endDate`: `YYYY-MM-DD`
 - `startTime`, `endTime`: `HH:mm` (24-hour)
-- `driveDetails.dates`: array of dates (`["YYYY-MM-DD", "YYYY-MM-DD"]`)
+- Admin paste JSON: `walkInDetails.dates`: array of dates (`["YYYY-MM-DD", "YYYY-MM-DD"]`); top-level `startDate`/`endDate`/`startTime`/`endTime` are also accepted and `walkInDetails` wins when both are present.
+- API `create_listing.payload`: the same dates live in `driveDetails.dates`.
 
 ## Description formatting
 
@@ -203,6 +204,8 @@ sections too.
 
 ## Notes
 
+- `employmentTypes` is the canonical key; the admin paste parser also accepts the singular `employmentType`. Both are merged, so use one only.
+- `allowedCourses` in the templates shows `["B.Tech"]`; an empty second entry like `["B.Tech", ""]` is ignored, so leave it out.
 - Arrays can be comma-separated strings in many fields; arrays are preferred.
 - For walk-ins the top-level fields and `walkInDetails` are both supported; if
   both are present `walkInDetails` wins.
@@ -277,19 +280,23 @@ Good: same `requiredSkills`, with
 
 ## Description formatting preference
 
-```
-About the Role
+```text
+**About the Role**
 ...
-Responsibilities
+
+**Responsibilities**
 - ...
 - ...
-Requirements
+
+**Requirements**
 - ...
 - ...
-Eligibility
+
+**Eligibility**
 - ...
 - ...
-Benefits
+
+**Benefits**
 - ...
 - ...
 ```

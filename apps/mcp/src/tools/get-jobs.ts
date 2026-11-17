@@ -24,12 +24,14 @@ export function registerGetJobs(server: McpServer, feedBaseUrl: string, cdnSigna
                 + 'walk-in drives and government vacancies. Use this before submitting to check whether '
                 + 'a job is already listed, and whenever a user asks what is open, what a company has '
                 + 'posted, or what is available in a city. '
-                + 'Filters: `q` matches title or company, `city` matches a listed location exactly, '
-                + '`company` matches the company name exactly, and `type` accepts internship, walk-in '
-                + 'or government. Results are newest first and paginated (default 20, max 50). '
-                + 'Every result carries a canonical FresherFlow listing URL. Only published, unexpired '
-                + 'listings are returned, so an empty result means nothing live currently matches — '
-                + 'it does not mean the site has no jobs.',
+                + 'Filters: `q` matches title or company, `city` matches a listed location by '
+                + 'substring (partial city names work), `company` matches the company name by '
+                + 'substring, and `type` accepts internship, walk-in or government. Results are '
+                + 'newest first and paginated (default 20, max 50). Every result carries a canonical '
+                + 'FresherFlow listing URL. This reads the public CDN feed, which refreshes about '
+                + 'every 30 seconds, so a just-published job may not appear yet. Only published, '
+                + 'unexpired listings are returned, so an empty result means nothing live currently '
+                + 'matches — it does not mean the site has no jobs.',
             inputSchema: {
                 q: z
                     .string()

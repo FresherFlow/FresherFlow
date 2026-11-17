@@ -39,7 +39,7 @@ export function registerApproveSubmission(server: McpServer): void {
             },
             annotations: {
                 readOnlyHint: false,
-                openWorldHint: false,
+                openWorldHint: true,
                 destructiveHint: false,
             },
         },

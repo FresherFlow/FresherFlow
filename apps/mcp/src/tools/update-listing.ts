@@ -8,7 +8,7 @@ import { updateListing } from '../api/listings.js';
  *
  * Annotations:
  * - readOnlyHint: false (it writes a listing)
- * - destructiveHint: false (edits an existing listing; it cannot delete)
+ * - destructiveHint: true (a full replace: omitted fields are cleared)
  * - openWorldHint: false (writes to our own bounded database)
  */
 export function registerUpdateListing(server: McpServer): void {
@@ -50,7 +50,7 @@ export function registerUpdateListing(server: McpServer): void {
             annotations: {
                 readOnlyHint: false,
                 openWorldHint: false,
-                destructiveHint: false,
+                destructiveHint: true,
             },
         },
         async ({ idOrSlug, payload }) => {
