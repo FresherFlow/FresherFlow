@@ -50,9 +50,6 @@ Worker without bindings, and every endpoint would answer
 - `FRESHERFLOW_API_URL`, `PUBLIC_SITE_URL`, `MCP_PUBLIC_URL`, and
   `PUBLIC_FEED_BASE_URL` are required origin URLs. `MCP_PUBLIC_URL` must match
   the API OAuth resource configuration exactly.
-- `MCP_ALLOWED_ORIGINS` is a comma-separated list of exact HTTPS origins
-  allowed to call `/mcp` and `/mcp/public` from browsers. Requests without an `Origin` header
-  remain supported. Local HTTP deployments accept loopback origins only.
 - `CDN_SIGNATURE_SECRET` is a secret binding when the feed CDN requires signed
   requests; use the same signing secret as the feed publisher.
 
@@ -186,7 +183,6 @@ by local API and web instances.
 | `PUBLIC_SITE_URL` | `http://127.0.0.1:3000` | Local web origin |
 | `MCP_PUBLIC_URL` | `http://127.0.0.1:8787` | Local MCP resource origin; must equal the API's `MCP_PUBLIC_URL` |
 | `PUBLIC_FEED_BASE_URL` | `http://127.0.0.1:5001` | Local public feed origin |
-| `MCP_ALLOWED_ORIGINS` | Loopback web origins | Exact browser origins; loopback MCP development accepts loopback origins |
 `PUBLIC_FEED_BASE_URL` points to the local API feed endpoint. Anonymous job
 discovery uses this public feed; protected API calls use the connected
 account's OAuth token. The MCP Worker has no shared service key.

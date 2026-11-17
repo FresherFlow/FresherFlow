@@ -23,14 +23,13 @@ interface Env {
   MCP_PUBLIC_URL: string;
   PUBLIC_FEED_BASE_URL?: string;
   CDN_SIGNATURE_SECRET?: string;
-  MCP_ALLOWED_ORIGINS?: string;
 }
 
 const MCP_CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Accept, Authorization, mcp-session-id, MCP-Protocol-Version, Mcp-Method, Mcp-Name',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Expose-Headers': 'mcp-session-id',
+  'Access-Control-Expose-Headers': 'mcp-session-id, WWW-Authenticate',
   'Access-Control-Max-Age': '86400',
 } as const;
 
@@ -97,31 +96,6 @@ function originOf(value: string | undefined): string {
   } catch {
     return '';
   }
-}
-
-/** Protect the HTTP transport from DNS rebinding and unwanted browser origins. */
-function isAllowedTransportOrigin(value: string, env: Env): boolean {
-  if (value === 'null') return false;
-  let origin: URL;
-  try {
-    origin = new URL(value);
-    if (origin.origin !== value || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) return false;
-  } catch {
-    return false;
-  }
-
-  const local = origin.protocol === 'http:'
-    && ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
-  const mcpOrigin = originOf(env.MCP_PUBLIC_URL);
-  // Local clients commonly choose ephemeral ports; permit loopback origins
-  // only when this Worker itself is explicitly configured for local HTTP.
-  if (local && mcpOrigin.startsWith('http://')) return true;
-
-  const allowed = (env.MCP_ALLOWED_ORIGINS ?? '')
-    .split(',')
-    .map((item) => originOf(item.trim()))
-    .filter(Boolean);
-  return allowed.includes(origin.origin);
 }
 
 function getUrls(env: Env) {
@@ -280,13 +254,6 @@ const handler: ExportedHandler<Env> = {
     // `https://mcp.fresherflow.in` (no path) POST here; before this alias they
     // got a 404 and the connection looked broken, even though /mcp worked.
     const isMcpPath = url.pathname === '/mcp' || url.pathname === '/mcp/' || isPublicMcpPath || isRootPath;
-
-    if (isMcpPath) {
-      const origin = request.headers.get('Origin');
-      if (origin && !isAllowedTransportOrigin(origin, env)) {
-        return jsonResponse({ error: 'Forbidden origin' }, 403);
-      }
-    }
 
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: MCP_CORS_HEADERS });
