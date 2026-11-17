@@ -10,6 +10,7 @@ import { resolveMcpIdentity } from '../../../application/mcp/identity';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { AppError } from '../../../middleware/errorHandler';
 import type { Opportunity } from '@fresherflow/types';
+import { WorkMode, SalaryPeriod } from '@fresherflow/types';
 
 const router = Router();
 
@@ -112,6 +113,15 @@ router.post(
                 passoutYears?: number[];
                 sourceUrl?: string;
                 contactEmail?: string;
+                companyWebsite?: string;
+                workMode?: WorkMode;
+                salaryPeriod?: SalaryPeriod;
+                experienceMin?: number;
+                experienceMax?: number;
+                jobFunction?: string;
+                allowedCourses?: string[];
+                allowedSpecializations?: string[];
+                expiresAt?: string;
             };
 
             const signedInUserId = req.userId as string;
@@ -139,6 +149,15 @@ router.post(
                 title: body.title,
                 company: body.companyName,
                 description: body.description ?? null,
+                companyWebsite: body.companyWebsite ?? null,
+                workMode: body.workMode ?? null,
+                salaryPeriod: body.salaryPeriod,
+                experienceMin: body.experienceMin ?? null,
+                experienceMax: body.experienceMax ?? null,
+                jobFunction: body.jobFunction ?? null,
+                allowedCourses: body.allowedCourses ?? [],
+                allowedSpecializations: body.allowedSpecializations ?? [],
+                expiresAt: body.expiresAt ?? null,
                 category,
                 locations: body.location ? [body.location] : [],
                 employmentTypes,

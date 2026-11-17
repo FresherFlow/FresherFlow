@@ -593,6 +593,17 @@ export const mcpSubmitOpportunitySchema = z.object({
     passoutYears: z.array(z.number().int().min(1990).max(2100)).max(15).optional(),
     sourceUrl: z.string().trim().url('sourceUrl must be a valid URL').max(2000).optional(),
     contactEmail: z.string().trim().email('contactEmail must be valid').max(200).optional(),
+    // Full listing detail the write path already stores. Exposed here so an
+    // agent that reads a posting can submit a complete listing, not a stub.
+    companyWebsite: z.string().trim().url('companyWebsite must be a valid URL').max(2000).optional(),
+    workMode: z.nativeEnum(WorkMode).optional(),
+    salaryPeriod: z.nativeEnum(SalaryPeriod).optional(),
+    experienceMin: z.number().int().min(0).max(50).optional(),
+    experienceMax: z.number().int().min(0).max(50).optional(),
+    jobFunction: z.string().trim().max(120).optional(),
+    allowedCourses: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+    allowedSpecializations: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+    expiresAt: z.string().trim().max(40).optional(),
 }).superRefine((data, ctx) => {
     if (data.sourceUrl && !data.sourceUrl.startsWith('https://')) {
         ctx.addIssue({ code: 'custom', path: ['sourceUrl'], message: 'sourceUrl must use https' });
