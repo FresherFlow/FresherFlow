@@ -219,7 +219,7 @@ app.use(cors({
         'Pragma'
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range', 'WWW-Authenticate'],
     maxAge: 3600 // Cache preflight for 1 hour
 }));
 
@@ -754,6 +754,24 @@ app.use(
 // OAuth 2.1 authorization server for AI clients: discovery documents, dynamic
 // client registration, consent, token exchange and revocation. Serves both
 // `/.well-known/*` and `/oauth/*` from this router.
+//
+// The app-wide CORS allowlist above is for the website's own origins. OAuth is
+// a cross-origin protocol surface: discovery, DCR and token requests come from
+// wherever the AI client runs, and there is no fixed list of those hosts.
+// Reflect the caller's Origin here instead — exactly what the Cloudflare OAuth
+// provider in the reference implementation does. These endpoints grant nothing
+// on their own: code exchange still needs PKCE and the registered redirect URI.
+app.use(
+    ['/.well-known', '/oauth'],
+    cors({
+        origin: true,
+        credentials: true,
+        methods: ['GET', 'POST', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+        exposedHeaders: ['WWW-Authenticate'],
+        maxAge: 3600,
+    }),
+);
 app.use(oauthRoutes);
 
 if (isUserMode) {
