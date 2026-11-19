@@ -13,7 +13,7 @@ import { AutoFitBadges } from './AutoFitBadges';
 import { JobCardMenu } from './JobCardMenu';
 import { buildMetaItems } from './JobCardMetaConfig';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
-import { ApplyActionContent } from '@/features/jobs/components/ApplyAction';
+import { APPLY_CARD_CLASS, ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 import { getJobTypeLabel, isFreshlyPosted } from './jobCardUtils';
 import { useJobCardActions, type JobCardOpportunity } from './useJobCardActions';
 
@@ -108,11 +108,11 @@ export default function JobCard({
             onMouseLeave={onMouseLeave}
             onClick={handleCardClick}
             className={cn(
-                'group relative bg-card text-card-foreground border rounded-lg p-3.5 flex flex-col gap-2 transition-colors duration-150 ease-out cursor-pointer',
+                'group relative bg-card text-card-foreground border border-border-strong rounded-lg p-3.5 flex flex-col gap-2 transition-colors duration-150 ease-out cursor-pointer dark:border-transparent',
                 isSelected
-                    ? 'border-primary/40 bg-primary/[0.03]'
-                    : 'border-border hover:border-primary/30',
-                isHovered && !isSelected && 'border-primary/30',
+                    ? 'border-primary/70 bg-primary/[0.07]'
+                    : 'hover:border-primary/50',
+                isHovered && !isSelected && 'border-primary/50',
                 isExpired && 'opacity-60',
                 className
             )}
@@ -159,7 +159,7 @@ export default function JobCard({
                             >
                                 {job.normalizedRole || job.title?.trim() || job.company?.trim() || 'Untitled listing'}
                             </h2>
-                            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs sm:text-sm text-muted-foreground">
+                            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs text-muted-foreground">
                                 <span
                                     className="font-semibold text-foreground/80 truncate min-w-0 ff-company-cap sm:ff-company-cap-lg"
                                     title={job.company}
@@ -278,9 +278,9 @@ export default function JobCard({
                                     onClick={handleApplyClick}
                                     disabled={!canApply}
                                     title={canApply ? undefined : 'This listing has no application link'}
-                                    className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
+                                    className={cn(APPLY_CARD_CLASS, 'disabled:opacity-50 disabled:pointer-events-none')}
                                 >
-                                    <ApplyActionContent applyLink={job.applyLink} showArrow />
+                                    <ApplyActionContent applyLink={job.applyLink} showDestination showArrow />
                                 </button>
                     )}
                 </div>

@@ -21,7 +21,7 @@ export function RequirementsBox({ opp, educationDetails, userProfileSkills = [],
     if (!hasBatch && !hasEducation && !hasSkills) return null;
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-3">
             {/* Education */}
             {(hasBatch || hasEducation) && (
                 <div className="space-y-2">
@@ -123,7 +123,7 @@ export function AdditionalDetailsBox({ opp }: { opp: Opportunity }) {
         : [];
 
     return (
-        <div className="space-y-5">
+        <div className="space-y-3">
             {/* Selection Process */}
             {hasSelection && (
                 <div className="space-y-2">
@@ -164,7 +164,7 @@ export function AdditionalDetailsBox({ opp }: { opp: Opportunity }) {
 
 export function DetailRequirements({ opp, educationDetails, userProfileSkills = [], userProfile }: DetailRequirementsProps) {
     return (
-        <div className="space-y-5">
+        <div className="space-y-3">
             <RequirementsBox opp={opp} educationDetails={educationDetails} userProfileSkills={userProfileSkills} userProfile={userProfile} />
             <AdditionalDetailsBox opp={opp} />
         </div>

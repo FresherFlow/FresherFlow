@@ -35,7 +35,7 @@ export function DesktopNav() {
 
     const desktopRoutes = isAuthRoute ? [] : getNavRoutes().filter(r => {
         if (!r.showInDesktop) return false;
-        const isAuthRequired = r.requiresAuth || r.href === '/jobs?tab=for-you' || r.href.startsWith('/account');
+        const isAuthRequired = r.requiresAuth || r.href === '/jobs' || r.href.startsWith('/account');
         if (isAuthRequired && !resolvedUser) return false;
         return true;
     });
@@ -140,7 +140,7 @@ export function DesktopNav() {
                         <div className="flex items-center gap-2">
                             {resolvedUser ? (
                                 <Link
-                                    href="/jobs?tab=for-you"
+                                    href="/jobs"
                                     className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard

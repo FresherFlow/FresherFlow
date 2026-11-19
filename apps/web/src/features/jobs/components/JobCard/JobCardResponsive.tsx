@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, type ReactNode } from 'react';
 import { Opportunity } from '@fresherflow/types';
 import JobCard from './JobCard';
 import { JobCardMobile } from './JobCardMobile';
@@ -22,6 +22,7 @@ interface JobCardResponsiveProps {
     isHovered?: boolean;
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
+    matchBadge?: ReactNode;
 }
 
 /** Tailwind's `md` step. Kept in sync with the `md:hidden` / `md:block` below. */
@@ -58,6 +59,7 @@ export function JobCardResponsive({
     isHovered = false,
     onMouseEnter,
     onMouseLeave,
+    matchBadge,
 }: JobCardResponsiveProps) {
     const [isMdUp, setIsMdUp] = useState<boolean | null>(null);
 
@@ -84,6 +86,7 @@ export function JobCardResponsive({
                     searchQuery={searchQuery}
                     searchedSkill={searchedSkill}
                     className={className}
+                    matchBadge={matchBadge}
                 />
             </div>
             )}

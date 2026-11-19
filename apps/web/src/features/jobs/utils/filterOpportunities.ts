@@ -165,18 +165,14 @@ export function filterOpportunities(opps: Opportunity[], criteria: FeedFilterCri
         const matchesSearch = isLiveOverlay || opportunityMatchesSearch(opp, debouncedSearch);
 
         // Location is URL-owned now (profile seeds write `?location=Mumbai,Pune`),
-        // so the value is comma-separated. Listings with no location data and
-        // remote roles pass — the same rule the server's preference filter uses.
+        // so the value is comma-separated. When a location is chosen, only
+        // listings that name it pass — remote roles and jobs with no location
+        // must not leak into a city filter.
         const locationTerms = selectedLoc
             ? selectedLoc.split(',').map((term) => term.toLowerCase().trim()).filter(Boolean)
             : [];
         const oppLocations = (opp.locations || []).map((loc) => loc.toLowerCase().trim()).filter(Boolean);
-        const oppWorkMode = String((opp as unknown as { workMode?: string | null }).workMode || '').toUpperCase();
-        const isRemoteRole = oppWorkMode === 'REMOTE'
-            || oppLocations.some((loc) => loc.includes('remote') || loc.includes('wfh') || loc.includes('work from home'));
         const matchesLoc = locationTerms.length === 0
-            || oppLocations.length === 0
-            || isRemoteRole
             || oppLocations.some((loc) => locationTerms.some((s) => {
                 if ((s === 'bangalore' || s === 'bengaluru') && (loc === 'bangalore' || loc === 'bengaluru')) {
                     return true;

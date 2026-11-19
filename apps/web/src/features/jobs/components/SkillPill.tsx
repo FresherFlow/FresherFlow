@@ -146,8 +146,8 @@ export function SkillPill({ skill, className, size = 'sm', variant = 'default', 
            dropdown rows and dense card meta rows, so they keep their original
            metrics - restyling them would resize surfaces nobody asked about. */
         isBox
-          ? 'rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold'
-          : 'rounded-md border font-medium',
+          ? 'rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold dark:border-transparent dark:bg-surface-sunken'
+          : 'rounded-md border font-medium dark:border-transparent',
         !isBox && (size === 'xs' ? 'h-5 px-1.5 text-xs' : 'h-[26px] px-2.5 text-sm'),
         isBox && (hasIcon ? 'text-foreground' : 'text-muted-foreground'),
         !isBox && (hasIcon ? 'border-transparent bg-muted/40 text-foreground/80' : 'border-border/50 bg-muted/40 text-muted-foreground'),

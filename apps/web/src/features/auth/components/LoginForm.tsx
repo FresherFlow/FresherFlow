@@ -86,7 +86,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     const isInviteFlow = source === 'dashboard_invite' || Boolean(refCode);
 
     const redirectTarget = useMemo(
-        () => (isSafeInternalRedirect(redirectParam) ? (redirectParam as string).trim() : '/jobs?tab=for-you'),
+        () => (isSafeInternalRedirect(redirectParam) ? (redirectParam as string).trim() : '/jobs'),
         [redirectParam]
     );
 

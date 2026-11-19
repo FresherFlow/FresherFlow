@@ -2,6 +2,7 @@ import { Opportunity } from '@fresherflow/types';
 import { cn } from '@/ui/cn';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { getCompanySlug } from '@/features/jobs/domain/opportunityDisplay';
+import { SkillPill } from '@/features/jobs/components/SkillPill';
 import Link from 'next/link';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
@@ -9,8 +10,7 @@ import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
-import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
-
+import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 
 import { DriveMetadata } from '@/features/jobs/domain/driveTimeline';
 import { getPrimaryEmploymentType, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
@@ -30,122 +30,146 @@ interface DetailHeroSectionProps {
     displaySalary: string | null;
     locationInfo: { shortLabel: string; fullLabel: string; cities?: string[] };
     formatDeadline: (opp: Opportunity) => string | null;
+    educationDetails: { level: string; courses: string | null; specializations: string | null };
 }
 
+/**
+ * The masthead of a listing, rebuilt as an opportunity brief:
+ * a single bold display title, a company identity row, a hairline
+ * specification strip, and a two-column "Key Skills / Eligibility" band.
+ * One memorable moment (the title), everything else quiet and aligned.
+ */
 export function DetailHeroSection({
     opp,
     isCampusDrive,
     listingState,
     driveDateItems,
     driveMeta,
-    displaySalary: _displaySalary,
+    displaySalary,
     locationInfo,
     formatDeadline,
+    educationDetails,
 }: DetailHeroSectionProps) {
     const isGovernmentJob = Boolean(opp.governmentJobDetails);
     const govDetails = opp.governmentJobDetails;
     const applicationStart = govDetails?.applicationStartDate;
     const applicationEnd = govDetails?.applicationEndDate;
 
+    const typeLabel = isCampusDrive
+        ? 'Hiring Drive'
+        : isInternshipOpportunity(opp)
+            ? 'Internship'
+            : isWalkinOpportunity(opp)
+                ? 'Walk-in'
+                : 'Job';
+
+    const statusClass = listingState === 'EXPIRED'
+        ? 'border-destructive/25 bg-destructive/5 text-destructive'
+        : listingState === 'CLOSING_SOON'
+            ? 'border-warning/25 bg-warning/10 text-warning'
+            : listingState === 'ACTIVE'
+                ? 'border-success/25 bg-success/10 text-success'
+                : 'border-border bg-surface-sunken text-muted-foreground';
+    const statusDot = listingState === 'EXPIRED'
+        ? 'bg-destructive'
+        : listingState === 'CLOSING_SOON'
+            ? 'bg-warning'
+            : listingState === 'ACTIVE'
+                ? 'bg-success'
+                : 'bg-muted-foreground/70';
+    const statusLabel = listingState === 'EXPIRED'
+        ? 'Expired'
+        : listingState === 'CLOSING_SOON'
+            ? 'Closing soon'
+            : listingState === 'ACTIVE'
+                ? 'Active'
+                : listingState.charAt(0).toUpperCase() + listingState.slice(1).toLowerCase();
+
+    const postedLabel = opp.postedAt
+        ? new Date(opp.postedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '—';
+
+    const batch = (opp.allowedPassoutYears || [])
+        .slice()
+        .sort((a, b) => Number(a) - Number(b))
+        .join(', ');
+
+    const facts: { label: string; value: string; icon: React.ReactNode }[] = [
+        { label: 'Job type', value: formatEmploymentText(getPrimaryEmploymentType(opp)), icon: <UsersIcon className="size-3.5" /> },
+        { label: 'Location', value: locationInfo.shortLabel, icon: <MapPinIcon className="size-3.5" /> },
+        { label: 'Experience', value: opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax} yrs` : 'Freshers', icon: <BriefcaseIcon className="size-3.5" /> },
+        { label: 'Work type', value: opp.jobFunction || 'General', icon: <BriefcaseIcon className="size-3.5" /> },
+        { label: 'Salary', value: displaySalary || 'Not specified', icon: <CurrencyRupeeIcon className="size-3.5" /> },
+        { label: 'Batch', value: batch || 'Not specified', icon: <AcademicCapIcon className="size-3.5" /> },
+    ];
+
+    const education = educationDetails || { level: '', courses: null, specializations: null };
+    const educationRows = [
+        { label: 'Level', value: education.level },
+        { label: 'Courses', value: education.courses },
+        { label: 'Specializations', value: education.specializations },
+        { label: 'Apply by', value: formatDeadline(opp) },
+    ].filter((row): row is { label: string; value: string } => Boolean(row.value));
+
+    const skills = opp.requiredSkills || [];
+
     return (
-        <div className={cn(
-            "relative overflow-hidden",
-            isGovernmentJob
-                ? "rounded-2xl border border-border bg-card p-5 md:p-6"
-                : "bg-transparent p-0"
-        )}>
-            {isGovernmentJob && (
-                <>
-                    <div className="absolute inset-x-0 top-0 h-24 bg-primary" />
-                    <div className="absolute -top-12 right-0 h-40 w-40 rounded-full bg-paper/10 blur-3xl" />
-                </>
-            )}
-            <div className="relative z-10 space-y-3">
-                {/* Tags row */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-muted/80 text-foreground border border-border/75">
-                        {isCampusDrive ? 'Hiring Drive' : isInternshipOpportunity(opp) ? 'Internship' : isWalkinOpportunity(opp) ? 'Walk-in' : 'Job'}
+        <article className="relative overflow-hidden rounded-2xl border border-border-strong bg-card dark:border-transparent">
+            {/* A single structural stroke anchors the masthead — an ink line,
+                not a tinted surface. */}
+            <div className="h-1 w-full bg-primary dark:bg-border-strong" />
+
+            <div className="p-5 md:p-7">
+                {/* Eyebrow: role family + status. Sentence case, no filler labels. */}
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                    <div className="flex items-center gap-2.5">
+                        <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                        <span className="text-meta font-medium text-muted-foreground">{typeLabel}</span>
+                        {opp.governmentJobDetails && (
+                            <span className="rounded-md border border-warning/25 bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
+                                Government
+                            </span>
+                        )}
+                    </div>
+                    <span className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold',
+                        statusClass
+                    )}>
+                        <span className={cn('size-1.5 shrink-0 rounded-full', statusDot)} aria-hidden="true" />
+                        {statusLabel}
                     </span>
-                    {opp.governmentJobDetails && (
-                        <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-surface-warm dark:bg-warning/10 border border-border/50 dark:border-warning/20 text-warning dark:text-warning">
-                            Govt Job
-                        </span>
-                    )}
-                    {listingState === 'EXPIRED' ? (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-destructive/5 border border-destructive/10 text-destructive text-xs font-semibold rounded-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-error" /> Expired
-                        </span>
-                    ) : listingState === 'CLOSING_SOON' ? (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-warning/10 border border-warning/20 text-warning dark:text-warning text-xs font-semibold rounded-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" /> Closing soon
-                        </span>
-                    ) : listingState === 'ACTIVE' ? (
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 bg-success/10 border border-success/20 text-success dark:text-success text-xs font-semibold rounded-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-success" />
-                            Active
-                        </span>
-                    ) : (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-muted border border-border text-muted-foreground text-xs font-semibold rounded-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/75" />
-                            {listingState.charAt(0).toUpperCase() + listingState.slice(1).toLowerCase()}
-                        </span>
-                    )}
                 </div>
 
-                {/* Drive date badges */}
-                {driveDateItems.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        {driveDateItems.map((item) => (
-                            <span key={item.label} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/5 text-primary text-xs font-semibold border border-primary/15">
-                                <ClockIcon className="w-3 h-3" />
-                                {item.label}: {item.date?.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </span>
-                        ))}
-                    </div>
-                )}
+                {/* The one bold moment. */}
+                <h1 className={cn(
+                    'mt-4 max-w-3xl font-bold leading-[1.15] tracking-tight text-foreground text-balance',
+                    'text-2xl md:text-3xl'
+                )}>
+                    {opp.title}
+                </h1>
 
-                {isCampusDrive && driveMeta.badges.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5">
-                        {driveMeta.badges.map((badge: string) => (
-                            <span key={badge} className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/50 text-foreground text-xs font-semibold border border-border">
-                                {badge}
-                            </span>
-                        ))}
-                    </div>
-                )}
-
-                {/* Title + Company */}
-                <div className="space-y-2">
-                    {isGovernmentJob && (
-                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                            {govDetails?.recruitingBody || govDetails?.organization || opp.company}
-                        </p>
-                    )}
-                    <h1 className={cn(
-                        "font-bold tracking-tight leading-snug",
-                        isGovernmentJob
-                            ? "text-2xl md:text-4xl text-foreground"
-                            : "text-xl md:text-2xl text-foreground"
-                    )}>
-                        {opp.title}
-                    </h1>
-                    <div className="flex items-center gap-2.5">
+                {/* Company identity + posting date. */}
+                <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex min-w-0 items-center gap-3">
                         <CompanyLogo
                             companyName={opp.company}
                             companyWebsite={opp.companyWebsite}
                             companyLogoUrl={opp.companyLogoUrl}
                             applyLink={opp.applyLink}
                             isGovernment={isGovernmentJob}
-                            priority={true}
-                            className="w-8 h-8 md:w-9 md:h-9"
+                            priority
+                            className="size-12 shrink-0 rounded-xl"
                         />
                         <div className="min-w-0">
-                            <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="text-sm md:text-base font-semibold text-foreground hover:text-primary transition-colors">
+                            <Link
+                                href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`}
+                                className="text-base font-semibold text-foreground transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary"
+                            >
                                 {opp.company}
                             </Link>
-                            <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
-                                <MapPinIcon className="w-3 h-3 shrink-0" />
-                                <span className="text-xs md:text-sm font-medium truncate" title={locationInfo.fullLabel}>
+                            <div className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                                <MapPinIcon className="size-3.5 shrink-0" />
+                                <span className="truncate" title={locationInfo.fullLabel}>
                                     {locationInfo.cities && locationInfo.cities.length > 1
                                         ? locationInfo.cities.join(', ')
                                         : locationInfo.shortLabel}
@@ -153,42 +177,102 @@ export function DetailHeroSection({
                             </div>
                         </div>
                     </div>
+                    <div className="flex items-center gap-1.5 text-meta text-muted-foreground">
+                        <ClockIcon className="size-3.5" />
+                        <span>Posted {postedLabel}</span>
+                    </div>
                 </div>
 
-                {/* Government job stats */}
+                {/* Government stats — same spec-strip language as the facts. */}
                 {isGovernmentJob && (
-                    <div className="grid grid-cols-3 gap-2 pt-1">
-                        <div className="rounded-xl bg-card/90 px-3 py-3">
-                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vacancies</p>
-                            <p className="mt-0.5 text-2xl font-extrabold text-foreground">{govDetails?.vacancyCount ?? 'NA'}</p>
+                    <dl className="mt-5 grid grid-cols-3 gap-px overflow-hidden rounded-xl border border-border-strong bg-border-strong dark:border-border dark:bg-border">
+                        <div className="bg-card px-4 py-3">
+                            <dt className="text-xs text-muted-foreground">Vacancies</dt>
+                            <dd className="mt-1 text-xl font-bold tabular-nums text-foreground">{govDetails?.vacancyCount ?? 'NA'}</dd>
                         </div>
-                        <div className="rounded-xl bg-card/90 px-3 py-3">
-                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Opens</p>
-                            <p className="mt-0.5 text-sm font-bold text-foreground">{applicationStart || '—'}</p>
+                        <div className="bg-card px-4 py-3">
+                            <dt className="text-xs text-muted-foreground">Opens</dt>
+                            <dd className="mt-1 text-sm font-semibold text-foreground">{applicationStart || '—'}</dd>
                         </div>
-                        <div className="rounded-xl bg-error/90 px-3 py-3">
-                            <p className="text-xs font-bold uppercase tracking-wider text-error">Last Date</p>
-                            <p className="mt-0.5 text-sm font-bold text-error">{applicationEnd || formatDeadline(opp) || '—'}</p>
+                        <div className="bg-card px-4 py-3">
+                            <dt className="text-xs text-muted-foreground">Last date</dt>
+                            <dd className="mt-1 text-sm font-semibold text-destructive">{applicationEnd || formatDeadline(opp) || '—'}</dd>
                         </div>
+                    </dl>
+                )}
+
+                {/* Drive context pills. */}
+                {driveDateItems.length > 0 && (
+                    <div className="mt-5 flex flex-wrap gap-2">
+                        {driveDateItems.map((item) => (
+                            <span key={item.label} className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-surface-sunken px-2.5 py-1 text-xs font-medium text-foreground">
+                                <ClockIcon className="size-3.5 text-primary" />
+                                {item.label}: {item.date?.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </span>
+                        ))}
+                    </div>
+                )}
+                {isCampusDrive && driveMeta.badges.length > 0 && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        {driveMeta.badges.map((badge: string) => (
+                            <span key={badge} className="rounded-lg border border-border bg-surface-sunken px-2.5 py-1 text-xs font-medium text-foreground">
+                                {badge}
+                            </span>
+                        ))}
                     </div>
                 )}
 
-                {/* Mobile: inline metadata chips (compact) */}
-                <div className="lg:hidden flex flex-wrap gap-1.5 pt-1">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 text-xs font-medium text-foreground border border-border/50">
-                        <BriefcaseIcon className="w-3 h-3 text-primary" />
-                        {opp.experienceMax ? `${opp.experienceMin || 0}-${opp.experienceMax}y` : 'Fresher'}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 text-xs font-medium text-foreground border border-border/50">
-                        <UsersIcon className="w-3 h-3 text-primary" />
-                        {formatEmploymentText(getPrimaryEmploymentType(opp))}
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 text-xs font-medium text-foreground border border-border/50">
-                        <CurrencyRupeeIcon className="w-3 h-3 text-primary" />
-                        {_displaySalary || 'Competitive'}
-                    </span>
+                {/* Specification strip: equal cells, hairline rules, large values. */}
+                <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border-strong bg-border-strong dark:border-border dark:bg-border sm:grid-cols-3">
+                    {facts.map((fact) => (
+                        <div key={fact.label} className="bg-card px-4 py-3.5">
+                            <dt className="flex items-center gap-1.5 text-meta text-muted-foreground">
+                                <span className="text-primary" aria-hidden="true">{fact.icon}</span>
+                                {fact.label}
+                            </dt>
+                            <dd className="mt-1.5 text-sm font-semibold leading-snug text-foreground tabular-nums">
+                                {fact.value}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+
+                {/* Two-column band: what the role looks for, and who can apply. */}
+                <div className="mt-6 grid gap-6 border-t border-border pt-6 md:grid-cols-2 md:gap-8">
+                    <section aria-labelledby="hero-skills-heading">
+                        <h2 id="hero-skills-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                            Key Skills
+                        </h2>
+                        {skills.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-1.5">
+                                {skills.map((skill) => (
+                                    <SkillPill key={skill} skill={skill} size="sm" className="text-meta! font-medium text-foreground dark:border-transparent dark:bg-surface-sunken" />
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="mt-3 text-sm text-muted-foreground">No specific skills listed.</p>
+                        )}
+                    </section>
+
+                    {educationRows.length > 0 && (
+                        <section aria-labelledby="hero-eligibility-heading">
+                            <h2 id="hero-eligibility-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                                Eligibility
+                            </h2>
+                            <dl className="mt-2 divide-y divide-border">
+                                {educationRows.map((row) => (
+                                    <div key={row.label} className="flex gap-4 py-2 text-sm">
+                                        <dt className="w-24 shrink-0 text-muted-foreground">{row.label}</dt>
+                                        <dd className="font-medium text-foreground">{row.value}</dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        </section>
+                    )}
                 </div>
             </div>
-        </div>
+        </article>
     );
 }

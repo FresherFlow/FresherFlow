@@ -36,7 +36,6 @@ function getMobileTitle(pathname: string): string {
 
 /** /jobs tab labels, mirroring the desktop trail (JobsPageClient USER_TABS). */
 const JOBS_TAB_TITLES: Record<string, string> = {
-    'for-you': 'For You',
     saved: 'Saved',
     applied: 'Applied',
     alerts: 'Alerts',
@@ -130,7 +129,7 @@ export function MobileTopNav() {
                             <div className="flex items-center gap-2">
                                 {resolvedUser ? (
                                     <Link
-                                        href="/jobs?tab=for-you"
+                                        href="/jobs"
                                         className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                     >
                                         Dashboard

@@ -8,7 +8,7 @@ import { analytics } from '@/lib/api/analytics';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { getCleanShareUrl } from '@/lib/utils/share';
-import { setPendingAction, type PendingActionInput } from '@/lib/storage/pendingAction';
+import { type PendingActionInput } from '@/lib/storage/pendingAction';
 import { getRelatedOpportunities } from '@/features/jobs/utils/detailUtils';
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
@@ -374,17 +374,6 @@ export function useOpportunityDetail(
 
         analytics.applyClick(opp.id, opp.company, !!opp.applyLink);
         saveOpportunityToCache(opp);
-
-        // Arm the confirmation before opening the tab. The user stays on this
-        // page, so the flag is what tells the job page an answer is expected —
-        // and it has to survive the tab switch and any reload, hence session
-        // storage. No interstitial: the link opens in a new tab and the "Did you
-        // apply?" card appears in place, so nothing is hidden from the user.
-        setPendingAction({
-            type: 'awaiting-apply-confirmation',
-            jobId: opp.id,
-            jobPath: getOpportunityPathFromItem(opp),
-        });
 
         // No `noopener` in the feature string: the HTML spec makes window.open
         // return null when it is present, which would make a successful open

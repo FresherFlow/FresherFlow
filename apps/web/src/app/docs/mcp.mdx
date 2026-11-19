@@ -10,6 +10,8 @@ The FresherFlow MCP (Model Context Protocol) server lets AI clients call Fresher
 
 **MCP Server URL:** `https://mcp.fresherflow.in/mcp`
 
+Public, read-only job discovery is also available at `https://mcp.fresherflow.in/mcp/public` without an account. Every tool that writes, or reads account data, requires sign-in.
+
 ## Quick Start
 
 1. **Connect your AI client** to `https://mcp.fresherflow.in/mcp`
@@ -24,11 +26,8 @@ The FresherFlow MCP (Model Context Protocol) server lets AI clients call Fresher
 | `get_jobs` | ✅ | ✅ | Search live job listings by keyword, city, company, type |
 | `get_job` | ✅ | ✅ | Full details for one listing by slug or id |
 | `submit_opportunity` | ✅ | ✅ | Submit a job (DRAFT for users, PUBLISHED for moderators) |
-| `get_submission_rules` | ✅ | ✅ | Content rules, field limits and traps before submitting |
 | `list_my_submissions` | ✅ | ✅ | Your submissions with status |
 | `withdraw_submission` | ✅ | ✅ | Withdraw a PENDING_REVIEW submission |
-| `get_listing_schema` | ❌ | ✅ | Full field contract for listings |
-| `create_listing` | ❌ | ✅ | Create full listing (defaults to PUBLISHED) |
 | `update_listing` | ❌ | ✅ | Full replace of a listing |
 | `get_listing` | ❌ | ✅ | Read a full listing |
 | `review_queue` | ❌ | ✅ | Submissions awaiting review |
@@ -42,7 +41,7 @@ The FresherFlow MCP (Model Context Protocol) server lets AI clients call Fresher
 | `user` | Sign in to FresherFlow | Submit drafts, manage own submissions |
 | `moderator` | Admin panel: `opportunity.review` + `opportunity.publish` | Publish on submit, full listing CRUD, moderation |
 
-**The tool list a connection sees already reflects its role.** A user never sees moderation tools. There is no anonymous tier: every connection resolves to a signed-in account.
+**The tool list a connection sees already reflects its role.** A user never sees moderation tools. Nothing is anonymous except the `/mcp/public` read-only endpoint, which exposes only `get_jobs` and `get_job` (published, unexpired listings).
 
 If a moderator was granted after the connector was created, use **Settings → Plugins → your FresherFlow connector → Refresh tools** (or reconnect it). ChatGPT caches the tool list, so `whoami` can show `moderator` while the visible tools are still the old set.
 
@@ -52,7 +51,7 @@ The plugin ships workflow playbooks that tell an agent how to use these tools to
 
 | Skill | What it covers |
 |-------|----------------|
-| `submit-opportunity` | Go from a link or pasted posting to a complete submission: read the source, load `get_submission_rules`, check duplicates, extract only stated fields, then report DRAFT vs PUBLISHED and `duplicate` correctly. |
+| `submit-opportunity` | Go from a link or pasted posting to a complete submission in one tool call: read the source, check duplicates, extract only stated fields, then report DRAFT vs PUBLISHED, `duplicate` and `missingFields` correctly. |
 | `job-search` | Search the live feed with accurate filters, read a listing by slug or id, and return canonical links. |
 | `review-submissions` | Moderator workflow: `review_queue` → approve, reject with a reason, or fix and publish — exactly one path per submission. |
 
@@ -62,7 +61,7 @@ These are the tracked source under `plugins/fresherflow/skills/<name>/SKILL.md`.
 
 ### OAuth 2.1
 
-The MCP server is an OAuth 2.1 **resource server**; the FresherFlow API is the **authorization server**. Every connection is a signed-in FresherFlow account — there is no API key and no unauthenticated access.
+The MCP server is an OAuth 2.1 **resource server**; the FresherFlow API is the **authorization server**. `/mcp` always requires a bearer token — there is no API key. `/mcp/public` is the only unauthenticated endpoint, and it is read-only.
 
 1. Client fetches discovery: `GET https://mcp.fresherflow.in/.well-known/oauth-protected-resource/mcp`
 2. Client registers via DCR: `POST https://api.fresherflow.in/oauth/register`
@@ -144,19 +143,25 @@ Settings → Integrations & MCP → Add your own → `https://mcp.fresherflow.in
 ## Important Rules
 
 - **Never claim a job is live** unless a tool response says `published: true`
+- `submit_opportunity` is rejected unless it carries a description of at least 80 characters and a location (or `workMode: REMOTE`); a `walkin` also needs real dates and a real venue
 - `submit_opportunity` from a user creates a **DRAFT** — moderator must publish
 - `submit_opportunity` from a moderator creates **PUBLISHED** — live immediately
 - `update_listing` is a **full replace** — omitted fields are cleared
-- Call `get_listing` after `create_listing`/`update_listing` to verify stored fields
-- Unknown field names in payloads are **silently dropped** — use `get_listing_schema` first
+- Call `get_listing` after `update_listing` to verify stored fields
+- Each write tool carries its own field contract: there is no separate schema, template or rules tool to call first
+- `submit_opportunity` rejects unknown field names, so a typo is an error rather than a silently missing value
+- `update_listing` payloads are still a closed object at the API — use only the field names listed in its description
 
 ## Rate Limits
 
 | Endpoint | Limit |
 |----------|-------|
-| `/mcp` | 60 req/min per IP |
-| `whoami` and own-submission reads | 60/min |
+| `/mcp` (Worker guard) | 600 req/min per IP |
+| identity, own-submission reads and withdraw | 180/min per account |
 | `submit_opportunity` | 60/hr per account |
+| listing writes | 60/min per account |
+| listing reads | 120/min per account |
+| moderation actions | 30/min per account |
 | OAuth `/register` | 30/hr per IP |
 | OAuth `/token` | 60/15min per IP |
 | OAuth `/authorize` | 60/15min per IP |

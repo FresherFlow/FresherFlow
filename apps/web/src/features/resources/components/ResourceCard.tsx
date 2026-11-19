@@ -171,7 +171,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                                 {collection.title}
                             </h2>
                             {hasMultipleItems && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold text-muted-foreground bg-muted border border-border/50 shrink-0 leading-none">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold text-muted-foreground bg-muted border border-border/50 dark:border-transparent shrink-0 leading-none">
                                     {collection.items.length} Items
                                 </span>
                             )}
@@ -219,7 +219,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                             />
                         ))}
                         {collection.skills.length > visibleCount && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold text-muted-foreground bg-muted border border-border/50 shrink-0">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold text-muted-foreground bg-muted border border-border/50 dark:border-transparent shrink-0">
                                 +{collection.skills.length - visibleCount}
                             </span>
                         )}
@@ -246,7 +246,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                                             window.open(item.url, '_blank', 'noopener,noreferrer');
                                         }
                                     }}
-                                    className="group/btn inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/80 text-foreground hover:text-primary transition-colors cursor-pointer"
+                                    className="group/btn inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-border/60 dark:border-transparent bg-muted/20 hover:bg-muted/80 text-foreground hover:text-primary transition-colors cursor-pointer"
                                 >
                                     <span className="truncate max-w-50">{item.title || `Resource ${idx + 1}`}</span>
                                     <div className="w-0 overflow-hidden opacity-0 group-hover/btn:w-3.5 group-hover/btn:ml-1 group-hover/btn:opacity-100 transition-all duration-200">
@@ -259,7 +259,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                             <div className="absolute right-0 top-0 md:top-auto md:bottom-0 flex justify-end">
                                 <button
                                     onClick={() => setIsExpanded(!isExpanded)}
-                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border/60 dark:border-transparent bg-muted/20 hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
                                     aria-label={isExpanded ? "Show less items" : "Show more items"}
                                 >
                                     <ChevronDownIcon className={cn("w-4 h-4 transition-transform", isExpanded && "rotate-180")} />

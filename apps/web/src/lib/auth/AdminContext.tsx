@@ -281,7 +281,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         if (!admin && moderator) {
             clearCachedModeratorSession();
             setModerator(null);
-            router.push('/jobs?tab=for-you');
+            router.push('/jobs');
             return;
         }
         try {

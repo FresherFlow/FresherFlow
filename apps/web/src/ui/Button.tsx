@@ -27,7 +27,7 @@ const buttonVariants = cva(
                 // Muted icon button that turns destructive on hover (row delete
                 // actions). Owns the muted base + red hover so call sites never
                 // restyle color/motion on the primitive.
-                ghostDanger: "text-muted-foreground transition-colors hover:text-destructive [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-destructive",
+                ghostDanger: "text-muted-foreground transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-destructive",
                 // Hover uses `muted`, not `accent`: in the dark theme
                 // `--color-accent` is near-white (oklch 97.7%), so `hover:bg-accent`
                 // filled the button solid white. Light mode is unchanged — accent

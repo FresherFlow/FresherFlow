@@ -18,6 +18,14 @@ import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
 import { useState, useEffect, useId } from 'react';
+import EnvelopeIcon from '@heroicons/react/24/outline/EnvelopeIcon';
+import PlusIcon from '@heroicons/react/24/outline/PlusIcon';
+import {
+    WhatsAppBrandIcon,
+    LinkedInBrandIcon,
+    XBrandIcon,
+    FacebookBrandIcon,
+} from '@/features/navigation/SocialSidebar';
 import { communityApi } from '@fresherflow/api-client';
 import type { Room } from '@fresherflow/types';
 import { getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
@@ -92,7 +100,11 @@ export function DetailSidebarActions({
     const hasSalary = !!opp.salaryMax;
     const salaryText = hasSalary ? `₹${opp.salaryMin} – ₹${opp.salaryMax}` : null;
     const experience = opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax} yrs` : 'Freshers';
+    const deadline = formatDeadline(opp);
 
+    const [copied, setCopied] = useState(false);
+    const [pageUrl, setPageUrl] = useState('');
+    useEffect(() => { setPageUrl(window.location.href); }, []);
     const [roomPickerOpen, setRoomPickerOpen] = useState(false);
     const [rooms, setRooms] = useState<Room[] | null>(null);
     const [roomsLoading, setRoomsLoading] = useState(false);
@@ -138,22 +150,19 @@ export function DetailSidebarActions({
 
     return (
         <div className="space-y-4">
-            {/* -- CTA Row: Apply + Save + Share --
-                BrandButton is the landing page's own CTA treatment
-                (`rounded-[2px]` + `--ff-accent`), extracted to a primitive so
-                this row matches the landing hero instead of the rounded admin
-                `Button`. One height across all three. Share is the only
-                secondary: a separate copy-link control duplicated it. */}
-            <div className="flex gap-2">
+            {/* -- Apply now -- one decisive action. */}
+            <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                        <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                        <h3 className="text-sm font-semibold text-foreground">Apply now</h3>
+                    </div>
+                    {deadline && (
+                        <span className="text-[11px] font-medium text-muted-foreground">By {deadline}</span>
+                    )}
+                </div>
                 {hasApplyLink && listingState !== 'EXPIRED' ? (
-                    /* Neutral, not the brand orange: this click leaves for the
-                       company's own site. The accent is our call to action, and
-                       spending it on someone else's page both misreads as "our
-                       flow continues" and loses the landing hero's meaning. The
-                       label says where it goes. */
-                    <BrandButton variant="neutral" onClick={handleApply} className="flex-1">
-                        {/* ATS-aware label + mark, from the same definition the
-                            feed row and the split pane use. */}
+                    <BrandButton variant="neutral" onClick={handleApply} className="h-12 w-full rounded-md active:scale-[0.97] motion-reduce:transform-none">
                         <ApplyActionContent
                             applyLink={opp.applyLink}
                             isGovernment={Boolean(opp.governmentJobDetails)}
@@ -162,27 +171,86 @@ export function DetailSidebarActions({
                         />
                     </BrandButton>
                 ) : hasApplyLink && listingState === 'EXPIRED' ? (
-                    <div className="flex-1 inline-flex items-center justify-center gap-2 rounded-xs border border-muted bg-muted/50 px-4.5 py-2.5 text-meta font-semibold text-muted-foreground select-none">
-                        Closed
+                    <div className="inline-flex h-12 w-full items-center justify-center rounded-md border border-border bg-surface-sunken px-4 text-sm font-semibold text-muted-foreground select-none">
+                        Applications closed
                     </div>
-                ) : null}
-                <BrandButton
-                    variant={opp.isSaved ? 'selected' : 'outline'}
-                    onClick={handleToggleSave}
-                    aria-pressed={opp.isSaved}
-                >
-                    {opp.isSaved ? <BookmarkSolidIcon className="w-4 h-4" /> : <BookmarkIcon className="w-4 h-4" />}
-                    {opp.isSaved ? 'Saved' : 'Save'}
-                </BrandButton>
-                <BrandButton
-                    variant="ghost"
-                    size="icon"
-                    onClick={handleShare}
-                    aria-label="Share"
-                    title="Share"
-                >
-                    <ShareIcon className="w-4 h-4" />
-                </BrandButton>
+                ) : (
+                    <p className="text-xs text-muted-foreground">Application link not available.</p>
+                )}
+                <p className="text-xs text-muted-foreground">You&apos;ll finish on the employer&apos;s site.</p>
+            </div>
+
+            {/* -- Share this job -- reuses the brand icons already in the app. */}
+            <div className="space-y-3 border-t border-border/40 pt-4">
+                <div className="flex items-center gap-2">
+                    <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                    <h3 className="text-sm font-semibold text-foreground">Share</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-y-3">
+                    {[
+                        { label: 'WhatsApp', Icon: WhatsAppBrandIcon, tile: 'bg-brand-whatsapp', href: `https://wa.me/?text=${encodeURIComponent(`${opp.title} — ${pageUrl}`)}` },
+                        { label: 'LinkedIn', Icon: LinkedInBrandIcon, tile: 'bg-brand-linkedin', href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pageUrl)}` },
+                        { label: 'X', Icon: XBrandIcon, tile: 'bg-foreground', href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(opp.title)}&url=${encodeURIComponent(pageUrl)}` },
+                        { label: 'Facebook', Icon: FacebookBrandIcon, tile: 'bg-brand-facebook', href: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}` },
+                        { label: 'Email', Icon: EnvelopeIcon, tile: 'bg-warning', href: `mailto:?subject=${encodeURIComponent(opp.title)}&body=${encodeURIComponent(pageUrl)}` },
+                        { label: 'More', Icon: ShareIcon, tile: 'bg-muted-foreground/20', onClick: handleShare },
+                    ].map((item) => {
+                        const content = (
+                            <>
+                                <span className={`flex size-9 items-center justify-center rounded-md transition-shadow duration-150 ease-out group-hover:ring-2 group-hover:ring-primary/30 ${item.tile} ${item.label === 'More' ? 'text-foreground' : item.label === 'X' ? 'text-background' : 'text-paper'}`}>
+                                    <item.Icon className="size-4.5" />
+                                </span>
+                                <span className="text-xs font-medium text-foreground">{item.label}</span>
+                            </>
+                        );
+                        const itemClass = 'group flex cursor-pointer flex-col items-center gap-1.5 rounded-lg p-1.5 transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-sunken active:scale-[0.96] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+                        return item.href ? (
+                            <a
+                                key={item.label}
+                                href={item.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`Share on ${item.label}`}
+                                className={itemClass}
+                            >
+                                {content}
+                            </a>
+                        ) : (
+                            <button
+                                key={item.label}
+                                type="button"
+                                onClick={item.onClick}
+                                aria-label="More share options"
+                                className={itemClass}
+                            >
+                                {content}
+                            </button>
+                        );
+                    })}
+                </div>
+                <div className="flex items-center gap-2">
+                    <input
+                        readOnly
+                        aria-label="Job link"
+                        value={pageUrl}
+                        className="min-w-0 flex-1 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-[11px] text-muted-foreground"
+                    />
+                    <button
+                        type="button"
+                        onClick={async () => {
+                            try {
+                                await navigator.clipboard.writeText(pageUrl);
+                                setCopied(true);
+                                window.setTimeout(() => setCopied(false), 1500);
+                            } catch {
+                                setCopied(false);
+                            }
+                        }}
+                        className="shrink-0 rounded-md bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                        {copied ? 'Copied' : 'Copy link'}
+                    </button>
+                </div>
             </div>
 
             {/* -- Share to Room --
@@ -235,54 +303,6 @@ export function DetailSidebarActions({
                 </div>
             )}
 
-            {/* -- Key Facts --
-                Sharp-cornered box chips, not icon+text rows and not pills, to
-                match the CTA row's geometry. `pointer-events-none` because a
-                fact is not a control - these must not be focusable or announced
-                as interactive. Width is content-driven, so they pack instead of
-                stretching across the rail. */}
-            <div className="flex flex-wrap gap-1.5">
-                {hasSalary && (
-                    <span className="pointer-events-none inline-flex items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground">
-                        <CurrencyRupeeIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        {salaryText}
-                    </span>
-                )}
-                <span className="pointer-events-none inline-flex items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground">
-                    <BriefcaseIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    {experience}
-                </span>
-                <span className="pointer-events-none inline-flex items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground">
-                    <UsersIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    {formatEmploymentText(getPrimaryEmploymentType(opp))}
-                </span>
-                <span className="pointer-events-none inline-flex items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground">
-                    <ShieldCheckIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    {opp.jobFunction || 'General'}
-                </span>
-                {locationsGrouped.map((loc) => (
-                    <span
-                        key={loc}
-                        className="pointer-events-none inline-flex items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground"
-                    >
-                        <MapPinIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        {loc}
-                    </span>
-                ))}
-                {opp.postedAt && (
-                    <span className="pointer-events-none inline-flex items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground">
-                        <ClockIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        {new Date(opp.postedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                )}
-                {opp.expiresAt && (
-                    <span className="pointer-events-none inline-flex items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground">
-                        <CalendarIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                        {formatDeadline(opp)}
-                    </span>
-                )}
-            </div>
-
             {/* -- Campus Drive -- */}
             {isCampusDrive && timelineEvents.length > 0 && (
                 <button
@@ -299,17 +319,12 @@ export function DetailSidebarActions({
                 dead end, and the row of pills also broke the one-geometry rule
                 the rest of this rail follows. `triggerVariant="brand"` keeps the trigger
                 the same height, corners and type as the Apply/Save row above. */}
-            {/* One row: the status control and the submit link share a single
-                divider and sit side by side. They were two full-width-ish blocks
-                stacked, which read as two sections for two minor controls. The
-                select is content-width and the button is `shrink-0` so neither
-                stretches, and the label truncates before anything collides. */}
-            <div className="flex flex-wrap items-center gap-2 border-t border-border/40 pt-4">
+            <div className="space-y-3 border-t border-border pt-4">
                 {isMounted && user && trackerOptions.length > 0 && (
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="space-y-1.5">
                         <label
                             htmlFor={statusSelectId}
-                            className="shrink-0 truncate text-xs font-medium text-muted-foreground"
+                            className="block text-xs font-medium text-muted-foreground"
                         >
                             Your status
                         </label>
@@ -318,7 +333,7 @@ export function DetailSidebarActions({
                             onValueChange={handleStatusChange}
                             disabled={isUpdatingAction}
                         >
-                            <SelectTrigger id={statusSelectId} triggerVariant="brand" className="w-auto min-w-36">
+                            <SelectTrigger id={statusSelectId} triggerVariant="brand" className="w-full">
                                 <SelectValue placeholder="Not set" />
                             </SelectTrigger>
                             <SelectContent>
@@ -333,10 +348,12 @@ export function DetailSidebarActions({
                     </div>
                 )}
 
-                {/* `asChild` renders the anchor itself, so this is one real link
-                    with the brand geometry. */}
-                <BrandButton asChild variant="outline" className="shrink-0">
-                    <Link href="/contribute">Submit a job</Link>
+                {/* One full-width secondary action with a clear verb and icon. */}
+                <BrandButton asChild variant="outline" className="w-full">
+                    <Link href="/contribute">
+                        <PlusIcon className="size-4" aria-hidden="true" />
+                        Submit a job
+                    </Link>
                 </BrandButton>
             </div>
 

@@ -281,9 +281,6 @@ export function JobsFilterBar({
                     className={cn(pillBase, locationCount > 0 ? pillActive : pillIdle)}
                 >
                     Location
-                    {(profileOwnedDims.includes('city') || profileOwnedDims.includes('workMode')) && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                    )}
                     <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'location' && 'rotate-180')} />
                 </button>
                 {open === 'location' && (
@@ -360,9 +357,6 @@ export function JobsFilterBar({
                     className={cn(pillBase, filters.year !== null ? pillActive : pillIdle)}
                 >
                     Batch
-                    {profileOwnedDims.includes('batch') && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                    )}
                     <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'batch' && 'rotate-180')} />
                 </button>
                 {open === 'batch' && (

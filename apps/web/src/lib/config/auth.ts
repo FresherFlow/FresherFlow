@@ -80,7 +80,7 @@ export function handleAuth(req: NextRequest) {
                 ? `/choose-username?username=${encodeURIComponent(usernamePrefill)}`
                 : redirectParam && isSafeInternalRedirect(redirectParam)
                     ? redirectParam
-                    : '/jobs?tab=for-you';
+                    : '/jobs';
             const url = new URL(destination, `${req.nextUrl.protocol}//${req.nextUrl.host}`);
             return NextResponse.redirect(url, 307);
         }

@@ -9,7 +9,6 @@ import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import { BrandButton } from '@/ui/BrandButton';
-import { DidYouApplyCard } from '@/features/jobs/components/detail/DidYouApplyCard';
 import AuthModal from '@/features/auth/components/AuthModal';
 import {
     setPendingAction,
@@ -29,11 +28,6 @@ import { getCompanySlug } from '@/features/jobs/domain/opportunityDisplay';
 // Subcomponents
 const ComplexityCard = dynamic(() => import('@/features/jobs/components/detail/ComplexityCard').then(m => m.ComplexityCard));
 const RelatedOpportunities = dynamic(() => import('@/features/jobs/components/detail/RelatedOpportunities').then(m => m.RelatedOpportunities));
-import {
-    DetailRequirements,
-    RequirementsBox,
-    AdditionalDetailsBox
-} from '@/features/jobs/components/detail/DetailRequirements';
 import { DetailTimeline } from '@/features/jobs/components/detail/DetailTimeline';
 import { DetailHeroSection } from '@/features/jobs/components/detail/DetailHeroSection';
 import { DetailSidebarActions } from '@/features/jobs/components/detail/DetailSidebarActions';
@@ -309,9 +303,9 @@ export default function OpportunityDetailClient({
                 </nav>
 
                 {/* Two-column: Content (left) + Sidebar (right) */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-6 gap-6 items-start">
                     {/* LEFT: Hero + Description + Related */}
-                    <div className="lg:col-span-3 space-y-5">
+                    <div className="lg:col-span-4 space-y-4">
                         <DetailHeroSection
                             opp={opp}
                             isCampusDrive={ds.isCampusDrive}
@@ -321,29 +315,10 @@ export default function OpportunityDetailClient({
                             displaySalary={ds.displaySalary}
                             locationInfo={ds.locationInfo}
                             formatDeadline={ds.formatDeadline}
+                            educationDetails={ds.educationDetails}
                         />
 
                         <ExpiredWarningIfAny opp={opp} isExpired={ds.isExpired} />
-
-                        {/* Post-apply confirmation. Self-gates on the armed
-                            session flag, so it renders nothing until the user
-                            has been sent out to the employer's site and is due
-                            back. Sits above the description at both widths. */}
-                        {opp && (
-                            <DidYouApplyCard
-                                jobId={opp.id}
-                                jobTitle={opp.title}
-                                company={opp.company}
-                                setAction={handleSetAction}
-                                isUpdatingAction={isUpdatingAction}
-                            />
-                        )}
-
-                        {/* Mobile-Only Sidebar boxes */}
-                        <div className="lg:hidden space-y-4">
-                            <RequirementsBox opp={opp} educationDetails={ds.educationDetails} />
-                            <AdditionalDetailsBox opp={opp} />
-                        </div>
 
                         <FormComplexityCard opp={opp} />
 
@@ -361,10 +336,12 @@ export default function OpportunityDetailClient({
                             upcomingTimelineEvents={ds.upcomingTimelineEvents}
                         />
 
-                        <DescriptionSection
-                            description={opp.description}
-                            title="Description"
-                        />
+                        <div className="overflow-hidden rounded-2xl border border-border-strong bg-card p-5 md:p-7 dark:border-transparent">
+                            <DescriptionSection
+                                description={opp.description}
+                                title="Description"
+                            />
+                        </div>
 
                         {/* Mobile-Only Progress Tracker */}
                         {isMounted && user && (
@@ -403,7 +380,7 @@ export default function OpportunityDetailClient({
                         there is nothing left to stick within. No max-height and
                         no internal scroll: the rail scrolls with the page. */}
                     <aside className="hidden lg:col-span-2 lg:block lg:sticky lg:top-14 lg:self-start">
-                        <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-5">
+                        <div className="rounded-2xl border border-border-strong bg-card p-5 md:p-6 dark:border-transparent">
                             <DetailSidebarActions
                                 user={user}
                                 opp={opp}
@@ -421,123 +398,69 @@ export default function OpportunityDetailClient({
                                 handleToggleSave={handleToggleSave}
                                 handleShare={handleShare}
                             />
-                            <div className="border-t border-border/40" />
-                            <DetailRequirements
-                                opp={opp}
-                                educationDetails={ds.educationDetails}
-                            />
                         </div>
+
+                        <div className="mt-4 rounded-xl border border-border bg-card p-4 dark:border-transparent">
+                            <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                                Related searches
+                            </h3>
+                            <div className="mt-2.5 flex flex-wrap gap-2">
+                                {(() => {
+                                    const titleCase = (value: string) =>
+                                        value.trim().split(' ').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+                                    const links: { label: string; href: string }[] = [];
+                                    links.push({
+                                        label: `${opp.company} careers`,
+                                        href: `/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`,
+                                    });
+                                    opp.allowedPassoutYears?.forEach((year) => links.push({ label: `${year} batch jobs`, href: `/jobs/${year}-batch` }));
+                                    (opp.locations || [])
+                                        .filter((loc) => {
+                                            if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return false;
+                                            if (validDirectoryLinks?.validLocations?.length) return validDirectoryLinks.validLocations.includes(loc.trim().toLowerCase());
+                                            return true;
+                                        })
+                                        .forEach((loc) => links.push({ label: `Jobs in ${titleCase(loc)}`, href: `/jobs/${slugify(loc)}-jobs` }));
+                                    (opp.requiredSkills || [])
+                                        .filter((skill) => {
+                                            if (validDirectoryLinks?.validSkills?.length) return validDirectoryLinks.validSkills.includes(skill.trim().toLowerCase());
+                                            return true;
+                                        })
+                                        .slice(0, 5)
+                                        .forEach((skill) => links.push({ label: `${titleCase(skill)} jobs`, href: `/jobs/${slugify(skill)}-jobs` }));
+                                    if (opp.jobFunction) {
+                                        if (opp.jobFunction.toLowerCase() === 'internship') {
+                                            links.push({ label: 'Internships', href: '/jobs/internships' });
+                                        } else {
+                                            const roleSlug = slugify(opp.jobFunction);
+                                            if (['software-engineer','data-analyst','business-analyst','frontend-developer','test-engineer'].includes(roleSlug)) {
+                                                links.push({ label: `${titleCase(opp.jobFunction)} jobs`, href: `/jobs/${roleSlug}-jobs` });
+                                            }
+                                        }
+                                    }
+                                    return links.map((link) => (
+                                        <Link
+                                            key={link.href}
+                                            href={link.href}
+                                            className="inline-flex rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors dark:border-transparent dark:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/40 [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                        >
+                                            {link.label}
+                                        </Link>
+                                    ));
+                                })()}
+                            </div>
+                        </div>
+
+                        {(isLoadingRelated || relatedForMode.length > 0) && (
+                            <div className="mt-4">
+                                <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} layout="rail" />
+                            </div>
+                        )}
                     </aside>
                 </div>
 
-                {/* Related Opportunities - full width below the two-column layout */}
-                <div className="mt-8 pt-6 border-t border-border/40">
-                    <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
-                </div>
 
-                {/* Internal links. These are real pages and the SEO is worth
-                    keeping, but they were eight filled pills sitting between the
-                    description and the related-jobs grid in the same visual
-                    language as real UI - so they read as content nobody could use
-                    and pushed the actual next step down the page. Moved below the
-                    grid and reduced to one quiet line of plain text links. */}
-                <nav
-                    aria-label="Related directories"
-                    className="mt-6 border-t border-border/40 pt-4 text-xs text-muted-foreground"
-                >
-                    <span className="mr-2">Related:</span>{' '}
-                    <Link
-                        href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`}
-                        className="font-medium underline underline-offset-2 transition-colors hover:text-foreground"
-                    >
-                        {opp.company} Careers
-                    </Link>
-                    {opp.allowedPassoutYears?.map((year) => (
-                        <span key={year}>
-                            {' · '}
-                            <Link
-                                href={`/jobs/${year}-batch`}
-                                className="font-medium underline underline-offset-2 transition-colors hover:text-foreground"
-                            >
-                                {year} batch jobs
-                            </Link>
-                        </span>
-                    ))}
-                    {opp.locations
-                        ?.filter((loc) => {
-                            if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return false;
-                            if (validDirectoryLinks?.validLocations?.length) {
-                                return validDirectoryLinks.validLocations.includes(loc.trim().toLowerCase());
-                            }
-                            return true;
-                        })
-                        .map((loc) => (
-                            <span key={loc}>
-                                {' · '}
-                                <Link
-                                    href={`/jobs/${slugify(loc)}-jobs`}
-                                    className="font-medium underline underline-offset-2 transition-colors hover:text-foreground"
-                                >
-                                    Jobs in {loc}
-                                </Link>
-                            </span>
-                        ))}
-                    {opp.requiredSkills
-                        ?.filter((skill) => {
-                            if (validDirectoryLinks?.validSkills?.length) {
-                                return validDirectoryLinks.validSkills.includes(skill.trim().toLowerCase());
-                            }
-                            return true;
-                        })
-                        .slice(0, 5)
-                        .map((skill) => (
-                            <span key={skill}>
-                                {' · '}
-                                <Link
-                                    href={`/jobs/${slugify(skill)}-jobs`}
-                                    className="font-medium capitalize underline underline-offset-2 transition-colors hover:text-foreground"
-                                >
-                                    {skill} jobs
-                                </Link>
-                            </span>
-                        ))}
-                    {(() => {
-                        if (!opp.jobFunction) return null;
-                        if (opp.jobFunction.toLowerCase() === 'internship') {
-                            return (
-                                <span>
-                                    {' · '}
-                                    <Link
-                                        href="/jobs/internships"
-                                        className="font-medium capitalize underline underline-offset-2 transition-colors hover:text-foreground"
-                                    >
-                                        {opp.jobFunction} jobs
-                                    </Link>
-                                </span>
-                            );
-                        }
-                        const roleSlug = slugify(opp.jobFunction);
-                        const CURATED_ROLES = new Set([
-                            'software-engineer',
-                            'data-analyst',
-                            'business-analyst',
-                            'frontend-developer',
-                            'test-engineer',
-                        ]);
-                        if (!CURATED_ROLES.has(roleSlug)) return null;
-                        return (
-                            <span>
-                                {' · '}
-                                <Link
-                                    href={`/jobs/${roleSlug}-jobs`}
-                                    className="font-medium capitalize underline underline-offset-2 transition-colors hover:text-foreground"
-                                >
-                                    {opp.jobFunction} jobs
-                                </Link>
-                            </span>
-                        );
-                    })()}
-                </nav>
             </div>
 
             {/* Sticky Bottom Apply Bar on Mobile.

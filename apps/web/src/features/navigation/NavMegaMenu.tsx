@@ -1,267 +1,200 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
+import type { Opportunity } from '@fresherflow/types';
+import { slugify } from '@fresherflow/utils/slugify';
+import { VALID_LOCATIONS, getCanonicalLocation } from '@/features/jobs/utils/locationUtils';
+import { CURATED_ROLE_KEYWORDS } from '@/features/jobs/domain/taxonomy';
+import { cn } from '@/ui/cn';
 
-/**
- * Browse mega-menu — job-platform pattern.
- *
- * HOVER SAFETY: a transparent bridge pads the gap between the trigger and
- * the panel (so diagonal mouse travel never leaves the hover area), plus a
- * 150ms close delay. Open is instant; close is lazy.
- *
- * POSITIONING: the panel hangs below the header bar — never over it. On
- * landing there is a 28px marquee above the header at page top, so the
- * header sits at 28px; the panel tops at 28+60=88px there, else 64px. When
- * the marquee hides (scroll), `marqueeHidden` collapses the landing offset
- * to 60px so the panel follows the header up.
- *
- * LINKS: all canonical `/jobs/[slug]` registry boards.
- */
+/** A conventional column mega-menu. Directory links come from the live feed. */
 
-const BOARDS = [
-    { label: 'Off-Campus Jobs', href: '/jobs', note: 'Every opening on the platform' },
-    { label: 'Internships', href: '/jobs/internships', note: 'Intern roles for students' },
-    { label: 'Walk-in Drives', href: '/drives/walk-in', note: 'Drives with dates & venues' },
-    { label: 'Government', href: '/govt', note: 'Sarkari exams & notifications' },
-    { label: 'Remote / WFH', href: '/jobs/remote', note: 'Work-from-home openings' },
+type Item = { slug: string; label: string };
+type Groups = { locations: Item[]; skills: Item[]; batches: Item[]; roles: Item[] };
+const EMPTY: Groups = { locations: [], skills: [], batches: [], roles: [] };
+
+const EXPLORE = [
+    { label: 'All jobs', href: '/jobs' },
+    { label: 'Internships', href: '/jobs/internships' },
+    { label: 'Full-time', href: '/jobs/full-time' },
+    { label: 'Part-time', href: '/jobs/part-time' },
+    { label: 'Remote / WFH', href: '/jobs/remote' },
+    { label: 'Walk-in drives', href: '/drives/walk-in' },
+    { label: 'Government jobs', href: '/govt' },
 ];
 
-const LOCATIONS = [
-    { slug: 'bangalore', label: 'Bangalore' },
-    { slug: 'hyderabad', label: 'Hyderabad' },
-    { slug: 'pune', label: 'Pune' },
-    { slug: 'chennai', label: 'Chennai' },
-    { slug: 'mumbai', label: 'Mumbai' },
-    { slug: 'delhi-ncr', label: 'Delhi NCR' },
-];
+function useFeedGroups(): Groups {
+    const [groups, setGroups] = useState<Groups>(EMPTY);
 
-const SKILLS = [
-    { slug: 'react', label: 'React' },
-    { slug: 'python', label: 'Python' },
-    { slug: 'java', label: 'Java' },
-    { slug: 'sql', label: 'SQL' },
-    { slug: 'typescript', label: 'TypeScript' },
-    { slug: 'node', label: 'Node' },
-    { slug: 'aws', label: 'AWS' },
-    { slug: 'flutter', label: 'Flutter' },
-];
+    useEffect(() => {
+        let cancelled = false;
+        fetch('/api/public/feed')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (cancelled || !data || !Array.isArray(data.opportunities)) return;
+                const opps = data.opportunities as Opportunity[];
+                const cities = new Map<string, number>();
+                const skills = new Map<string, number>();
+                const years = new Map<number, number>();
 
-const BATCHES = [
-    { slug: '2026-batch', label: '2026 Batch' },
-    { slug: '2027-batch', label: '2027 Batch' },
-    { slug: '2025-batch', label: '2025 Batch' },
-    { slug: '2028-batch', label: '2028 Batch' },
-];
+                for (const opp of opps) {
+                    const seen = new Set<string>();
+                    for (const loc of opp.locations || []) {
+                        const canonical = getCanonicalLocation(loc);
+                        if (canonical && !seen.has(canonical)) {
+                            seen.add(canonical);
+                            cities.set(canonical, (cities.get(canonical) ?? 0) + 1);
+                        }
+                    }
+                    for (const skill of opp.requiredSkills || []) {
+                        const slug = slugify(skill);
+                        if (slug) skills.set(slug, (skills.get(slug) ?? 0) + 1);
+                    }
+                    for (const year of opp.allowedPassoutYears || []) {
+                        const y = Number(year);
+                        if (Number.isFinite(y)) years.set(y, (years.get(y) ?? 0) + 1);
+                    }
+                }
 
-const ROLES = [
-    { slug: 'software-engineer', label: 'Software Engineer' },
-    { slug: 'data-analyst', label: 'Data Analyst' },
-    { slug: 'business-analyst', label: 'Business Analyst' },
-    { slug: 'frontend-developer', label: 'Frontend Developer' },
-    { slug: 'test-engineer', label: 'Test Engineer' },
-];
+                const top = (map: Map<string, number>, limit: number) =>
+                    [...map.entries()]
+                        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+                        .slice(0, limit)
+                        .map(([slug]) => slug);
+                const titleCase = (slug: string) =>
+                    slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 
-export function NavMegaMenu({
-    isLanding,
-    marqueeHidden,
-}: {
+                setGroups({
+                    locations: top(cities, 6).map((slug) => ({
+                        slug,
+                        label: VALID_LOCATIONS[slug as keyof typeof VALID_LOCATIONS]?.label ?? titleCase(slug),
+                    })),
+                    skills: top(skills, 6).map((slug) => ({ slug, label: titleCase(slug) })),
+                    batches: [...years.entries()]
+                        .sort((a, b) => b[0] - a[0])
+                        .slice(0, 4)
+                        .map(([year]) => ({ slug: String(year), label: `${year} Batch` })),
+                    roles: Object.entries(CURATED_ROLE_KEYWORDS)
+                        .map(([slug, info]) => ({
+                            slug,
+                            label: info.label,
+                            count: opps.filter((o) =>
+                                info.keywords.some((kw) => (o.title || '').toLowerCase().includes(kw))
+                            ).length,
+                        }))
+                        .filter((r) => r.count > 0)
+                        .sort((a, b) => b.count - a.count)
+                        .slice(0, 5)
+                        .map(({ slug, label }) => ({ slug, label })),
+                });
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, []);
+
+    return groups;
+}
+
+function Column({ title, links }: { title: string; links: { label: string; href: string }[] }) {
+    if (links.length === 0) return null;
+    return (
+        <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{title}</h3>
+            <ul className="mt-3 flex flex-col gap-0.5">
+                {links.map((link) => (
+                    <li key={link.href}>
+                        <Link
+                            href={link.href}
+                            className="block rounded-md px-2 py-1.5 text-sm text-foreground transition-colors duration-150 ease-out hover:bg-muted hover:text-primary"
+                        >
+                            {link.label}
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
+export function NavMegaMenu({ isLanding: _isLanding, marqueeHidden: _marqueeHidden }: {
     isLanding: boolean;
     marqueeHidden: boolean;
 }) {
     const [open, setOpen] = useState(false);
-    const closeTimer = typeof window !== 'undefined' ? window.setTimeout : null;
+    const groups = useFeedGroups();
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const [panelTop, setPanelTop] = useState(64);
 
-    const openNow = () => {
-        if (closeTimer) window.clearTimeout((NavMegaMenu as unknown as { _t?: number })._t);
-        setOpen(true);
-    };
-    const closeSoon = () => {
-        if (closeTimer) window.clearTimeout((NavMegaMenu as unknown as { _t?: number })._t);
-        (NavMegaMenu as unknown as { _t?: number })._t = window.setTimeout(() => setOpen(false), 150);
-    };
-
-    // If the marquee hides while the menu is open, keep the menu pinned to the header
+    // The header clips absolute children, so the panel is fixed. Place it just
+    // below the trigger; the pseudo element above the panel covers the gap so
+    // moving the pointer from trigger to panel never leaves the hover area.
     useEffect(() => {
-        const onScroll = () => {
-            if (open) setOpen(true);
+        const measure = () => {
+            const rect = triggerRef.current?.getBoundingClientRect();
+            if (rect) setPanelTop(rect.bottom);
         };
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => window.removeEventListener('scroll', onScroll);
-    }, [open]);
-
-    const close = () => {
-        window.clearTimeout((NavMegaMenu as unknown as { _t?: number })._t);
-        setOpen(false);
-    };
-
-    // Panel top: landing shows marquee (28px) + header (60px) = 88px at page top;
-    // once the marquee hides the header rides to top-0, so 60px. Elsewhere 64px.
-    const panelTop = isLanding ? (marqueeHidden ? 60 : 88) : 64;
+        measure();
+        window.addEventListener('resize', measure);
+        window.addEventListener('scroll', measure, { passive: true });
+        return () => {
+            window.removeEventListener('resize', measure);
+            window.removeEventListener('scroll', measure);
+        };
+    }, []);
 
     return (
-        <div className="static" onMouseEnter={openNow} onMouseLeave={closeSoon}>
+        <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
             <button
+                ref={triggerRef}
                 type="button"
                 aria-expanded={open}
                 aria-haspopup="true"
                 onClick={() => setOpen((v) => !v)}
-                onKeyDown={(e) => e.key === 'Escape' && close()}
-                className={`
-                    inline-flex items-center gap-1 px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap
-                    transition-colors duration-150 rounded relative
-                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
-                    ${open ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}
-                `}
+                onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}
+                className={cn(
+                    'inline-flex items-center gap-1 px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap rounded transition-colors duration-150',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+                    open ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                )}
             >
                 Browse
-                <ChevronDownIcon className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+                <ChevronDownIcon className={cn('size-3.5 transition-transform duration-200', open && 'rotate-180')} />
             </button>
 
-            {/* hover bridge — invisible corridor from trigger to panel */}
             <div
-                className={`fixed left-0 right-0 z-50 ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
-                style={{ top: panelTop - 12, height: 12 }}
-                aria-hidden
-            />
-
-            {/* Panel — flush under the header bar, never covering it */}
-            <div
-                className={`fixed left-0 right-0 z-50 border-b border-border bg-background shadow-lg shadow-black/[0.06] transition-[opacity,transform] duration-150 ease-out ${
+                className={cn(
+                    'fixed left-1/2 z-50 w-[min(1040px,calc(100vw-2rem))] -translate-x-1/2',
+                    'before:absolute before:inset-x-0 before:-top-3 before:h-3 before:content-[""]',
+                    'rounded-lg border border-border bg-card p-6 shadow-lg shadow-black/10 transition-[opacity,transform] duration-150 ease-out',
                     open ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
-                }`}
+                )}
                 style={{ top: panelTop }}
             >
-                <div className="mx-auto grid w-full max-w-7xl gap-8 px-6 py-8 md:grid-cols-5">
-                    {/* Boards */}
-                    <div>
-                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
-                            Boards
-                        </div>
-                        <ul className="mt-3 flex flex-col gap-1">
-                            {BOARDS.map((b) => (
-                                <li key={b.href}>
-                                    <Link
-                                        href={b.href}
-                                        onClick={close}
-                                        className="block rounded-xs px-2 py-1.5 transition-colors hover:bg-muted/60"
-                                    >
-                                        <div className="text-sm font-semibold text-foreground">{b.label}</div>
-                                        <div className="text-xs text-muted-foreground">{b.note}</div>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    {/* Locations — vertical list */}
-                    <div>
-                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
-                            Locations
-                        </div>
-                        <ul className="mt-3 flex flex-col gap-0.5">
-                            {LOCATIONS.map((c) => (
-                                <li key={c.slug}>
-                                    <Link
-                                        href={`/jobs/${c.slug}-jobs`}
-                                        onClick={close}
-                                        className="block rounded-xs px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted/60 hover:text-ff-accent"
-                                    >
-                                        {c.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                        <Link
-                            href="/jobs/browse"
-                            onClick={close}
-                            className="mt-3 inline-block text-xs font-semibold text-muted-foreground underline decoration-ff-accent decoration-2 underline-offset-4 transition-colors hover:text-foreground"
-                        >
-                            All locations →
-                        </Link>
-                    </div>
-
-                    {/* Skills — vertical list */}
-                    <div>
-                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
-                            Top skills
-                        </div>
-                        <ul className="mt-3 flex flex-col gap-0.5">
-                            {SKILLS.map((s) => (
-                                <li key={s.slug}>
-                                    <Link
-                                        href={`/jobs/${s.slug}-jobs`}
-                                        onClick={close}
-                                        className="block rounded-xs px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted/60 hover:text-ff-accent"
-                                    >
-                                        {s.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                        <Link
-                            href="/jobs/browse"
-                            onClick={close}
-                            className="mt-3 inline-block text-xs font-semibold text-muted-foreground underline decoration-ff-accent decoration-2 underline-offset-4 transition-colors hover:text-foreground"
-                        >
-                            All skills →
-                        </Link>
-                    </div>
-
-                    {/* Batches — one area, vertical */}
-                    <div>
-                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
-                            Batches
-                        </div>
-                        <ul className="mt-3 flex flex-col gap-0.5">
-                            {BATCHES.map((b) => (
-                                <li key={b.slug}>
-                                    <Link
-                                        href={`/jobs/${b.slug}`}
-                                        onClick={close}
-                                        className="block rounded-xs px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted/60 hover:text-ff-accent"
-                                    >
-                                        {b.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                        <Link
-                            href="/jobs/browse"
-                            onClick={close}
-                            className="mt-3 inline-block text-xs font-semibold text-muted-foreground underline decoration-ff-accent decoration-2 underline-offset-4 transition-colors hover:text-foreground"
-                        >
-                            All batches →
-                        </Link>
-                    </div>
-
-                    {/* Roles */}
-                    <div>
-                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
-                            Popular roles
-                        </div>
-                        <ul className="mt-3 flex flex-col gap-0.5">
-                            {ROLES.map((r) => (
-                                <li key={r.slug}>
-                                    <Link
-                                        href={`/jobs/${r.slug}-jobs`}
-                                        onClick={close}
-                                        className="block rounded-xs px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted/60 hover:text-ff-accent"
-                                    >
-                                        {r.label}
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                        <Link
-                            href="/jobs/browse"
-                            onClick={close}
-                            className="mt-3 inline-block text-xs font-semibold text-muted-foreground underline decoration-ff-accent decoration-2 underline-offset-4 transition-colors hover:text-foreground"
-                        >
-                            All roles →
-                        </Link>
-                    </div>
+                <div className="grid grid-cols-2 gap-6 md:grid-cols-5">
+                    <Column title="Explore" links={EXPLORE} />
+                    <Column
+                        title="Locations"
+                        links={groups.locations.map((i) => ({ label: i.label, href: `/jobs/${i.slug}-jobs` }))}
+                    />
+                    <Column
+                        title="Skills"
+                        links={groups.skills.map((i) => ({ label: i.label, href: `/jobs/${i.slug}-jobs` }))}
+                    />
+                    <Column
+                        title="Batches"
+                        links={groups.batches.map((i) => ({ label: i.label, href: `/jobs/${i.slug}-batch` }))}
+                    />
+                    <Column
+                        title="Roles"
+                        links={groups.roles.map((i) => ({ label: i.label, href: `/jobs/${i.slug}-jobs` }))}
+                    />
+                </div>
+                <div className="mt-5 border-t border-border pt-4">
+                    <Link href="/jobs/browse" className="text-sm font-semibold text-foreground hover:text-primary">
+                        Browse all opportunities
+                    </Link>
                 </div>
             </div>
         </div>

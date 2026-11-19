@@ -171,6 +171,8 @@ export function CategoryPageView({
     locationDenied?: boolean;
 }) {
     const router = useRouter();
+    const shownCount = mounted && visibleOpps.length > 0 ? visibleOpps.length : 0;
+    const countLabel = `${shownCount} ${shownCount === 1 ? 'job' : 'jobs'}`;
     const mobileGrid = isDesktop === false;
     // Desktop renders the SAME row in both views — see the feed map below for
     // why the card tree is not used here.
@@ -485,12 +487,6 @@ export function CategoryPageView({
         applyShowDetail(!showDetail);
     }, [applyShowDetail, showDetail]);
 
-    // Manual filters + search — what the save-this-search nudge reacts to.
-    const activeFilterTally = useMemo(
-        () => mobileActiveCount + (search.trim().length > 0 ? 1 : 0),
-        [mobileActiveCount, search],
-    );
-
     return (
         <div id="feed-scroll-container" ref={feedRef} className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
             {portalTarget && headerPortalContent ? createPortal(headerPortalContent, portalTarget) : null}
@@ -529,9 +525,9 @@ export function CategoryPageView({
                                 </button>
                             )}
                         </div>
-                        <div className="hidden lg:flex items-center text-sm font-semibold text-muted-foreground whitespace-nowrap">
-                            <span className="text-foreground font-bold mr-1.5">Government Jobs</span>
-                            • <span className="ml-1.5">{mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found</span>
+                        <div className="hidden lg:flex items-center gap-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                            <span className="text-foreground font-bold">Government Jobs</span>
+                            <span>{countLabel}</span>
                         </div>
                     </div>
 
@@ -585,7 +581,7 @@ export function CategoryPageView({
                                 {dynamicTitle}
                             </h1>
                             <span className="text-sm font-medium text-muted-foreground shrink-0 whitespace-nowrap">
-                                {mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found
+                                {countLabel}
                             </span>
                         </div>
 
@@ -672,7 +668,7 @@ export function CategoryPageView({
             )}
 
             {/* Active Chips */}
-            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.role && filters.role.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory) || profileChipTotal > 0 || profileChipCount > 0 || profileMismatchCount > 0) ? (
+            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.role && filters.role.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory) || profileChipTotal > 0 || profileChipCount > 0 || profileMismatchCount > 0 || !!user) ? (
                 <div className="flex flex-wrap items-center gap-1.5 pb-2">
                     {type === 'GOVERNMENT' && govtCategory ? (
                         <button onClick={() => setGovtCategory(null)} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
@@ -697,9 +693,6 @@ export function CategoryPageView({
                             if (rest.length === 0 && profileOwnedDims.includes('workMode')) dismissProfileFilterDims(['workMode']);
                         }} title={profileOwnedDims.includes('workMode') ? 'From your profile' : undefined} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <HomeIcon className="w-3.5 h-3.5 shrink-0" />
-                            {profileOwnedDims.includes('workMode') && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                            )}
                             <span>{m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
@@ -710,9 +703,6 @@ export function CategoryPageView({
                             if (profileOwnedDims.includes('city')) dismissProfileFilterDims(['city']);
                         }} title={profileOwnedDims.includes('city') ? 'From your profile' : undefined} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
-                            {profileOwnedDims.includes('city') && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                            )}
                             <span>{filters.location.split(',').map((c) => c.trim()).filter(Boolean).join(', ')}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
@@ -778,9 +768,6 @@ export function CategoryPageView({
                             if (profileOwnedDims.includes('batch')) dismissProfileFilterDims(['batch']);
                         }} title={profileOwnedDims.includes('batch') ? 'From your profile' : undefined} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
-                            {profileOwnedDims.includes('batch') && (
-                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
-                            )}
                             <span>{filters.year} Batch</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
@@ -807,18 +794,12 @@ export function CategoryPageView({
                         clear all
                     </button>
 
-                    {/* Profile chips + switch + hidden-jobs disclosure live in
-                        THIS row with the manual chips — never a row of their own. */}
+                    {/* Profile chips + the profile switch live in THIS row with
+                        the manual chips — never a row of their own. */}
                     <PersonalizationBar
                         mismatchCount={profileMismatchCount}
                         showHidden={showHiddenProfile}
                         onToggleShow={() => setShowHiddenProfile((value) => !value)}
-                        filterCount={activeFilterTally}
-                        saveCity={filters.location}
-                        saveCompany={filters.company?.[0] ?? null}
-                        saveBatch={filters.year}
-                        profileFromCount={profileChipCount}
-                        profileFromTotal={profileChipTotal}
                     />
                 </div>
             ) : null}
@@ -926,7 +907,7 @@ export function CategoryPageView({
                                 {[1,2,3,4,5].map(i => <SkeletonJobCard key={i} variant="compact" />)}
                             </div>
                         </div>
-                        <div className="hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border/50 rounded-2xl p-6">
+                        <div className="hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border-strong rounded-2xl p-6 dark:border-transparent">
                             <div className="animate-pulse rounded bg-muted h-8 w-1/2 mb-4" />
                             <div className="animate-pulse rounded bg-muted h-4 w-3/4 mb-8" />
                             <div className="space-y-4">
@@ -947,7 +928,7 @@ export function CategoryPageView({
             ) : visibleOpps.length === 0 ? (
                 <div className="flex flex-col min-w-0 pt-3.5">
                     <EmptyState
-                        title={`No ${dynamicTitle} found`}
+                        title={`No ${type === 'GOVERNMENT' ? 'government jobs' : 'jobs'} to show`}
                         description={(() => {
                             if (hiddenProfileCount > 0) {
                                 return `${hiddenProfileCount} jobs are hidden because they don't match your profile.`;
@@ -1004,7 +985,7 @@ export function CategoryPageView({
                     // `applyShowDetail`, not by a CSS transition here — see the
                     // note there.
                     (type !== 'GOVERNMENT' && showDetail)
-                        ? 'grid-cols-1 lg:ff-feed-cols-split lg:max-w-7xl lg:gap-0 lg:h-full lg:min-h-0 lg:bg-card lg:border lg:border-border/60 lg:rounded-xl lg:overflow-hidden'
+                        ? 'grid-cols-1 lg:ff-feed-cols-split lg:max-w-7xl lg:gap-0 lg:h-full lg:min-h-0 lg:bg-card lg:border lg:border-border-strong lg:rounded-xl lg:overflow-hidden dark:border-transparent'
                         : 'grid-cols-1 lg:ff-feed-cols-list lg:ff-reading-col'
                 )}>
                     {/* Left Column: list grid */}
@@ -1014,7 +995,7 @@ export function CategoryPageView({
                         onScroll={handleScroll}
                         className={cn(
                             'min-w-0 pt-3',
-                            type !== 'GOVERNMENT' && showDetail && 'lg:pt-0 lg:h-full lg:min-h-0 lg:overflow-y-auto'
+                            type !== 'GOVERNMENT' && showDetail && 'lg:pt-0 lg:h-full lg:min-h-0 lg:overflow-y-auto ff-scrollbar'
                         )}
                     >
                         <div className={cn(
@@ -1025,7 +1006,7 @@ export function CategoryPageView({
                             desktopRows
                                 ? 'divide-y divide-border/60'
                                 : 'gap-3',
-                            desktopRows && !showDetail && 'lg:rounded-xl lg:border lg:border-border/60 lg:bg-card lg:overflow-hidden',
+                            desktopRows && !showDetail && 'lg:rounded-xl lg:border lg:border-border-strong lg:bg-card lg:overflow-hidden dark:border-transparent',
                             desktopRows && showDetail && 'lg:divide-border',
                             !desktopRows && 'lg:pt-0',
                         )}>
@@ -1150,7 +1131,7 @@ priority={index < 4}
 
                     {/* Right Column: Map for Walk-ins / Detail Panel for Jobs (desktop) */}
                     {type !== 'GOVERNMENT' && showDetail && (
-                        <div className="ff-view-detail hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 lg:mt-0 lg:border-0 lg:border-l lg:rounded-none lg:shadow-none">
+                        <div className="ff-view-detail hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border-strong rounded-2xl overflow-hidden shadow-sm mt-3.5 lg:mt-0 lg:border-0 lg:border-l lg:rounded-none lg:shadow-none dark:border-border">
                             {type === 'WALKIN' ? (
                                 <WalkinMapPane
                                     opportunity={selectedOpp}
@@ -1168,7 +1149,7 @@ priority={index < 4}
                                     onHoverOpportunity={setHoveredOppId}
                                 />
                             ) : selectedOpp ? (
-                                <div className="flex-1 overflow-y-auto">
+                                <div className="flex-1 overflow-y-auto ff-hide-scrollbar">
                                     <Suspense fallback={<OpportunityDetailPaneSkeleton />}>
                                         <OpportunityDetailPane
                                             oppId={selectedOpp.slug || selectedOpp.id}
@@ -1180,7 +1161,7 @@ priority={index < 4}
                             ) : visibleOpps.length > 0 ? (
                                 <OpportunityDetailPaneSkeleton />
                             ) : (
-                                <div className="flex-1 flex items-center justify-center bg-muted/20">
+                                <div className="flex-1 flex items-center justify-center bg-muted">
                                     <EmptyState
                                         title="Select an opportunity"
                                         description="Click on an opportunity card from the list to view its complete details here."

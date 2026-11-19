@@ -66,7 +66,7 @@ type NavItemDef = Omit<NavItem, 'id'>;
  * still declarative and greppable.
  */
 export const REGISTRY = {
-    dashboard: { name: 'For You', href: '/jobs?tab=for-you', icon:    Home },
+    dashboard: { name: 'Home', href: '/jobs', icon:    Home },
     jobs: { name: 'All Jobs', href: '/jobs', icon:    Briefcase, hasSubmenu: true },
     jobsPrivate: { name: 'Private Jobs', href: '/jobs', icon:    Briefcase, hasSubmenu: true },
     internships: { name: 'Internships', href: '/jobs?type=internship', icon:    GraduationCap },

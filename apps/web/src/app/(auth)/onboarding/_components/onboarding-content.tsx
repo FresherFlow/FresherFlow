@@ -218,7 +218,7 @@ export function OnboardingContent() {
             window.location.replace(redirectTarget);
             return;
         }
-        router.push('/jobs?tab=for-you');
+        router.push('/jobs');
     };
 
     // Finish: the save lands on the published page (or the feed when there

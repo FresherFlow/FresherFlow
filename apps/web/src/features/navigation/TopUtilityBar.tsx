@@ -37,7 +37,7 @@ export function TopUtilityBar() {
             {isCandidatePortfolioRoute ? (
                 <div className="flex items-center gap-2">
                     <Link
-                        href="/jobs?tab=for-you"
+                        href="/jobs"
                         className="auth-user-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0"
                     >
                         Dashboard

@@ -58,9 +58,27 @@
   --color-popover: oklch(100% 0 0); /* Popover / menu bg */
   --color-popover-foreground: oklch(20.6% 0.039 266); /* Popover text */
 
+  /* ── Semantic surface roles (DESIGN_SYSTEM.md §4.2) ───────────────
+     The four-step ladder and its selected pair are named roles, not
+     colours of their own. They were documented but never declared, so
+     `bg-surface-active` emitted no CSS at all and selected navigation /
+     filter chips rendered as plain text with no active fill. Alias them
+     to the ladder steps: `accent` is the one allowed active surface, and
+     its paired foreground keeps the label legible in both themes (dark
+     accent is near-white, so pairing with `foreground` would be invisible). */
+  --color-surface-page: var(--color-background);
+  --color-surface-raised: var(--color-card);
+  --color-surface-sunken: var(--color-muted);
+  --color-surface-active: var(--color-accent);
+  --color-surface-active-foreground: var(--color-accent-foreground);
+
   /* ── Borders & inputs ────────────────────────────────────────── */
   --color-border: oklch(88% 0.008 258); /* Visible borders — neutral hairline */
   --color-input: oklch(88% 0.008 258); /* Input borders */
+  /* Meaningful edges — the boundary of a card/panel or a selected state.
+     `border-border` stays quiet for decorative dividers; this is the pair
+     that must clear 3:1 (WCAG 1.4.11). Aliased in light so nothing moves. */
+  --color-border-strong: var(--color-border);
   --color-ring: oklch(20.6% 0.039 266); /* Focus ring = primary */
 
   /* ── Muted ───────────────────────────────────────────────────── */
@@ -288,25 +306,35 @@
     --color-background: oklch(10.3% 0.007 196); /* #020404 */
     --color-foreground: oklch(97.7% 0.003 229); /* #F5F7F8 */
 
-    --color-card: oklch(17.1% 0.004 220); /* 5% white lift */
+    /* Surface ladder, measured against --color-background (L 10.3):
+       card L 20 ≈ 1.14:1, muted L 27 ≈ 1.37:1, border L 34 ≈ 1.75:1.
+       The old card (L 17.1, 1.08:1) and border (L 26.2, 1.33:1) were the reason
+       cards merged into the page: every step was inside the noise floor, and
+       components then cut them further with /40–/60 opacity. Raising the ladder
+       is the fix; do not reintroduce per-component hexes. */
+    --color-card: oklch(20% 0.005 220);
     --color-card-foreground: oklch(97.7% 0.003 229);
-    --color-popover: oklch(21.5% 0.005 220); /* Elevated menu surface */
+    --color-popover: oklch(25% 0.006 220); /* Elevated menu surface */
     --color-popover-foreground: oklch(97.7% 0.003 229);
 
     --color-primary: oklch(97.7% 0.003 229);
     --color-primary-foreground: oklch(10.3% 0.007 196);
 
-    --color-secondary: oklch(24% 0.007 220);
+    --color-secondary: oklch(27% 0.007 220);
     --color-secondary-foreground: oklch(97.7% 0.003 229);
 
     --color-accent: oklch(97.7% 0.003 229);
     --color-accent-foreground: oklch(10.3% 0.007 196);
 
-    /* Crisp borders — 12% white equivalent */
-    --color-border: oklch(26.2% 0.008 220);
-    --color-input: oklch(26.2% 0.008 220);
+    /* Crisp borders — must read against BOTH the page and a card. */
+    --color-border: oklch(34% 0.01 220);
+    --color-input: oklch(34% 0.01 220);
+    /* Measured 3.01:1 against --color-background (L 10.3). This is the edge
+       that separates a card or panel from the page; the quiet border above
+       is for dividers. Do not drop this back inside the noise floor. */
+    --color-border-strong: oklch(47% 0.01 220);
 
-    --color-muted: oklch(24% 0.007 220); /* Slightly lighter than card */
+    --color-muted: oklch(27% 0.007 220); /* Slightly lighter than card */
     --color-muted-foreground: oklch(80.8% 0.017 229);
 
     --color-ring: oklch(97.7% 0.003 229);
@@ -326,20 +354,20 @@
      value (L60) sits too close to the dark page */
   --color-pin: var(--color-destructive);
 
-    --color-chip-active: oklch(27.3% 0.009 220);
+    --color-chip-active: oklch(31% 0.009 220);
     --color-chip-active-text: oklch(97.7% 0.003 229);
-    --color-chip-active-border: oklch(36.5% 0.013 220);
+    --color-chip-active-border: oklch(44% 0.013 220);
 
     --color-dropdown-hover: oklch(24% 0.007 220);
     --color-dropdown-hover-text: oklch(97.7% 0.003 229);
 
-    --color-sidebar: oklch(17.1% 0 0);
+    --color-sidebar: oklch(20% 0 0);
     --color-sidebar-foreground: oklch(97.7% 0.003 229);
     --color-sidebar-primary: oklch(97.7% 0.003 229);
     --color-sidebar-primary-foreground: oklch(10.3% 0.007 196);
-    --color-sidebar-accent: oklch(24% 0 0);
+    --color-sidebar-accent: oklch(27% 0 0);
     --color-sidebar-accent-foreground: oklch(97.7% 0.003 229);
-    --color-sidebar-border: oklch(26.2% 0 0);
+    --color-sidebar-border: oklch(34% 0 0);
     --color-sidebar-ring: oklch(97.7% 0.003 229);
 
     --logo-image: url("/logo-white-optimized.png?v=3");
@@ -1531,5 +1559,32 @@ html.ff-smooth {
   [data-slot='collapsible-content'][data-state='open'],
   [data-slot='collapsible-content'][data-state='closed'] {
     animation: none;
+  }
+}
+
+/* Visible, themed scrollbar for panes that scroll on their own (split view).
+   `scrollbar-gutter: stable` keeps rows from shifting when the thumb appears.
+   Colours are tokens, so light and dark both resolve to the current border. */
+@layer utilities {
+  .ff-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+    scrollbar-gutter: stable;
+  }
+  .ff-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  .ff-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .ff-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--color-border);
+    border: 3px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+  .ff-scrollbar:hover::-webkit-scrollbar-thumb {
+    background-color: var(--color-muted-foreground);
   }
 }

@@ -1,6 +1,8 @@
 import { slugify } from '@fresherflow/utils/slugify';
+import { VALID_LOCATIONS, getCanonicalLocation } from '@/features/jobs/utils/locationUtils';
 import {
     TAXONOMY_BOARD_SUFFIX,
+    titleCaseSlug,
     yearBoardSlug,
 } from './constants';
 import type { TaxonomyRegistry, ResolvedTaxonomy } from './constants';
@@ -15,14 +17,13 @@ export function resolveTaxonomySlug(registry: TaxonomyRegistry, rawSlug: string)
     const slug = normalizeTaxonomySlug(rawSlug);
     if (!slug) return null;
 
-    // Year batch boards: `/jobs/2026-batch` (canonical, unsuffixed)
+    // Year batch boards: `/jobs/2026-batch` (canonical, unsuffixed).
+    // The URL shape is the contract; the board still renders when the feed
+    // has no matching jobs, so it shows its empty state instead of a 404.
     const yearMatch = /^(\d{4})-batch$/.exec(slug);
     if (yearMatch) {
         const year = parseInt(yearMatch[1], 10);
-        if (registry.years.has(year)) {
-            return { kind: 'year', slug: yearBoardSlug(year), label: `${year} Batch`, year };
-        }
-        return null;
+        return { kind: 'year', slug: yearBoardSlug(year), label: `${year} Batch`, year };
     }
 
     // Canonical board URLs for role/city/skill end in `-jobs`.
@@ -39,7 +40,15 @@ export function resolveTaxonomySlug(registry: TaxonomyRegistry, rawSlug: string)
         const skill = registry.skills.get(base);
         if (skill) return { kind: 'skill', slug: base, label: skill.label, item: skill };
 
-        return null;
+        // A `-jobs` URL is a board even when the feed has too few jobs to
+        // register it. Let the page show "no jobs here" with a way onward.
+        const location = VALID_LOCATIONS[base as keyof typeof VALID_LOCATIONS];
+        if (location || getCanonicalLocation(base)) {
+            const label = titleCaseSlug(base);
+            return { kind: 'city', slug: base, label, item: { slug: base, label, count: 0 } };
+        }
+        const label = titleCaseSlug(base);
+        return { kind: 'role', slug: base, label, item: { slug: base, label, count: 0 } };
     }
 
     // Unsuffixed namespace belongs to job-detail. Anything that is not a

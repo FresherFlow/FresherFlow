@@ -1,4 +1,5 @@
 ﻿import type { Metadata } from 'next';
+import Link from 'next/link';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
@@ -8,22 +9,20 @@ import { isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex, fetchCompanySlugHistory, fetchExpiredFeed } from '@/lib/api/feedServer';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { resolveCompanySlugAlias } from '@/features/companies/utils/companySlugAliases';
+import { resolveCompanyCareersUrl } from '@/features/companies/utils/companyCareersUrl';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
+import CompanyShareTiles from '@/features/companies/components/CompanyShareTiles';
 import CompanyRoleCard from './_components/CompanyRoleCard';
 import CompanyArchiveView from './_components/CompanyArchiveView';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
-import { Card, CardContent } from '@/ui/Card';
-import { BrandButton } from '@/ui/BrandButton';
+import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { CompanyDiscussionDock } from '@/features/jobs/components/discussion/JobDiscussionDock';
 import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 import {
-    BarChart3,
-    Briefcase,
     Building2,
     Clock,
     ExternalLink,
-    Layers,
-    MapPin,
+    Users,
     type LucideIcon,
 } from 'lucide-react';
 // NOTE: fetchCompaniesMetadata / fetchCompanyShard / fetchFeedIndex are already
@@ -56,43 +55,24 @@ async function markMissUncacheable(): Promise<void> {
     unstable_noStore();
 }
 
-function getAtsProvider(url?: string): string {
-    if (!url) return 'Custom / In-house';
-    const lower = url.toLowerCase();
-    if (lower.includes('myworkdayjobs.com') || lower.includes('workday.com')) return 'Workday';
-    if (lower.includes('greenhouse.io')) return 'Greenhouse';
-    if (lower.includes('lever.co')) return 'Lever';
-    if (lower.includes('icims.com')) return 'iCIMS';
-    if (lower.includes('successfactors.com')) return 'SuccessFactors';
-    if (lower.includes('taleo.net')) return 'Taleo';
-    if (lower.includes('smartrecruiters.com')) return 'SmartRecruiters';
-    if (lower.includes('bamboohr.com')) return 'BambooHR';
-    if (lower.includes('ashbyhq.com')) return 'Ashby';
-    if (lower.includes('eightfold.ai')) return 'Eightfold';
-    if (lower.includes('phenompro.com') || lower.includes('phenom.com')) return 'Phenom';
-    if (lower.includes('careers.google.com')) return 'Google Careers';
-    if (lower.includes('amazon.jobs')) return 'Amazon Jobs';
-    return 'Custom / In-house';
-}
-
-function getTypicalRoles(jobs: any[]): string | null {
-    if (!jobs || jobs.length === 0) return null;
-    const titles = jobs.map((j: any) => (j.title || '').replace(/[([]\s*.*?\s*[)\]]/g, '').trim()).filter(Boolean);
-    const counts: Record<string, number> = {};
-    for (const t of titles) counts[t] = (counts[t] || 0) + 1;
-    const unique = Object.entries(counts).sort((a, b) => b[1] - a[1]).map((e) => e[0]).slice(0, 3);
-    if (unique.length === 0) return null;
-    return unique.join(', ');
-}
-
-function getKeyLocations(jobs: any[]): string | null {
-    if (!jobs || jobs.length === 0) return null;
-    const locs = jobs.flatMap((j: any) => j.locations || []).filter(Boolean);
-    const counts: Record<string, number> = {};
-    for (const l of locs) counts[l] = (counts[l] || 0) + 1;
-    const unique = Object.entries(counts).sort((a, b) => b[1] - a[1]).map((e) => e[0]).slice(0, 3);
-    if (unique.length === 0) return null;
-    return unique.join(', ');
+/**
+ * The most common real titles, each kept with a linkable job. The page renders
+ * these as individual chips, never as one comma-joined sentence.
+ */
+function getTypicalRoles(jobs: any[]): Array<{ title: string; job: any }> {
+    if (!jobs || jobs.length === 0) return [];
+    const groups = new Map<string, { count: number; job: any }>();
+    for (const job of jobs) {
+        const title = (job?.title || '').replace(/[([]\s*.*?\s*[)\]]/g, '').trim();
+        if (!title) continue;
+        const existing = groups.get(title);
+        if (existing) existing.count += 1;
+        else groups.set(title, { count: 1, job });
+    }
+    return [...groups.entries()]
+        .sort((a, b) => b[1].count - a[1].count)
+        .slice(0, 4)
+        .map(([title, { job }]) => ({ title, job }));
 }
 
 /** "3d ago" / "1mo ago" stamp for a role row. Null when there is no date. */
@@ -372,11 +352,12 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         companyJobs.flatMap((j: any) => j.companyIndustry || [])
     )).filter(Boolean);
 
-    const atsProvider = getAtsProvider(firstJob?.applyLink);
     const lastPosted = getLastHiringActivity(companyJobs);
-    const typicalRoles = getTypicalRoles(companyJobs);
-    const keyLocations = getKeyLocations(companyJobs);
-    const portalUrl = firstJob?.companyWebsite || firstJob?.applyLink || null;
+    const typicalRoles = getTypicalRoles(companyJobs.filter((j: any) => j.slug || j.id));
+    // The Careers button must reach the company's board, not one listing.
+    // A scraped companyWebsite is often just that job's ATS apply link, so
+    // resolve it to a real company domain or an ATS board root first.
+    const portalUrl = resolveCompanyCareersUrl(firstJob?.companyWebsite, firstJob?.applyLink);
 
     // Skill frequency across this company's live roles.
     const skillCounts: Record<string, number> = {};
@@ -387,7 +368,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     }
     const topSkills = Object.entries(skillCounts)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 10)
+        .slice(0, 6)
         .map(x => x[0]);
 
     // The roles this company has open, newest first. Built from the same array
@@ -433,109 +414,166 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         };
     };
 
-    // Company details rows. Each carries an icon so the aside reads as a
-    // labelled list rather than an unlabelled value dump. The filter drops any
-    // field the feed has no value for, so no row shows a placeholder, and every
-    // fact here is rendered exactly once on the page.
-    const detailRows: Array<{ icon: LucideIcon; label: string; value: string }> = [
-        { icon: Briefcase, label: 'Typical roles', value: typicalRoles ?? '' },
-        { icon: MapPin, label: 'Key locations', value: keyLocations ?? '' },
-        { icon: Clock, label: 'Last posted', value: lastPosted ?? '' },
-        { icon: Layers, label: 'Hiring source', value: atsProvider },
-        { icon: Building2, label: 'Company stage', value: companyStage ? companyStage.toLowerCase() : '' },
-    ].filter((row) => row.value && row.value !== 'Custom / In-house');
-
-    // Header subtitle. Industry and team size are the only company-level
-    // attributes the feed actually carries, so the hero states those rather
-    // than inventing a description or headquarters line.
-    const headerMeta = [companyIndustries[0], companySize].filter(Boolean).join('  ·  ');
+    // Header subtitle: only industries the feed actually carries. No invented
+    // description or headquarters line when the feed has nothing to say.
+    const headerMeta = companyIndustries.slice(0, 2).join(', ');
 
     logRouteResult('/companies/[slug]', '200');
 
     const safePortalUrl = toSafeOutboundUrl(portalUrl);
 
+    // Only a few hard facts, in one tight line. "Open roles" is already the
+    // heading of the list below, and a joined location string is noise here.
+    // Nothing renders without a real value — no placeholders, no guesses.
+    const specFacts: { label: string; value: string; icon: LucideIcon }[] = [
+        ...(lastPosted ? [{ label: 'Last posted', value: lastPosted, icon: Clock }] : []),
+        ...(companySize ? [{ label: 'Team size', value: companySize, icon: Users }] : []),
+        ...(companyStage ? [{ label: 'Company stage', value: companyStage.toLowerCase(), icon: Building2 }] : []),
+    ].filter((fact) => Boolean(fact.value.trim()));
+
     return (
         <div className="w-full max-w-6xl mx-auto px-4 md:px-6 py-5 md:py-8">
-            {/* Identity. No card, no gradient, no shadow: SiteHeader already
-                renders the breadcrumb trail above this, and the logo renders
-                its own surface, so a wrapper box would only stack a third
-                border around it. */}
+            {/* Masthead. One structural stroke, one bold moment (the name), and
+                everything else quiet and aligned — the same visual language as
+                the job detail page. In dark the card drops its border and is
+                separated from the page by surface lightness alone. */}
+            <article className="relative overflow-hidden rounded-2xl border border-border-strong bg-card dark:border-transparent">
+                <div className="h-1 w-full bg-primary dark:bg-border-strong" />
 
-
-
-            {/* Company identity on the left, the two actions centred from `sm` up.
-                The empty `flex-1` track on the right is what centres them: without
-                a spacer of equal width the action group can only ever sit flush
-                right. Below `sm` that spacer is hidden, so on a phone the group
-                keeps its place at the end of the single row, where there is no
-                width to spare for a centred column. */}
-            <header className="flex items-center gap-3 sm:gap-4">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <CompanyLogo
-                        companyName={companyName}
-                        companyWebsite={firstJob?.companyWebsite}
-                        companyLogoUrl={firstJob?.companyLogoUrl}
-                        applyLink={firstJob?.applyLink}
-                        isGovernment={Boolean(firstJob && isGovernmentOpportunity(firstJob))}
-                        className="!h-14 !w-14 md:!h-20 md:!w-20 shrink-0"
-                        priority
-                    />
-
-                    <div className="min-w-0">
-                        <h1 className="truncate text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-                            {companyName}
-                        </h1>
-                        {headerMeta && (
-                            <p className="mt-1 truncate text-sm text-muted-foreground">{headerMeta}</p>
-                        )}
+                <div className="p-4 md:p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                        <div className="flex items-center gap-2.5">
+                            <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                            <span className="text-meta font-medium text-muted-foreground">Company profile</span>
+                        </div>
+                        <CompanyShareTiles companyName={companyName} />
                     </div>
-                </div>
 
-                <div className="flex shrink-0 items-center gap-2">
-                    {safePortalUrl && (
-                        <BrandButton asChild variant="outline" size="md">
-                            <a href={safePortalUrl} target="_blank" rel="noopener noreferrer">
-                                Careers page
-                                <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
-                            </a>
-                        </BrandButton>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <CompanyLogo
+                                companyName={companyName}
+                                companyWebsite={firstJob?.companyWebsite}
+                                companyLogoUrl={firstJob?.companyLogoUrl}
+                                applyLink={firstJob?.applyLink}
+                                isGovernment={Boolean(firstJob && isGovernmentOpportunity(firstJob))}
+                                className="size-12 shrink-0 rounded-xl md:size-14"
+                                priority
+                            />
+                            <h1 className="min-w-0 max-w-3xl text-2xl font-bold leading-[1.15] tracking-tight text-foreground text-balance md:text-3xl">
+                                {companyName}
+                            </h1>
+                        </div>
+
+                        <div className="flex shrink-0 items-center gap-2">
+                            {safePortalUrl && (
+                                <a
+                                    href={safePortalUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-9 items-center gap-1.5 rounded-md border border-primary bg-primary px-3 text-meta font-semibold text-primary-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    Careers page
+                                    <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
+                                </a>
+                            )}
+                            <CompanyFollowButton companySlug={targetSlug} />
+                        </div>
+                    </div>
+
+                    {headerMeta && (
+                        <p className="mt-2 text-pretty text-sm text-muted-foreground">{headerMeta}</p>
                     )}
-                    <CompanyFollowButton companySlug={targetSlug} />
+
+                    {/* Compact fact line. Only real facts appear, and they share
+                        one row instead of a grid of padded cells that pushed the
+                        roles list far below the fold. */}
+                    {specFacts.length > 0 && (
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-meta text-muted-foreground">
+                            {specFacts.map((fact) => {
+                                const Icon = fact.icon;
+                                return (
+                                    <span key={fact.label} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                                        <Icon className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+                                        {fact.label}
+                                        <span className="font-semibold text-foreground tabular-nums">{fact.value}</span>
+                                    </span>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {(typicalRoles.length > 0 || topSkills.length > 0) && (
+                        <div className="mt-4 grid gap-4 border-t border-border pt-4 md:grid-cols-2 md:gap-8">
+                            {typicalRoles.length > 0 && (
+                                <section aria-labelledby="typical-roles-heading">
+                                    <h2 id="typical-roles-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                        <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                                        Typical roles
+                                    </h2>
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {typicalRoles.map(({ title, job }) => (
+                                            <Link
+                                                key={title}
+                                                href={getOpportunityPathFromItem(job)}
+                                                className="inline-flex h-7 items-center rounded-md border border-border bg-card px-2.5 text-xs font-medium text-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/50 [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-transparent dark:bg-surface-sunken"
+                                            >
+                                                {title}
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+
+                            {topSkills.length > 0 && (
+                                <section aria-labelledby="company-skills-heading">
+                                    <h2 id="company-skills-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                        <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                                        Skills in demand
+                                    </h2>
+                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                        {topSkills.map((skill: string) => (
+                                            <SkillPill
+                                                key={skill}
+                                                skill={skill}
+                                                size="sm"
+                                                className="text-meta! font-medium text-foreground dark:border-transparent dark:bg-surface-sunken"
+                                            />
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+                        </div>
+                    )}
                 </div>
-
-                {/* Balances the centred action group. Decorative only. */}
-                <div className="hidden flex-1 sm:block" aria-hidden="true" />
-            </header>
+            </article>
 
 
 
-            {/* Two columns: the roles list is why the page exists, so it takes
-                the wider track; the aside carries the small facts. */}
-            <div className="mt-5 grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                    <h2 className="text-lg font-bold tracking-tight text-foreground">
+            {/* The roles list is why the page exists, so it takes the wider
+                track. Heading and rows share one panel, the same way the detail
+                page groups Related opportunities. Each row keeps the detail
+                page's card markup. */}
+            <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
+                <div className="rounded-xl border border-border bg-card p-4 dark:border-transparent lg:col-span-2">
+                    <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
                         {listedRoleCount} open {listedRoleCount === 1 ? 'role' : 'roles'}
                     </h2>
-                    {/* No wrapper card and no dividers. The saved-jobs page stacks
-                        its rows as individual bordered cards with a gap between
-                        them, and this list is literally that same component, so
-                        framing it again in a box just put a second border around
-                        every card. */}
-                    <div className="mt-3 grid gap-3">
+                    <div className="mt-3 grid gap-2">
                         {listableRoles.map((job: any) => {
                             const meta = roleMeta(job);
                             return (
                                 <CompanyRoleCard
                                     key={job.id || job.slug}
                                     opp={job}
-                                    typeLabel={meta.type ?? undefined}
                                     applyHref={meta.applyHref}
                                 />
                             );
                         })}
                     </div>
                     {(hiddenRoleCount > 0 || governmentRoleCount > 0) && (
-                        <p className="mt-3 text-xs text-muted-foreground">
+                        <p className="mt-3 text-pretty text-meta text-muted-foreground">
                             {hiddenRoleCount > 0 && (
                                 <>{hiddenRoleCount} more {hiddenRoleCount === 1 ? 'role is' : 'roles are'} not listed here.</>
                             )}
@@ -548,56 +586,37 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                 </div>
 
                 <aside className="space-y-5">
-                    {detailRows.length > 0 && (
-                        <Card>
-                            <CardContent className="p-5">
-                                <h2 className="text-lg font-bold tracking-tight text-foreground">
-                                    Company details
-                                </h2>
-                                <ul className="mt-4 space-y-4">
-                                    {detailRows.map((row) => {
-                                        const Icon = row.icon;
-                                        return (
-                                            <li key={row.label} className="flex items-start gap-3">
-                                                <Icon
-                                                    className="mt-0.5 h-4 w-4 shrink-0 text-foreground"
-                                                    aria-hidden="true"
-                                                />
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-semibold text-foreground">{row.label}</p>
-                                                    <p className="mt-0.5 break-words text-sm text-muted-foreground">
-                                                        {row.value}
-                                                    </p>
-                                                </div>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-
-                                {topSkills.length > 0 && (
-                                    <>
-                                        <div className="my-5 border-t border-border/60" />
-                                        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                            <BarChart3 className="h-4 w-4 text-foreground" aria-hidden="true" />
-                                            Skills in demand
-                                        </h3>
-                                        <div className="mt-3 flex flex-wrap gap-1.5">
-                                            {topSkills.map((skill: string) => (
-                                                <SkillPill key={skill} skill={skill} size="sm" />
-                                            ))}
-                                        </div>
-                                    </>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )}
+                    <div className="rounded-2xl border border-border-strong bg-card p-5 dark:border-transparent">
+                        <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                            Browse more
+                        </h2>
+                        <p className="mt-3 text-pretty text-sm text-muted-foreground">
+                            Explore fresher jobs, internships and walk-in drives across India.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            {[
+                                { label: 'All jobs', href: '/jobs' },
+                                { label: 'Internships', href: '/jobs/internships' },
+                                { label: 'Walk-in drives', href: '/drives/walk-in' },
+                            ].map((link) => (
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    className="inline-flex rounded-md border border-border-strong bg-card px-3 py-2 text-meta font-medium text-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/40 [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:border-transparent dark:bg-surface-sunken"
+                                >
+                                    {link.label}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
                 </aside>
+            </div>
 
             {/* Company thread: lives on the company, not a listing, so the
                 hiring-process talk survives the job it started on. Fixed
-                position, so it never affects this grid's layout. */}
+                position, so it never affects the layout above. */}
             <CompanyDiscussionDock companySlug={targetSlug} companyName={companyName} />
-            </div>
         </div>
     );
 }

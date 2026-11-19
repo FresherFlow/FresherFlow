@@ -21,7 +21,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
     if (mode === "govt") {
         return [
             {
-                href: '/jobs?tab=for-you',
+                href: '/jobs',
                 label: 'Dashboard',
                 mobileTitle: 'Govt Mode',
                 mobileLabel: 'Home',
@@ -96,7 +96,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
 
     return [
         {
-            href: '/jobs?tab=for-you',
+            href: '/jobs',
             label: 'Dashboard',
             mobileTitle: 'FresherFlow',
             mobileLabel: 'Home',

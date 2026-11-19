@@ -125,7 +125,7 @@ export function JobCardBadges({
                             e.stopPropagation();
                             router.push(`/jobs?skills=${encodeURIComponent(skill)}`);
                         }}
-                        className="cursor-pointer outline-none inline-flex items-center"
+                        className="cursor-pointer inline-flex items-center rounded-sm ff-press motion-reduce:transform-none"
                     >
                         {pillNode}
                     </button>

@@ -14,7 +14,6 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@/ui/Breadcrumb';
-import ForYouTab from '@/features/jobs/components/tabs/ForYouTab';
 import SavedTab from '@/features/jobs/components/tabs/SavedTab';
 import AppliedTab from '@/features/jobs/components/tabs/AppliedTab';
 import AlertsTab from '@/features/jobs/components/tabs/AlertsTab';
@@ -26,7 +25,6 @@ import type { CompanyFollowSummary } from '@/features/companies/types';
 type FeedInitialData = ComponentProps<typeof CategoryPage>['initialData'];
 
 const USER_TABS = [
-    { key: 'for-you', label: 'For You', href: '/jobs?tab=for-you' },
     { key: 'saved', label: 'Saved', href: '/jobs?tab=saved' },
     { key: 'applied', label: 'Applied', href: '/jobs?tab=applied' },
     { key: 'alerts', label: 'Alerts', href: '/jobs?tab=alerts' },
@@ -40,7 +38,6 @@ type UserTabKey = (typeof USER_TABS)[number]['key'];
 // Following is deliberately absent: it takes props (live role counts), so it is
 // rendered directly below rather than through the props-less map.
 const TAB_COMPONENTS: Record<Exclude<UserTabKey, 'following'>, React.ComponentType> = {
-    'for-you': ForYouTab,
     saved: SavedTab,
     applied: AppliedTab,
     alerts: AlertsTab,
@@ -77,7 +74,7 @@ function UserTabTrail({ rootLabel, rootHref, label }: { rootLabel: string; rootH
 
 /**
  * /jobs is the single app page: the public feed by default, and the
- * signed-in workspaces (for-you, saved, applied, alerts, following,
+ * signed-in workspaces (saved, applied, alerts, following,
  * notifications) as ?tab= views. The tab trail lives in the header —
  * the sidebar already shows where you are.
  */
@@ -92,20 +89,6 @@ export default function JobsPageClient({
     const tab = searchParams.get('tab');
 
     if (isUserTab(tab)) {
-        // For You has its own guest preview — do not gate at shell so unauth
-        // curl/browser still sees For You · Personalized and sample cards.
-        // ForYouTab itself checks useAuth and shows the teaser when !user.
-        if (tab === 'for-you') {
-            return (
-                <>
-                    <HeaderPortal>
-                        <UserTabTrail rootLabel="Jobs" rootHref="/jobs" label="For You" />
-                    </HeaderPortal>
-                    <ForYouTab />
-                </>
-            );
-        }
-
         // Following is a companies feature, not a jobs one — the trail
         // roots at Companies so it reads Companies / Following.
         const isCompanyTab = tab === 'following';

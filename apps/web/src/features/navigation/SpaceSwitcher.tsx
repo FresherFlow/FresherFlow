@@ -18,6 +18,7 @@ import {
 } from "@/ui/sidebar"
 import type { Space, SpaceId } from "@/features/navigation/navConfig"
 import { LogoImage } from "@/features/shell/LogoImage"
+import { cn } from "@/ui/cn"
 
 /**
  * (name + subtitle + `ChevronsUpDown` switch affordance) with the panel
@@ -92,7 +93,12 @@ export function SpaceSwitcher({
                 <DropdownMenuItem
                   key={space.id}
                   onClick={() => onChange(space.id)}
-                  className="gap-2 p-2"
+                  className={cn(
+                    "gap-2 p-2 transition-colors duration-150 ease-out",
+                    isActive
+                      ? "bg-surface-active text-surface-active-foreground"
+                      : "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-active [@media(hover:hover)_and_(pointer:fine)]:hover:text-surface-active-foreground"
+                  )}
                 >
                   <div className="flex size-6 items-center justify-center rounded-sm border">
                     <Icon className="size-4 shrink-0" aria-hidden />

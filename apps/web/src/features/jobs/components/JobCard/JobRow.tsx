@@ -55,6 +55,8 @@ export interface JobRowProps {
     /** Keeps the walk-in map's pin highlight in sync with the hovered row. */
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
+    /** Rendered inside the row, above the title. Keeps the match badge attached to its job. */
+    matchBadge?: ReactNode;
 }
 
 /** A tagged fact: the listing kind, pay, batch. Grey, 24px tall, no border. */
@@ -79,6 +81,7 @@ export function JobRow({
     onClick,
     onMouseEnter,
     onMouseLeave,
+    matchBadge,
 }: JobRowProps) {
     const list = layout === 'list';
     const isDrive = isCampusDriveOpportunity(opp);
@@ -155,12 +158,7 @@ export function JobRow({
     }
 
     const factsRow = (
-        <span
-            className={cn(
-                'mt-1.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-muted-foreground',
-                list ? 'text-meta' : 'text-sm',
-            )}
-        >
+        <span className="mt-1.5 flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
             <span className="inline-flex min-w-0 items-center gap-1.5 overflow-hidden">
                 {textFacts.map((fact, index) => (
                     <span key={index} className="inline-flex min-w-0 items-center gap-1.5">
@@ -180,21 +178,18 @@ export function JobRow({
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
             className={cn(
-                'group relative flex w-full gap-3 pl-4 pr-3 text-left transition-colors duration-150 ease-out',
-                'cursor-pointer',
-                // A fixed height so the two actions can hold the row's top and
-                // bottom corners; without it "top" and "bottom" would move per
-                // row as content wrapped. Content is top-aligned in the space
-                // the actions leave.
-                list ? 'h-28 items-start py-3' : 'items-start py-4',
+                'group relative flex w-full gap-4 px-4 py-4 text-left transition-colors duration-150 ease-out cursor-pointer',
+                // Content and actions share one horizontal band. The old fixed
+                // 112px row pinned Save top-right and Apply bottom-right, which
+                // left a dead gap between them and pushed the primary action
+                // away from the job it belongs to.
+                list ? 'items-center' : 'items-start',
                 isSelected
                     ? 'bg-muted'
                     : '[@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/40',
                 isExpired && 'opacity-60',
             )}
         >
-            {/* Selection is a rule, not a grey blob: the row keeps the list's
-                geometry and the accent marks which one is open. */}
             {isSelected && <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-primary" />}
 
             <CompanyLogo
@@ -203,26 +198,22 @@ export function JobRow({
                 companyLogoUrl={opp.companyLogoUrl}
                 applyLink={opp.applyLink}
                 isGovernment={isGovernment}
-                className={cn('rounded-md !w-10 !h-10', list && 'mt-0.5')}
+                className="!h-10 !w-10 shrink-0 rounded-md"
             />
 
             <button
                 type="button"
                 onClick={(e) => {
-                    // One surface, one handler: call directly, block the bubble
-                    // so the row handler doesn't fire twice (double history entry).
                     e.stopPropagation();
                     onClick?.(e);
                 }}
                 aria-current={isSelected ? 'true' : undefined}
                 className="min-w-0 flex-1 cursor-pointer rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             >
+                {matchBadge && <span className="mb-1.5 flex items-center gap-2">{matchBadge}</span>}
                 <span className="flex min-w-0 items-center gap-2">
                     <span
-                        className={cn(
-                            'truncate font-semibold text-foreground transition-colors duration-150 ease-out group-hover:text-primary',
-                            list ? 'text-base' : 'text-base leading-snug',
-                        )}
+                        className="truncate text-sm font-semibold text-foreground transition-colors duration-150 ease-out group-hover:text-primary"
                         title={title}
                     >
                         {title}
@@ -236,17 +227,11 @@ export function JobRow({
                 </span>
 
                 {company && (
-                    <span
-                        className={cn(
-                            'block truncate text-muted-foreground',
-                            list ? 'mt-0.5 text-sm' : 'mt-1 text-sm',
-                        )}
-                        title={company}
-                        dir="auto"
-                    >
+                    <span className="mt-0.5 block truncate text-xs text-muted-foreground" title={company} dir="auto">
                         {company}
                     </span>
-                )}                {factsRow}
+                )}
+                {factsRow}
                 {!list && posted && (
                     <span className="mt-1 block text-xs font-medium text-muted-foreground">
                         Posted {posted}
@@ -254,23 +239,9 @@ export function JobRow({
                 )}
             </button>
 
-            {/* Save holds the row's top-right corner, Apply its bottom-right —
-                the two actions use the row's height instead of sitting in a
-                line beside each other. */}
-            <div
-                className={cn(
-                    'flex shrink-0',
-                    list ? 'h-full flex-col items-end justify-between' : 'items-center gap-2',
-                )}
-            >
-                {/* Apply, then Save at the far right of the row — the primary
-                    action sits last before the edge, the small icon control
-                    ends it. */}
-                {/* Every row names where Apply goes — "Apply on Greenhouse",
-                    "Apply on Lever", "Apply on company website". A button that
-                    says only "Apply" next to one that names its ATS was the
-                    inconsistency: the reader cannot tell whether the two mean
-                    different things. */}
+            {/* Both actions sit together at the edge, vertically aligned with
+                the job. Every Apply label names its destination. */}
+            <div className="flex shrink-0 flex-col items-end gap-1">
                 <button
                     type="button"
                     onClick={(e) => {
@@ -279,7 +250,7 @@ export function JobRow({
                     }}
                     aria-label={isSaved ? 'Unsave opportunity' : 'Save opportunity'}
                     aria-pressed={isSaved}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                     {isSaved ? (
                         <BookmarkSolidIcon className="h-4 w-4 text-primary" aria-hidden="true" />
@@ -289,15 +260,15 @@ export function JobRow({
                 </button>
                 {list && (
                     <ApplyAction
-                        size="row"
+                        size="card"
                         applyLink={opp.applyLink}
                         isGovernment={isGovernment}
                         showDestination
                         stopPropagation
+                        className="[@media(hover:hover)_and_(pointer:fine)]:opacity-0 [@media(hover:hover)_and_(pointer:fine)]:group-hover:opacity-100 focus-within:opacity-100"
                     />
                 )}
             </div>
-
         </div>
     );
 }

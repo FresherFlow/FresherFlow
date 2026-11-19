@@ -20,10 +20,12 @@ import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
 import { getJobDiscussionForSeo } from '@/features/jobs/domain/jobDiscussionSeo';
 import { getFeedBadgeLabel, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
+import { filterOpportunities } from '@/features/jobs/utils/filterOpportunities';
+import { getDeclaredPassoutYears } from '@/features/jobs/domain/passoutYears';
 import {
     buildTaxonomyRegistry,
     resolveTaxonomySlug,
-    matchTaxonomy,
+    boardFilters,
     boardCanonicalSlug,
     assertRegistryJobSlugCollision,
     TaxonomyRegistry,
@@ -112,8 +114,16 @@ function boardDescription(resolved: NonNullable<ReturnType<typeof resolveTaxonom
  * once per request instead of twice.
  */
 const getBoardJobs = cache(
-    (registry: TaxonomyRegistry, resolved: ResolvedTaxonomy, jobs: Opportunity[]): { boardJobs: Opportunity[]; liveCount: number } => {
-        const boardJobs = jobs.filter((opp) => matchTaxonomy(opp, resolved));
+    (_registry: TaxonomyRegistry, resolved: ResolvedTaxonomy, jobs: Opportunity[]): { boardJobs: Opportunity[]; liveCount: number } => {
+        // A batch board lists listings that explicitly declare that batch.
+        // The feed filter is broader on purpose: a listing with no batch
+        // restriction is open to everyone. That rule must not inflate a board
+        // titled "Jobs for 2026 Passouts".
+        if (resolved.kind === 'year') {
+            const boardJobs = jobs.filter((opp) => getDeclaredPassoutYears(opp).includes(resolved.year));
+            return { boardJobs, liveCount: boardJobs.length };
+        }
+        const boardJobs = filterOpportunities(jobs, boardFilters(resolved) as unknown as Parameters<typeof filterOpportunities>[1]);
         return { boardJobs, liveCount: boardJobs.length };
     },
 );
@@ -216,7 +226,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
             <Suspense fallback={<FeedPageSkeleton />}>
                 <TopicBoardPage
                     resolved={resolved}
-                    jobs={boardJobs}
+                    jobs={resolved.kind === 'year' ? boardJobs : (feed?.opportunities || [])}
                     title={boardTitle(resolved)}
                     cachedAt={feed?.generatedAt ? new Date(feed.generatedAt).getTime() : Date.now()}
                 />

@@ -16,7 +16,16 @@ import { getApplyDestination } from '@/features/jobs/utils/atsProvider';
  * never disagree about which ATS you are about to land on.
  */
 
-export type ApplyActionSize = 'row' | 'pane';
+export type ApplyActionSize = 'row' | 'card' | 'pane';
+
+/**
+ * The compact boxed action used by job cards. Mirrors the detail page's
+ * Related opportunities card exactly: h-8, a primary border *and* fill (the
+ * border keeps the edge crisp in dark), and no third-party provider mark.
+ * Kept here so a row, a saved card and a feed card cannot drift apart.
+ */
+export const APPLY_CARD_CLASS =
+    'inline-flex h-8 shrink-0 items-center gap-1 rounded-md border border-primary bg-primary px-2.5 text-xs font-semibold text-primary-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2';
 
 interface ApplyActionContentProps {
     applyLink?: string | null;
@@ -29,6 +38,12 @@ interface ApplyActionContentProps {
     showDestination?: boolean;
     /** Arrow affordance: on where the control has room, off in a dense row. */
     showArrow?: boolean;
+    /**
+     * Compact job cards drop the ATS mark so the action stays a neutral,
+     * single-colour box like the detail page's Related opportunities card.
+     * The destination still lives in the control's title/aria-label.
+     */
+    showProviderMark?: boolean;
 }
 
 /** The mark + label pair. Wrapped by each surface in its own geometry. */
@@ -37,18 +52,28 @@ export function ApplyActionContent({
     isGovernment,
     showDestination = false,
     showArrow = false,
+    showProviderMark = true,
 }: ApplyActionContentProps) {
     const destination = getApplyDestination(applyLink, isGovernment);
+    // The verb is never the part that truncates. The destination is derived
+    // from the one wording helper; only the lead-in is split off so a narrow
+    // row can drop "on Greenhouse" without ever showing "App…".
+    const destinationName = destination.label.startsWith('Apply on ')
+        ? destination.label.slice('Apply on '.length)
+        : null;
     return (
         <>
-            <span className="truncate leading-none">
-                {showDestination ? destination.label : 'Apply'}
+            <span className="flex min-w-0 items-center gap-1 leading-snug">
+                <span className="shrink-0">Apply</span>
+                {showDestination && destinationName && (
+                    <span className="truncate">on {destinationName}</span>
+                )}
             </span>
             {/* The ATS mark sits AFTER the label, on the right edge of the
                 button, in a fixed 16px box that can neither shrink nor stretch
                 it. Only rendered when there really is a provider mark: an empty
                 box would push the word "Apply" off centre. */}
-            {destination.provider && (
+            {showProviderMark && destination.provider && (
                 <span className="inline-flex size-4 shrink-0 items-center justify-center">
                     <AtsLogo applyLink={applyLink} className="size-4 rounded-sm" />
                 </span>
@@ -75,13 +100,17 @@ export interface ApplyActionProps extends ApplyActionContentProps {
 }
 
 const SIZE_CLASSES: Record<ApplyActionSize, string> = {
-    // 32px tall so it matches the bookmark control beside it, and sized by its
-    // label ("Apply" or "Apply on Greenhouse") rather than a guessed fixed
-    // width — a fixed box is what clipped it to "Ap…".
-    row: 'h-8 cursor-pointer gap-2 rounded-md border border-border bg-card px-2.5 text-xs font-semibold text-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-    // 40px, matching the icon controls beside it and the detail page's action
-    // row, so a pane header and a job page CTA are the same control height.
-    pane: 'h-10 cursor-pointer gap-1.5 rounded-lg bg-primary px-3.5 text-meta font-semibold text-primary-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90',
+    // A row CTA is a button, not a filter chip: solid action fill, the same
+    // height as the bookmark control beside it, and sized by its label rather
+    // than a guessed fixed width. The shared hover-to-fill treatment used to
+    // make it look like an outlined chip until the pointer touched it.
+    row: 'h-9 cursor-pointer gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90',
+    // Compact job cards: the boxed h-8 primary action from the detail page's
+    // Related opportunities card. No provider mark — see APPLY_CARD_CLASS.
+    card: APPLY_CARD_CLASS,
+    // Primary weight, full width within the panel: a pane header and a job
+    // page CTA are the same control, not two visual languages for one action.
+    pane: 'h-10 w-full cursor-pointer gap-2 rounded-lg bg-primary px-4 text-meta font-semibold text-primary-foreground ff-press motion-reduce:transform-none [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90',
 };
 
 export function ApplyAction({
@@ -90,6 +119,7 @@ export function ApplyAction({
     size = 'pane',
     showDestination = false,
     showArrow = size === 'pane',
+    showProviderMark = true,
     onApply,
     stopPropagation = false,
     className,
@@ -107,6 +137,7 @@ export function ApplyAction({
             isGovernment={isGovernment}
             showDestination={showDestination}
             showArrow={showArrow}
+            showProviderMark={showProviderMark}
         />
     );
     const label = destination.label;

@@ -38,8 +38,7 @@ const MAX_AGE_MS = 30 * 60 * 1000;
 
 export type PendingAction =
     | { type: 'save-job'; jobId: string }
-    | { type: 'follow-company'; companyId: string; slug?: string }
-    | { type: 'awaiting-apply-confirmation'; jobId: string; jobPath: string };
+    | { type: 'follow-company'; companyId: string; slug?: string };
 
 /**
  * `Omit` does not distribute over a union - `Omit<A | B, 'at'>` collapses to
@@ -56,16 +55,6 @@ function isPendingAction(value: unknown): value is PendingAction {
     if (Date.now() - candidate.at > MAX_AGE_MS) return false;
     if (candidate.type === 'save-job') return typeof candidate.jobId === 'string' && candidate.jobId.length > 0;
     if (candidate.type === 'follow-company') return typeof candidate.companyId === 'string' && candidate.companyId.length > 0;
-    if (candidate.type === 'awaiting-apply-confirmation') {
-        // jobPath is fed straight into a router.push, so it must be a
-        // same-origin relative path — never let a stored value become an
-        // absolute URL that walks the user off-site.
-        return typeof candidate.jobId === 'string'
-            && candidate.jobId.length > 0
-            && typeof candidate.jobPath === 'string'
-            && candidate.jobPath.startsWith('/')
-            && !candidate.jobPath.startsWith('//');
-    }
     return false;
 }
 

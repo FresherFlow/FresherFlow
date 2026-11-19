@@ -173,7 +173,7 @@ export function useProfileCompleteHandlers(
                     toast.error('Saved. Publishing your page failed — retry it from your profile.');
                 }
             }
-            router.push('/jobs?tab=for-you');
+            router.push('/jobs');
             return true;
         } catch (err) {
             toast.error(getErrorMessage(err, 'Could not save your preferences. Try again.'));

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { cn } from '@fresherflow/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
@@ -29,6 +30,8 @@ interface MobileJobCardProps {
     searchQuery?: string;
     searchedSkill?: string;
     className?: string;
+    /** Keeps the match badge inside the card instead of floating between rows. */
+    matchBadge?: ReactNode;
 }
 
 export function JobCardMobile({
@@ -42,6 +45,7 @@ export function JobCardMobile({
     searchQuery,
     searchedSkill,
     className,
+    matchBadge,
 }: MobileJobCardProps) {
     const {
         isGovernment,
@@ -82,12 +86,13 @@ export function JobCardMobile({
         <div
             className={cn(
                 'group relative min-w-0 bg-card text-card-foreground border rounded-lg p-2.5 flex flex-col gap-2 transition-colors duration-150 ease-out cursor-pointer',
-                'border-border hover:border-primary/30',
+                'border-border [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/30',
                 isExpired && 'opacity-60',
                 className
             )}
             onClick={handleCardClick}
         >
+            {matchBadge && <div className="flex items-center gap-2 text-xs">{matchBadge}</div>}
             <div className="flex items-start gap-2">
                 <CompanyLogo
                     companyName={job.company}
@@ -132,7 +137,7 @@ export function JobCardMobile({
                 <button
                     type="button"
                     onClick={handleSaveClick}
-                    className="h-8 w-8 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/60 ff-press motion-reduce:transform-none"
+                    className="h-11 w-11 -my-1.5 -mr-1.5 shrink-0 rounded-lg flex items-center justify-center text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/60 ff-press motion-reduce:transform-none"
                     aria-label={isJobSaved ? 'Remove bookmark' : 'Save job'}
                 >
                     {isJobSaved ? (
@@ -156,7 +161,7 @@ export function JobCardMobile({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex items-center justify-center gap-1 px-2.5 h-7 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-warning/25 ff-press motion-reduce:transform-none"
+                                    className="inline-flex items-center justify-center gap-1 px-2.5 h-10 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-warning/25 ff-press motion-reduce:transform-none"
                                 >
                                     <MapPinIcon className="w-3 h-3" aria-hidden />
                                     Directions
@@ -165,7 +170,7 @@ export function JobCardMobile({
                             <button
                                 type="button"
                                 onClick={handleLinkClick(jobPath)}
-                                className="inline-flex items-center justify-center px-2.5 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none"
+                                className="inline-flex items-center justify-center px-2.5 h-10 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none"
                             >
                                 View drive
                             </button>
@@ -176,7 +181,7 @@ export function JobCardMobile({
                             onClick={handleApplyClick}
                             disabled={!canApply}
                             title={canApply ? undefined : 'This listing has no application link'}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 h-10 text-xs font-semibold rounded-md bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90 ff-press motion-reduce:transform-none disabled:opacity-50 disabled:pointer-events-none"
                         >
                             <ApplyActionContent applyLink={job.applyLink} showArrow />
                         </button>

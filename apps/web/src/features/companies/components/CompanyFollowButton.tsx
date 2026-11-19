@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useFirebaseFollowedCompanies } from '@/features/companies/hooks/useFirebaseFollowedCompanies';
 import { PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { BrandButton } from '@/ui/BrandButton';
 import toast from 'react-hot-toast';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 
@@ -46,45 +45,42 @@ export default function CompanyFollowButton({ companySlug }: Props) {
         }
     };
 
+    // Compact action geometry shared with the masthead's Careers page link and
+    // the job detail page's small actions. Follow is the filled action while
+    // the company is not followed; once followed it steps back to a quiet
+    // confirmed chip, so the masthead never carries two competing CTAs.
+    const baseClass =
+        'inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-3 text-meta font-semibold ff-press motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
+    const actionClass = isFollowing
+        ? `${baseClass} border border-border-strong bg-card text-muted-foreground dark:border-transparent dark:bg-surface-sunken`
+        : `${baseClass} border border-primary bg-primary text-primary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90`;
+
     return (
-        // Same `BrandButton` outline at `size="sm"` as the "Careers page" button
-        // beside it, so the two header actions are visually identical and
-        // neither reads as the primary one. `selected` is that same outline
-        // geometry lit up, so following never changes the button's shape.
-        <BrandButton
+        <button
+            type="button"
             onClick={handleToggleFollow}
-            // Only an in-flight toggle disables the button. Folding the initial
-            // Firebase load into `disabled` left it sitting at
-            // `disabled:opacity-50` on load - a visibly faded, mismatched button
-            // next to the solid-outline Careers page one.
+            // Only an in-flight toggle disables the button; folding the initial
+            // Firebase load into `disabled` left it visibly faded on load.
             disabled={isUpdating}
-            variant={isFollowing ? 'selected' : 'outline'}
-            // Same height as the "Careers page" button beside it and as the job
-            // page's action row: one control height across the two pages.
-            size="md"
-            className="shrink-0"
+            aria-pressed={isFollowing}
+            className={actionClass}
         >
-            {/* `gap-2` and a 14px icon to match `BrandButton`'s own icon rhythm,
-                so the label sits the same distance from its icon as it does on
-                the Careers page button. */}
-            <span className={`flex items-center gap-2 transition-all duration-200 ease-in-out ${isUpdating ? 'blur-sm opacity-70' : 'blur-none opacity-100'}`}>
-                {isUpdating ? (
-                    <>
-                        <div className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                        <span>Updating</span>
-                    </>
-                ) : isFollowing ? (
-                    <>
-                        <CheckIcon className="size-3.5 shrink-0 text-success" />
-                        <span>Following</span>
-                    </>
-                ) : (
-                    <>
-                        <PlusIcon className="size-3.5 shrink-0" />
-                        <span>Follow</span>
-                    </>
-                )}
-            </span>
-        </BrandButton>
+            {isUpdating ? (
+                <>
+                    <span className="size-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" aria-hidden="true" />
+                    <span>Updating</span>
+                </>
+            ) : isFollowing ? (
+                <>
+                    <CheckIcon className="size-3.5 shrink-0 text-success" aria-hidden="true" />
+                    <span>Following</span>
+                </>
+            ) : (
+                <>
+                    <PlusIcon className="size-3.5 shrink-0" aria-hidden="true" />
+                    <span>Follow</span>
+                </>
+            )}
+        </button>
     );
 }

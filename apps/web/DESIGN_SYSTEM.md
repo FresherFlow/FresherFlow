@@ -202,6 +202,31 @@ they are a distinct marketing component, not a competing UI palette.
 `--color-border` and `--color-input` both `oklch(88% 0.008 258)`. One hairline
 tone. A cool hairline on a cool page reads as structure, not as a drawn box.
 
+**`--color-border-strong` is the meaningful edge.** Keep `border-border` for
+decorative dividers; use `border-border-strong` for the boundary of a card or
+panel and for selected states. In light mode it aliases `border-border`, so
+nothing moves. In dark it is `oklch(47% 0.01 220)` — measured **3.01:1** against
+the L10.3 page, which is what WCAG 1.4.11 asks of a boundary that carries
+meaning. The quiet dark border (L34) measures 1.75:1 and is not enough on its
+own for a card edge.
+
+### 4.2b Dark elevation ladder (measured 2026-11-17)
+
+Against `--color-background` at L10.3:
+
+| Surface | Dark L | Contrast vs page | Job |
+|---|---|---|---|
+| page | 10.3% | — | base plane |
+| card | 20% | 1.14:1 | step above page; the **strong border** supplies the 3:1 edge |
+| muted | 27% | 1.37:1 | inset panels, skeletons, disabled |
+| popover | 25% | 1.28:1 | menus and overlays |
+| border-strong | 47% | **3.01:1** | card/panel edge, selected state |
+
+The old card (L17.1) and border (L26.2) were inside the noise floor, which is
+why surfaces merged. Do not reintroduce per-component hexes to compensate;
+raise the token and remeasure. Never use `border-border/40` as the only thing
+separating two surfaces.
+
 ### 4.4 Signals — four jobs, one red
 
 | Job | Token | Light |

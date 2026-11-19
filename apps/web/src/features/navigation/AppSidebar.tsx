@@ -9,6 +9,8 @@ import { getSidebarGroups } from "@/features/navigation/sidebar-data"
 import { useNavCounts } from "@/features/navigation/useNavCounts"
 import { NavUser } from "@/features/navigation/NavUser"
 import { SpaceSwitcher } from "@/features/navigation/SpaceSwitcher"
+import { ThemeSwitcher } from "@/ui/ThemeSwitcher"
+import { Moon } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -196,6 +198,15 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
       </div>
       <div className="shrink-0 border-t border-sidebar-border p-2">
         <NavUser />
+        <ThemeSwitcher className="w-full">
+          <button
+            type="button"
+            className="mt-1 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-sidebar-foreground transition-colors duration-150 ease-out hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <Moon className="size-4 shrink-0 opacity-70" aria-hidden="true" />
+            <span className="flex-1 text-left">Theme</span>
+          </button>
+        </ThemeSwitcher>
       </div>
     </div>
   )

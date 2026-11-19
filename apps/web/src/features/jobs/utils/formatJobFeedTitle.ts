@@ -12,81 +12,95 @@ export interface TitleFilters {
     year?: string | number | null;
 }
 
-function toTitleCase(str: string): string {
-    return str.split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-        .join(' ');
+/**
+ * The feed heading.
+ *
+ * This used to be a dump of every active filter: `ONSITE, Hybrid & Remote Jobs
+ * in Bengaluru,Chennai,Hyderabad,Mumbai,Pune`. It leaked a raw Prisma enum,
+ * repeated what the chips below already said, and was long enough to be clipped
+ * with an ellipsis. A heading describes the result, not the query string:
+ *
+ *   - one subject, the most meaningful dimension (type, then search, then skill,
+ *     then work mode);
+ *   - location as a count when it is a list (`Jobs in 5 cities`), never five
+ *     comma-joined cities;
+ *   - no raw enum, no count glued on, no punctuation to decorate the end.
+ *
+ * Everything else stays in the chips. Do not grow this back into a filter dump.
+ */
+
+function capitalise(value: string): string {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}
+
+/** Stored modes are `ONSITE` / `ON_SITE` / `HYBRID` / `REMOTE`. */
+function workModeLabel(value: string): string | null {
+    const normalised = value.trim().toUpperCase().replace(/[\s-]+/g, '_');
+    if (normalised === 'ONSITE' || normalised === 'ON_SITE') return 'On-site';
+    if (normalised === 'HYBRID') return 'Hybrid';
+    if (normalised === 'REMOTE') return 'Remote';
+    return null;
+}
+
+const TYPE_HEADING: Partial<Record<string, string>> = {
+    INTERNSHIP: 'Internships',
+    WALKIN: 'Walk-in drives',
+    HACKATHONS: 'Hackathons',
+    DRIVES: 'Hiring drives',
+    OFF_CAMPUS: 'Off-campus drives',
+    FULL_TIME: 'Full-time jobs',
+    PART_TIME: 'Part-time jobs',
+    GOVERNMENT: 'Government jobs',
+    REMOTE: 'Remote jobs',
+};
+
+/** Distinct, non-empty cities in a `?location=` value. */
+function citiesIn(location: string | null | undefined): string[] {
+    if (!location) return [];
+    return Array.from(
+        new Set(
+            location
+                .split(',')
+                .map((city) => city.trim())
+                .filter(Boolean),
+        ),
+    );
 }
 
 export function formatJobFeedTitle(filters: TitleFilters): string {
-    const parts: string[] = [];
+    const search = filters.search?.trim() ?? '';
+    const skills = (filters.skills ?? []).map((skill) => skill.trim()).filter(Boolean);
+    const modes = (Array.isArray(filters.workMode) ? filters.workMode : filters.workMode ? [filters.workMode] : [])
+        .map(workModeLabel)
+        .filter((label): label is string => Boolean(label));
+    const cities = citiesIn(filters.location);
+    const year = filters.year ? String(filters.year) : '';
 
-    // 0. Sort prefix
-    if (filters.sort === 'expiring') {
-        parts.push('Closing Soon');
-    }
+    let subject: string;
 
-    // 1. Work Mode
-    if (filters.workMode) {
-        const modes = Array.isArray(filters.workMode) ? filters.workMode : [filters.workMode];
-        if (modes.length > 0) {
-            const mappedModes = modes.map(m => {
-                if (m.toUpperCase() === 'REMOTE') return 'Remote';
-                if (m.toUpperCase() === 'HYBRID') return 'Hybrid';
-                if (m.toUpperCase() === 'ON_SITE') return 'On-site';
-                return m;
-            });
-            if (mappedModes.length === 1) parts.push(mappedModes[0]);
-            else if (mappedModes.length === 2) parts.push(mappedModes.join(' & '));
-            else if (mappedModes.length > 2) parts.push(mappedModes.slice(0, -1).join(', ') + ' & ' + mappedModes[mappedModes.length - 1]);
-        }
-    } else if (filters.type === 'REMOTE') {
-        parts.push('Remote');
-    }
-
-    // 2. Sector (for Gov)
-    if (filters.type === 'GOVERNMENT' || filters.sector) {
-        if (filters.sector) {
-            parts.push(filters.sector);
-        }
-        parts.push('Government');
-    }
-
-    // 3. Skill or Course or Search
-    if (filters.search) {
-        parts.push(toTitleCase(filters.search));
-    } else if (filters.skills && filters.skills.length > 0) {
-        parts.push(toTitleCase(filters.skills[0]));
+    if (search) {
+        subject = `Results for \u201c${search}\u201d`;
+    } else if (skills.length === 1) {
+        subject = `${capitalise(skills[0])} jobs`;
+    } else if (skills.length > 1) {
+        subject = `${capitalise(skills[0])} +${skills.length - 1} jobs`;
+    } else if (filters.type && TYPE_HEADING[String(filters.type).toUpperCase()]) {
+        subject = TYPE_HEADING[String(filters.type).toUpperCase()]!;
+    } else if (modes.length === 1) {
+        subject = `${modes[0]} jobs`;
     } else if (filters.course) {
-        parts.push(toTitleCase(filters.course));
-    }
-
-    // 4. Type
-    const batchPrefix = filters.year ? `(${filters.year} Batch) ` : '';
-    if (filters.type === 'INTERNSHIP') {
-        parts.push(`${batchPrefix}Internship Jobs`);
-    } else if (filters.type === 'WALKIN') {
-        parts.push(`${batchPrefix}Walk-in Drives`);
-    } else if (filters.type === 'HACKATHONS') {
-        parts.push(`${batchPrefix}Hackathons`);
-    } else if (filters.type === 'DRIVES') {
-        parts.push(`${batchPrefix}Hiring Drives`);
-    } else if (filters.type === 'OFF_CAMPUS') {
-        parts.push(`${batchPrefix}Off-Campus Drives`);
-    } else if (filters.type === 'FULL_TIME') {
-        parts.push(`${batchPrefix}Full-Time Jobs`);
-    } else if (filters.type === 'PART_TIME') {
-        parts.push(`${batchPrefix}Part-Time Jobs`);
+        subject = `${capitalise(filters.course)} jobs`;
+    } else if (filters.sort === 'expiring') {
+        subject = 'Closing soon jobs';
+    } else if (year) {
+        subject = `${year} batch jobs`;
     } else {
-        parts.push(`${batchPrefix}Jobs`);
-    }
-    
-    let title = parts.join(' ').trim();
-
-    // 5. Location
-    if (filters.location) {
-        title += ` in ${filters.location}`;
+        subject = 'Jobs';
     }
 
-    return title;
+    if (cities.length === 1) return `${subject} in ${capitalise(cities[0])}`;
+    if (cities.length > 1) return `${subject} in ${cities.length} cities`;
+    return subject;
 }

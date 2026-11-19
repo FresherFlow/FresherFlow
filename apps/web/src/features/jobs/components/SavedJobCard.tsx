@@ -4,13 +4,14 @@ import Link from 'next/link';
 import type { Opportunity } from '@fresherflow/types';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import { Bookmark } from 'lucide-react';
-import { BrandButton } from '@/ui/BrandButton';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getPostedLabel } from '@/features/jobs/components/JobCard/jobCardUtils';
-import { ApplyActionContent } from '@/features/jobs/components/ApplyAction';
+import { APPLY_CARD_CLASS, ApplyActionContent } from '@/features/jobs/components/ApplyAction';
+import { getApplyDestination } from '@/features/jobs/utils/atsProvider';
 import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
+import { cn } from '@/ui/cn';
 
 export interface SavedJobCardProps {
     opp: Opportunity;
@@ -33,6 +34,13 @@ export interface SavedJobCardProps {
      * original `applyLink || companyWebsite` fallback.
      */
     applyHref?: string | null;
+    /**
+     * Surface overrides for hosts that frame these rows differently. The
+     * company page uses it to drop the card edge in dark, where surfaces are
+     * separated by lightness rather than borders. Callers that omit it (the
+     * saved-jobs page) keep the exact existing treatment.
+     */
+    className?: string;
 }
 
 
@@ -48,6 +56,7 @@ export default function SavedJobCard({
     showCompany = true,
     typeLabel,
     applyHref,
+    className,
 }: SavedJobCardProps) {
     const companyName =
         typeof opp.company === 'string' ? opp.company : (opp.company as { name?: string })?.name || 'Company';
@@ -63,6 +72,11 @@ export default function SavedJobCard({
     const locShort = parseOpportunityLocation(opp.locations).shortLabel;
     const age = getPostedLabel(opp) ?? '';
     const metaText = showCompany ? `${companyName}${age ? ` · ${age}` : ''}` : age;
+    // Destination wording stays owned by getApplyDestination. The compact card
+    // shows no provider mark, so the accessible name is where it lives.
+    const applyDestinationLabel = getApplyDestination(
+        (opp as { applyLink?: string }).applyLink,
+    ).label;
 
     return (
         /* Stacks below `sm`, single row from `sm` up. As one row it needed
@@ -70,7 +84,7 @@ export default function SavedJobCard({
            width, so on a 386px phone the title ran off the card and Apply
            disappeared entirely. The actions move to their own line on mobile,
            indented to sit under the text rather than under the logo. */
-        <div className="flex min-w-0 flex-col gap-2.5 rounded-xs border border-border bg-card p-3 transition-colors hover:border-primary/30 sm:flex-row sm:items-start">
+        <div className={cn('flex min-w-0 flex-col gap-2.5 rounded-xs border border-border-strong bg-card p-3 transition-colors hover:border-primary/50 sm:flex-row sm:items-start dark:border-transparent', className)}>
             <div className="flex min-w-0 flex-1 items-start gap-3">
                 <CompanyLogo
                     companyName={companyName}
@@ -84,7 +98,7 @@ export default function SavedJobCard({
                         exists; an ellipsis hid the role. */}
                     <Link
                         href={jobHref}
-                        className="line-clamp-2 text-sm font-medium leading-snug text-foreground hover:text-primary"
+                        className="line-clamp-2 text-sm font-semibold leading-snug text-foreground hover:text-primary"
                     >
                         {opp.title}
                     </Link>
@@ -124,14 +138,20 @@ export default function SavedJobCard({
                     <Bookmark className="size-4" fill={isSaved ? 'currentColor' : 'none'} aria-hidden="true" />
                 </button>
                 {resolvedApplyHref ? (
-                    <BrandButton asChild variant="neutral" size="sm" className="shrink-0">
-                        <a href={resolvedApplyHref} target="_blank" rel="noreferrer">
-                            <ApplyActionContent
-                                applyLink={(opp as { applyLink?: string }).applyLink}
-                                showArrow
-                            />
-                        </a>
-                    </BrandButton>
+                    <a
+                        href={resolvedApplyHref}
+                        target="_blank"
+                        rel="noreferrer"
+                        title={applyDestinationLabel}
+                        aria-label={`${applyDestinationLabel}: ${opp.title}`}
+                        className={APPLY_CARD_CLASS}
+                    >
+                        <ApplyActionContent
+                            applyLink={(opp as { applyLink?: string }).applyLink}
+                            showDestination
+                            showArrow
+                        />
+                    </a>
                 ) : null}
             </div>
         </div>

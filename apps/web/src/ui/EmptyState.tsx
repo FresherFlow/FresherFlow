@@ -36,11 +36,11 @@ export function EmptyState({
     // delimits it — a `bg-card` panel sat as a white block on a grey page,
     // which is the thing an empty state should never look like. Callers that
     // genuinely need a raised surface can still pass `className`.
-    const cardClasses = variant === 'card' ? 'border border-border' : 'border border-transparent';
+    const cardClasses = variant === 'card' ? 'border border-border-strong dark:border-transparent' : 'border border-transparent';
 
     return (
-        <div className={`${padding} text-center rounded-xs ${cardClasses} ${className ?? ''} animate-in fade-in slide-in-from-bottom-4 zoom-in-[0.97] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]`}>
-            <div className="w-12 h-12 bg-muted rounded-xs flex items-center justify-center mx-auto mb-4 text-muted-foreground animate-in zoom-in-50 duration-500 delay-100 ease-[cubic-bezier(0.34,1.56,0.64,1)]" style={{animationFillMode:'both'}}>
+        <div className={`${padding} text-center rounded-xs ${cardClasses} ${className ?? ''} animate-in fade-in slide-in-from-bottom-2 zoom-in-[0.97] duration-200 ease-out-strong`}>
+            <div className="w-12 h-12 bg-muted rounded-xs flex items-center justify-center mx-auto mb-4 text-muted-foreground animate-in zoom-in-[0.95] duration-200 ease-out-strong" style={{animationFillMode:'both'}}>
                 <Icon className="w-6 h-6" />
             </div>
             <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
