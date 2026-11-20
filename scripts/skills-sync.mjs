@@ -15,7 +15,8 @@
  *   node scripts/skills-sync.mjs --check   # report drift only, exit 1 if any, write nothing
  *
  * The check also asserts each skill's frontmatter `name` matches its directory, because a
- * mismatched name is the packaging mistake that silently breaks discovery.
+ * mismatched name is the packaging mistake that silently breaks discovery. It enforces a
+ * word budget on the body: long instruction dumps perform worse than a short fixed process.
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -24,6 +25,11 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SHIPPED_DIR = join(ROOT, 'plugins', 'fresherflow', 'skills');
 const INSTALLED_DIR = join(ROOT, '.agents', 'skills');
+
+// OpenSEO measured a 3,600-word caution-heavy skill performing worse than a
+// 2,200-word process-driven one. A budget keeps skills as procedures, not
+// instruction dumps that dilute the steps that actually change the output.
+const MAX_SKILL_WORDS = 2500;
 
 const checkOnly = process.argv.includes('--check');
 
@@ -43,6 +49,12 @@ function frontmatterName(contents) {
     return line ? line.slice('name:'.length).trim() : null;
 }
 
+/** Word count of the body with the YAML frontmatter removed. */
+function bodyWordCount(contents) {
+    const body = contents.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, '');
+    return body.split(/\s+/).filter(Boolean).length;
+}
+
 const skills = shippedSkills();
 if (skills.length === 0) {
     console.error(`No shipped skills found under ${SHIPPED_DIR}`);
@@ -60,6 +72,11 @@ for (const name of skills) {
     if (declared !== name) {
         problems.push(`${name}: frontmatter name is ${declared === null ? 'missing' : `"${declared}"`}, expected "${name}"`);
         continue;
+    }
+
+    const words = bodyWordCount(sourceContents);
+    if (words > MAX_SKILL_WORDS) {
+        problems.push(`${name}: SKILL.md body is ${words} words, over the ${MAX_SKILL_WORDS}-word budget — add a step, not a warning`);
     }
 
     const target = join(INSTALLED_DIR, name, 'SKILL.md');
