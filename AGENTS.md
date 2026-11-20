@@ -141,19 +141,19 @@ Two traps in this area:
 | Backend auth for that surface | `apps/api/src/middleware/mcpAccessToken.ts` |
 | OAuth issuance | `apps/api/src/routes/oauth.ts` |
 
-Every MCP caller is authenticated through the app. There is no anonymous tier, and the MCP server holds no service key of its own:
+Every account tool is authenticated through the app. `/mcp/public` is a read-only anonymous endpoint (`get_jobs`, `get_job`) and holds no account data; the MCP server holds no service key of its own:
 
 | Caller | Credential | Can do |
 |---|---|---|
 | Signed-in user via AI client | OAuth 2.1 bearer | browse live jobs; submit a **DRAFT**; own submissions |
-| Moderator via AI client | OAuth 2.1 bearer + `opportunity.publish` | the above, **published on submit**; full listing writes; moderation |
+| Moderator via AI client | OAuth 2.1 bearer + `opportunity.publish` | the above, **published on submit**; full listing edits (`update_listing`); moderation |
 | Pipeline scripts (direct to the API) | `INTERNAL_API_SECRET` | full listing writes; no user identity |
 
 Role is resolved from the same RBAC grants the admin panel edits (`apps/api/src/application/mcp/identity.ts`), never from a client claim. `apps/mcp/src/worker.ts` resolves it per request, so the tool list a connection sees already reflects its role.
 
 `mcpSurfaceAuth` accepts a bearer *or* the service key and never falls back to anonymous; `apps/mcp` itself refuses any request without a bearer. Listing writes need `opportunity.create` **or** `opportunity.edit` (moderators hold `edit`), so the listing tools bypass the admin router rather than impersonating a super admin.
 
-`create_listing` defaults to `PUBLISHED` for a moderator connection and `DRAFT` for the service key. `submit_opportunity` publishes only when the account holds `opportunity.publish`. A tool must never report a listing as live unless the response says `published: true`.
+There is one creation tool: `submit_opportunity`. `create_listing` is deliberately not registered on MCP — two creation paths with different field contracts is what let an agent publish a walk-in with no venue. The API's `POST /api/internal/mcp/listings` route remains for the pipeline's service key. `submit_opportunity` publishes only when the account holds `opportunity.publish`. A tool must never report a listing as live unless the response says `published: true`.
 
 MCP clients cache the tool list. After changing any `inputSchema` or `outputSchema`, reconnect or refresh discovery or clients validate against the stale schema and reject valid results.
 
@@ -280,6 +280,8 @@ Additional checks:
 ### Agent skills
 
 `plugins/fresherflow/skills/<name>/SKILL.md` is the tracked source and what ships in the plugin bundle. `.agents/skills/` is the local install and is gitignored, so it can never be the source. Edit the file under `plugins/`, then run `pnpm skills:sync`. The frontmatter `name` must match the directory name — a mismatch silently breaks discovery.
+
+Keep a shipped skill's body under ~2,500 words (frontmatter excluded); `pnpm skills:check` fails above it. Long instruction dumps dilute the steps that change output — OpenSEO measured a 3,600-word caution-heavy skill performing worse than a 2,200-word process-driven one. Add a step, not a warning.
 
 Skills and MCP are separate channels. A skill is markdown loaded by whoever runs the agent; the MCP server can only deliver `instructions` and the tool list over the protocol. Tool names quoted in a skill are load-bearing — keep them in sync with `server.ts`.
 
