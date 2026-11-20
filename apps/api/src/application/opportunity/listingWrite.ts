@@ -1,7 +1,7 @@
 import prisma, { OpportunityStatus as DbOpportunityStatus } from '../../infrastructure/database/prisma';
 import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus, type Opportunity } from '@fresherflow/types';
-import { generateSlug, generateCompanyLogoUrl, normalizeSkills, sanitizeCustomSlug, resolveUniqueSlug, logger } from '@fresherflow/utils';
+import { generateSlug, generateCompanyLogoUrl, normalizeSkills, sanitizeCustomSlug, resolveUniqueSlug, logger, validateListingContent, describeListingIssues } from '@fresherflow/utils';
 import { normalizeOpportunityLinks } from '../../utils/opportunityLinks';
 import { handleOpportunityPublished } from '../../infrastructure/services/opportunity/publish.service';
 import { invalidatePublicOpportunityCache } from '../../infrastructure/services/opportunity/publicOpportunityCache.service';
@@ -213,6 +213,50 @@ async function resolveContributorId(rawOpportunityId: unknown): Promise<string |
 }
 
 /**
+ * Enforce the content rules before a listing can go live.
+ *
+ * Drafts may be incomplete (a human is still working on them), but a PUBLISHED
+ * listing is what candidates see. Every publishing write path — admin, MCP
+ * listing, duplicate promotion — reaches this one function, so the same field
+ * rules apply to all of them.
+ */
+function assertPublishableContent(
+    data: ExtendedAdminOpportunityData,
+    status: string | undefined,
+): void {
+    if (status !== 'PUBLISHED') return;
+
+    const issues = validateListingContent({
+        title: data.title,
+        company: data.company,
+        description: data.description,
+        locations: data.locations,
+        salaryRange: data.salaryRange,
+        stipend: data.stipend,
+        salaryMin: data.salaryMin,
+        salaryMax: data.salaryMax,
+        experienceMin: data.experienceMin,
+        experienceMax: data.experienceMax,
+        notesHighlights: data.notesHighlights,
+        requiredSkills: data.requiredSkills,
+        employmentTypes: data.employmentTypes,
+        category: data.category,
+        dates: data.driveDetails?.dates,
+        expiresAt: data.expiresAt,
+        workMode: data.workMode,
+        companyWebsite: data.companyWebsite,
+    });
+    if (issues.length > 0) {
+        throw new ListingWriteError(
+            400,
+            'VALIDATION_FAILED',
+            `This listing cannot be published — ${describeListingIssues(issues)}`,
+            issues,
+        );
+    }
+}
+
+/**
  * Create a listing from a full admin payload.
  *
  * Idempotent by design: with `onDuplicate: 'update-existing'` a repeated submit
@@ -224,6 +268,9 @@ export async function createListing(
     data: ExtendedAdminOpportunityData,
     options: CreateListingOptions,
 ): Promise<CreateListingResult> {
+    // Reject a broken listing before any row or feed side effect exists.
+    assertPublishableContent(data, options.status);
+
     const { category, recruitmentMethod, employmentTypes, isWalkIn, isGovt } =
         resolveOpportunityDimensions(data);
 
@@ -293,7 +340,11 @@ export async function createListing(
                 salaryRange: data.salaryRange, stipend: data.stipend,
                 employmentTypes,
                 salaryMin: data.salaryMin || (data.salaryRange ? parseInt(data.salaryRange) : undefined),
-                salaryMax: data.salaryMax, salaryPeriod: data.salaryPeriod,
+                salaryMax: data.salaryMax,
+                // Defence in depth: the column is non-nullable with a YEARLY
+                // default, so a caller that bypasses `opportunitySchema` still
+                // cannot send null and turn a listing write into a 500.
+                salaryPeriod: data.salaryPeriod ?? 'YEARLY',
                 incentives: data.incentives, jobFunction: data.jobFunction,
                 selectionProcess: data.selectionProcess, notesHighlights: data.notesHighlights,
                 experienceMin: data.experienceMin, experienceMax: data.experienceMax,
@@ -373,6 +424,9 @@ export async function updateListing(
     }
 
     const nextStatus = status ?? data.status;
+    // A payload that omits `status` leaves a live listing live: that is still a
+    // publish, so the content rules apply to it as well.
+    assertPublishableContent(data, nextStatus ?? existing.status);
     if (nextStatus && !DB_STATUS_VALUES.has(nextStatus)) {
         // `opportunitySchema` is bound to the shared OpportunityStatus enum, which
         // includes EXPIRED; Prisma's enum does not. Catching it here turns what
@@ -426,7 +480,11 @@ export async function updateListing(
         requiredSkills: normalizeSkills(data.requiredSkills),
         locations, workMode: data.workMode,
         salaryMin: data.salaryMin, salaryMax: data.salaryMax,
-        salaryPeriod: data.salaryPeriod, incentives: data.incentives,
+        // A full replace cannot clear a non-nullable column: keep the existing
+        // period when the payload omits it, and fall back to the platform
+        // default if an older row somehow has none.
+        salaryPeriod: data.salaryPeriod ?? existing.salaryPeriod ?? 'YEARLY',
+        incentives: data.incentives,
         jobFunction: data.jobFunction, selectionProcess: data.selectionProcess,
         notesHighlights: data.notesHighlights,
         experienceMin: data.experienceMin, experienceMax: data.experienceMax,

@@ -24,7 +24,10 @@ import { logger } from '@fresherflow/utils';
 /** The one scope this surface grants. Advertised in the discovery documents. */
 export const MCP_OAUTH_SCOPE = 'mcp';
 
-const ACCESS_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
+// OpenSEO raised its MCP access token to 24 hours specifically to cut
+// reconnect interruptions. An hourly token means every long-running AI session
+// has to re-authorize, which also spends the IP-keyed OAuth rate-limit budget.
+const ACCESS_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
 const CODE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 /** Refresh a token's lastUsedAt no more often than this, to avoid a write per call. */
@@ -223,8 +226,9 @@ export async function exchangeAuthorizationCode(input: ExchangeCodeInput): Promi
         throw new OAuthError(400, 'invalid_grant', 'Authorization code is invalid');
     }
     if (row.usedAt) {
-        // A replayed code means the code leaked; kill every token it produced.
-        await revokeClientTokensForUser(row.userId, row.clientId);
+        // OpenSEO rejects a replayed code but leaves the existing connection
+        // alone. Revoking every token here turned a double-submitted consent
+        // form into a forced reconnect for a user who did nothing wrong.
         throw new OAuthError(400, 'invalid_grant', 'Authorization code has already been used');
     }
     if (row.expiresAt.getTime() < Date.now()) {
@@ -259,9 +263,8 @@ export async function exchangeAuthorizationCode(input: ExchangeCodeInput): Promi
         data: { usedAt: new Date() },
     });
     if (consumed.count !== 1) {
-        // A code that lost the compare-and-set race was replayed. Match the
-        // existing replay policy and revoke this client's tokens for the user.
-        await revokeClientTokensForUser(row.userId, row.clientId);
+        // Lost the compare-and-set race: a sibling request already exchanged
+        // this code. Reject this one; do not kill the tokens it just issued.
         throw new OAuthError(400, 'invalid_grant', 'Authorization code has already been used');
     }
 
@@ -275,7 +278,7 @@ export async function exchangeAuthorizationCode(input: ExchangeCodeInput): Promi
  * Refresh grant. The presented refresh token is revoked as part of the exchange
  * (rotation), so a leaked refresh token is usable at most once.
  */
-export async function refreshAccessToken(refreshToken: string, clientId: string): Promise<TokenResponse> {
+export async function refreshAccessToken(refreshToken: string, clientId: string | undefined): Promise<TokenResponse> {
     const row = await prisma.oAuthRefreshToken.findUnique({
         where: { tokenHash: sha256(refreshToken) },
         select: { id: true, clientId: true, userId: true, scope: true, resource: true, expiresAt: true, revokedAt: true },
@@ -284,7 +287,9 @@ export async function refreshAccessToken(refreshToken: string, clientId: string)
     if (!row || row.revokedAt || row.expiresAt.getTime() < Date.now()) {
         throw new OAuthError(400, 'invalid_grant', 'Refresh token is invalid or expired');
     }
-    if (row.clientId !== clientId) {
+    // OpenSEO derives the client from the grant; a client that omits client_id
+    // on the refresh grant is not an error. Only a *different* explicit id is.
+    if (clientId && row.clientId !== clientId) {
         throw new OAuthError(400, 'invalid_grant', 'Refresh token was issued to another client');
     }
 

@@ -122,7 +122,10 @@ function processedRow(overrides: Record<string, unknown> = {}) {
         id: 'p-1',
         title: 'Backend Engineer',
         company: 'Acme Corp',
-        description: 'Build and maintain the Acme platform used by fresher teams.',
+        description:
+            'Build and maintain the Acme platform used by fresher teams. You will ship features across '
+            + 'the React frontend and Node.js services, review code, write tests and work with design '
+            + 'and product to turn requirements into working software.',
         type: 'JOB',
         apply_link: 'https://boards.greenhouse.io/acme/jobs/1',
         source_url: 'https://acme.test/careers',
@@ -189,7 +192,10 @@ function realWalkinRow(overrides: Record<string, unknown> = {}) {
         id: 'p-drive',
         title: 'Walk-in Interview - Software Engineer',
         company: 'Acme Corp',
-        description: 'Acme Corp is conducting a walk-in interview for freshers on 2nd November.',
+        description:
+            'Acme Corp is conducting a walk-in interview for freshers on 2nd November at the '
+            + 'Gachibowli office. Bring an updated resume and a government photo ID. The drive covers '
+            + 'software engineering roles across the platform and services teams.',
         type: 'WALKIN',
         apply_link: 'https://jobs.lever.co/acme/walkin-swe',
         source_url: 'https://acme.test/careers/walkin',

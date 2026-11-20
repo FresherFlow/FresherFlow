@@ -98,7 +98,7 @@ describe('OAuth authorization-server discovery', () => {
         const app = buildApp();
         const res = await request(app).get('/.well-known/oauth-authorization-server');
 
-        expect(res.body.scopes_supported).toEqual(['mcp']);
+        expect(res.body.scopes_supported).toEqual(['mcp', 'offline_access']);
         expect(res.body.response_types_supported).toEqual(['code']);
         expect(res.body.grant_types_supported).toEqual(['authorization_code', 'refresh_token']);
         expect(res.body.token_endpoint_auth_methods_supported).toEqual(['none']);
@@ -130,7 +130,7 @@ describe('OpenID Connect discovery', () => {
         expect(oidcRes.body.authorization_endpoint).toBe(asRes.body.authorization_endpoint);
         expect(oidcRes.body.token_endpoint).toBe(asRes.body.token_endpoint);
         expect(oidcRes.body.revocation_endpoint).toBe(asRes.body.revocation_endpoint);
-        expect(oidcRes.body.scopes_supported).toEqual(['mcp']);
+        expect(oidcRes.body.scopes_supported).toEqual(['mcp', 'offline_access']);
         expect(oidcRes.body.code_challenge_methods_supported).toEqual(['S256']);
         // Tokens are opaque, so there is no key set. Advertising one that does
         // not exist makes an OIDC client fail discovery and retry the flow.

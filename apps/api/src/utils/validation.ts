@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { OpportunityCategory, OpportunityStatus, WorkMode, EducationLevel, Availability, ActionType, FeedbackReason, SalaryPeriod, AppFeedbackType, ReservationCategory, Gender, CommentType, CommentVoteValue, JobSignalType, ReportReason } from '@fresherflow/types';
+import { splitSubmittedLocations } from '@fresherflow/utils';
 
 const governmentApplicationFeeSchema = z.object({
     general: z.number().nonnegative().optional(),
@@ -250,8 +251,9 @@ export const opportunitySchema = z.object({
     passoutYearMax: z.number().int().nullable().optional(),
     // Validated against the enum rather than `z.array(z.string())`: the column is
     // a Prisma `Availability[]`, so free text would reach the database and fail
-    // as a 500 instead of a clean 400.
-    allowedAvailability: z.array(z.nativeEnum(Availability)).nullable().optional().default([]),
+    // as a 500 instead of a clean 400. Not nullable: the column has a default,
+    // not a null state, so `null` here was a 500 waiting for a caller.
+    allowedAvailability: z.array(z.nativeEnum(Availability)).optional().default([]),
     requiredSkills: z.array(z.string()).default([]),
     locations: z.array(z.string()).optional().default([]),
 
@@ -261,7 +263,15 @@ export const opportunitySchema = z.object({
     salaryMax: z.number().nullable().optional(), // Legacy
     salaryRange: z.string().nullable().optional(), // New
     stipend: z.string().nullable().optional(),     // New
-    salaryPeriod: z.nativeEnum(SalaryPeriod).nullable().optional(),
+    // Non-nullable column (`SalaryPeriod @default(YEARLY)`). Accepting null here
+    // is what made `update_listing` answer 500 "Argument salaryPeriod must not
+    // be null": the payload validated, then Prisma refused it.
+    //
+    // Omitted is deliberately left undefined (not defaulted here): createListing
+    // applies YEARLY, while updateListing keeps the row's existing period, so an
+    // update that does not mention salary cannot silently turn a monthly
+    // internship into an annual one.
+    salaryPeriod: z.nativeEnum(SalaryPeriod).optional(),
     incentives: z.string().nullable().optional(),
     jobFunction: z.string().nullable().optional(),
     selectionProcess: z.string().nullable().optional(),
@@ -563,8 +573,13 @@ export const reportCreateSchema = z.object({
 
 /**
  * MCP submission schema (plan 23 §9).
- * Anonymous, strictly-typed, no arbitrary-object payload. Every field is
- * validated and length-capped so ChatGPT cannot flood or shape the DB.
+ *
+ * Authenticated (the route requires an OAuth bearer), strictly-typed, no
+ * arbitrary-object payload. Every field is validated and length-capped.
+ * Beyond field shape this enforces a minimum-completeness gate: a title and a
+ * URL are not a listing, so a submission without a real description, a location
+ * (or REMOTE), and — for a walk-in — real dates and a venue is rejected instead
+ * of being stored as a stub the moderation queue has to finish.
  * URL fields are treated as DATA only — the server never fetches them.
  */
 export const mcpSubmitOpportunitySchema = z.object({
@@ -573,6 +588,10 @@ export const mcpSubmitOpportunitySchema = z.object({
     jobUrl: z.string().trim().url('jobUrl must be a valid https URL').max(2000)
         .refine((u) => u.startsWith('https://'), 'jobUrl must use https'),
     location: z.string().trim().max(120).optional(),
+    // Several cities belong in `locations`, one entry each. `location` stays as
+    // the single-value alias; the route splits it, so "Hyderabad and Bangalore"
+    // never becomes one location label that no city filter can match.
+    locations: z.array(z.string().trim().min(1).max(120)).max(15).optional(),
     // Tool schema sends `employmentType` (singular); accept both spellings so
     // the value is never silently dropped (zod strips unknown keys).
     employmentType: z.string().trim().max(80).optional(),
@@ -585,7 +604,9 @@ export const mcpSubmitOpportunitySchema = z.object({
     timeRange: z.string().trim().max(120).optional(),
     venueAddress: z.string().trim().max(500).optional(),
     salary: z.string().trim().max(60).optional(),
-    description: z.string().trim().max(5000).optional(),
+    // Required and long enough to be a real posting: a title and a URL are not
+    // a listing, and a stub cannot be reviewed or shown to candidates.
+    description: z.string({ error: 'description is required' }).trim().min(80, 'description must be at least 80 characters').max(5000),
     eligibility: z.string().trim().max(2000).optional(),
     // Structured eligibility. The agent reads the posting, so it can send exact
     // values instead of only the free-text blob above; both land on the listing.
@@ -596,13 +617,28 @@ export const mcpSubmitOpportunitySchema = z.object({
     // Full listing detail the write path already stores. Exposed here so an
     // agent that reads a posting can submit a complete listing, not a stub.
     companyWebsite: z.string().trim().url('companyWebsite must be a valid URL').max(2000).optional(),
+    companyLogoUrl: z.string().trim().url('companyLogoUrl must be a valid URL').max(2000).optional(),
     workMode: z.nativeEnum(WorkMode).optional(),
     salaryPeriod: z.nativeEnum(SalaryPeriod).optional(),
     experienceMin: z.number().int().min(0).max(50).optional(),
     experienceMax: z.number().int().min(0).max(50).optional(),
     jobFunction: z.string().trim().max(120).optional(),
+    // The education set the listing filters read. `eligibility` free text is
+    // parsed into degrees and pass-out years only when the structured values are
+    // absent, so an agent that read the posting should send them explicitly.
+    allowedDegrees: z.array(z.nativeEnum(EducationLevel)).max(10).optional(),
     allowedCourses: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
     allowedSpecializations: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
+    stipend: z.string().trim().max(120).optional(),
+    incentives: z.string().trim().max(500).optional(),
+    selectionProcess: z.string().trim().max(5000).optional(),
+    notesHighlights: z.string().trim().max(5000).optional(),
+    tags: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
+    salaryMin: z.number().int().min(0).nullable().optional(),
+    salaryMax: z.number().int().min(0).nullable().optional(),
+    venueLink: z.union([z.string().trim().url('venueLink must be a valid URL'), z.literal('')]).optional(),
+    reportingTime: z.string().trim().max(120).optional(),
+    applicationDetails: applicationDetailsSchema.nullable().optional(),
     expiresAt: z.string().trim().max(40).optional(),
 }).superRefine((data, ctx) => {
     if (data.sourceUrl && !data.sourceUrl.startsWith('https://')) {
@@ -622,6 +658,51 @@ export const mcpSubmitOpportunitySchema = z.object({
             message:
                 'This looks like test data (TEST-MCP / DELETE ME / TestCo / TestGovt) and is rejected by the submission pipeline.',
         });
+    }
+
+    // ─── Minimum completeness ────────────────────────────────────────────────
+    // A title and a URL are not a listing. Without these gates an agent could
+    // submit a stub that a moderator then has to finish by hand (or, worse, a
+    // moderator connection would publish it live), and every stub landed in the
+    // feed with no description and no location. Each message names what to send
+    // so the agent can correct the call instead of retrying blindly.
+    const submittedLocations = splitSubmittedLocations({
+        locations: data.locations,
+        location: data.location,
+    });
+    if (submittedLocations.length === 0 && data.workMode !== WorkMode.REMOTE) {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['locations'],
+            message:
+                'locations is required: send the city or cities the posting states (one entry each), '
+                + 'or set workMode to REMOTE. A listing with no location cannot be filtered or shown '
+                + 'to candidates.',
+        });
+    }
+    if (data.category === 'walkin') {
+        const hasRealDate = (data.dates ?? []).some((value) => {
+            const parsed = Date.parse(value);
+            return Number.isFinite(parsed);
+        });
+        if (!hasRealDate) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['dates'],
+                message:
+                    'category "walkin" requires at least one real drive date in `dates` (YYYY-MM-DD). '
+                    + 'Without one the server stores today\'s date, which is not what the posting says.',
+            });
+        }
+        if (!data.venueAddress || data.venueAddress.trim().length < 5) {
+            ctx.addIssue({
+                code: 'custom',
+                path: ['venueAddress'],
+                message:
+                    'category "walkin" requires the real venueAddress. Without one the server stores '
+                    + '"Venue shared after apply" — a placeholder candidates cannot use.',
+            });
+        }
     }
 });
 

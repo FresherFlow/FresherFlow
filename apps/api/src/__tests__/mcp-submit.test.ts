@@ -72,9 +72,18 @@ function nextJobUrl() {
     return `https://example.com/job-${urlCounter}`;
 }
 
+// A real posting is never just a title and a URL. These defaults keep the
+// tests focused on the behaviour each one asserts; the completeness gates
+// themselves are exercised in their own block below.
+const VALID_DESCRIPTION =
+    'We are hiring fresher software engineers to build and maintain web applications with React, '
+    + 'TypeScript and Node.js. You will work with senior engineers, review code and ship features. '
+    + 'B.E/B.Tech or MCA graduates from 2024-2026 are eligible to apply.';
+
 function submit(token: string | null, body: Record<string, unknown>) {
     const req = request(app).post('/api/opportunities/mcp-submit');
-    return (token ? req.set('Authorization', `Bearer ${token}`) : req).send(body);
+    return (token ? req.set('Authorization', `Bearer ${token}`) : req)
+        .send({ location: 'Hyderabad', description: VALID_DESCRIPTION, ...body });
 }
 
 beforeAll(async () => {
@@ -268,6 +277,71 @@ describe('POST /api/opportunities/mcp-submit: payload handling', () => {
         expect(submittedProvenance().eligibility).toBeUndefined();
     });
 
+    it('splits several cities sent in one location string', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            location: 'Hyderabad and Bangalore',
+        });
+
+        expect(res.status).toBe(201);
+        // Stored as one label it could never match either city filter.
+        expect(submittedOpportunityData().locations).toEqual(['Hyderabad', 'Bangalore']);
+    });
+
+    it('keeps an explicit locations array as one entry per city', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            location: '',
+            locations: ['Hyderabad', 'Bangalore', 'Hyderabad'],
+        });
+
+        expect(res.status).toBe(201);
+        expect(submittedOpportunityData().locations).toEqual(['Hyderabad', 'Bangalore']);
+    });
+
+    it('forwards the full education and detail field set', async () => {
+        const res = await submit('member-token', {
+            title: 'Graduate Engineer Trainee',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            allowedDegrees: ['DEGREE', 'PG'],
+            allowedCourses: ['B.Tech', 'MCA'],
+            allowedSpecializations: ['Computer Science'],
+            passoutYears: [2025, 2026],
+            stipend: '₹20,000/month',
+            incentives: 'Health insurance, cab facility',
+            selectionProcess: 'Online test → Technical interview → HR',
+            notesHighlights: 'Immediate joiners preferred',
+            tags: ['Fresher', 'Hybrid'],
+            salaryMin: 500000,
+            salaryMax: 700000,
+            applicationDetails: { method: 'FORM', platform: 'Google Forms', requiredItems: ['Resume'] },
+        });
+
+        expect(res.status).toBe(201);
+        const data = submittedOpportunityData();
+        expect(data.allowedDegrees).toEqual(['DEGREE', 'PG']);
+        expect(data.allowedCourses).toEqual(['B.Tech', 'MCA']);
+        expect(data.allowedSpecializations).toEqual(['Computer Science']);
+        expect(data.allowedPassoutYears).toEqual([2025, 2026]);
+        expect(data.stipend).toBe('₹20,000/month');
+        expect(data.incentives).toBe('Health insurance, cab facility');
+        expect(data.selectionProcess).toBe('Online test → Technical interview → HR');
+        expect(data.notesHighlights).toBe('Immediate joiners preferred');
+        expect(data.tags).toEqual(['Fresher', 'Hybrid']);
+        expect(data.salaryMin).toBe(500000);
+        expect(data.salaryMax).toBe(700000);
+        expect(data.applicationDetails).toEqual({
+            method: 'FORM',
+            platform: 'Google Forms',
+            requiredItems: ['Resume'],
+        });
+    });
+
     it('attributes the submission to the signed-in account, never the community bot', async () => {
         await submit('member-token', {
             title: 'Software Engineer',
@@ -300,5 +374,175 @@ describe('POST /api/opportunities/mcp-submit: payload handling', () => {
 
         expect(res.status).toBe(400);
         expect(prismaMock.opportunity.create).not.toHaveBeenCalled();
+    });
+});
+
+describe('POST /api/opportunities/mcp-submit: minimum completeness', () => {
+    it('rejects a title-and-URL stub with no description', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            description: '',
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('description');
+        expect(prismaMock.opportunity.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a description too short to be a real posting', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            description: 'See the link.',
+        });
+
+        expect(res.status).toBe(400);
+        expect(prismaMock.opportunity.create).not.toHaveBeenCalled();
+    });
+
+    it('requires a location unless the role is remote', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            location: '',
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('location');
+        expect(prismaMock.opportunity.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts a remote role without a location', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            location: '',
+            workMode: 'REMOTE',
+        });
+
+        expect(res.status).toBe(201);
+        expect(prismaMock.opportunity.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects a walk-in without a real date instead of storing today', async () => {
+        const res = await submit('member-token', {
+            title: 'Walk-in Drive',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            category: 'walkin',
+            dates: [],
+            venueAddress: 'Acme Office, Hitech City, Hyderabad',
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('date');
+        expect(prismaMock.opportunity.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a walk-in without a venue instead of storing a placeholder', async () => {
+        const res = await submit('member-token', {
+            title: 'Walk-in Drive',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            category: 'walkin',
+            dates: ['2026-12-01'],
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('venue');
+        expect(prismaMock.opportunity.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts a complete walk-in with real dates and a venue', async () => {
+        const res = await submit('member-token', {
+            title: 'Walk-in Drive',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            category: 'walkin',
+            dates: ['2026-12-01', '2026-12-02'],
+            venueAddress: 'Acme Office, Hitech City, Hyderabad',
+        });
+
+        expect(res.status).toBe(201);
+        expect(submittedOpportunityData().recruitmentMethod).toBe('WALK_IN');
+    });
+});
+
+describe('every field rule is enforced, not only documented', () => {
+    it('rejects a salary that is a phrase, not a figure', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            salary: 'Competitive',
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('salary');
+        expect(prismaMock.opportunity.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects duplicated skills instead of storing the same skill twice', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            skills: ['React', 'react'],
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('skills');
+    });
+
+    it('rejects an unknown employment type instead of silently dropping it', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            employmentTypes: 'PERMANENT',
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('employment');
+    });
+
+    it('rejects a deadline that has already passed', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            expiresAt: '2020-01-01',
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('expiresAt');
+    });
+
+    it('rejects a work mode sent as a city', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'Acme',
+            jobUrl: nextJobUrl(),
+            location: 'Remote',
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('workMode');
+    });
+
+    it('rejects a placeholder company', async () => {
+        const res = await submit('member-token', {
+            title: 'Software Engineer',
+            companyName: 'One of our clients',
+            jobUrl: nextJobUrl(),
+        });
+
+        expect(res.status).toBe(400);
+        expect(JSON.stringify(res.body)).toContain('company');
     });
 });

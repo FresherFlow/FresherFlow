@@ -109,7 +109,11 @@ const FULL_JOB_PAYLOAD = {
     company: 'Acme Corp',
     companyWebsite: 'https://acme.test',
     category: 'job',
-    description: 'Build and maintain the Acme platform used by fresher teams.',
+    description:
+        'Build and maintain the Acme platform used by fresher teams. You will ship features across '
+        + 'the React frontend and Node.js services, review code, write tests and work with design and '
+        + 'product to turn requirements into working software. B.E/B.Tech or MCA graduates from '
+        + '2024-2026 are eligible; no prior experience is required.',
     allowedDegrees: ['DEGREE'],
     allowedCourses: ['B.Tech / B.E.'],
     allowedSpecializations: ['Computer Science'],
@@ -210,6 +214,52 @@ describe('createListing stores a complete job payload', () => {
             createListing(noLinks, { status: 'DRAFT', onDuplicate: 'reject' }),
         ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_FAILED' });
         expect(createSpy).not.toHaveBeenCalled();
+    });
+});
+
+describe('content rules are enforced, not just described', () => {
+    it('refuses to publish a salary that is a phrase, not a figure', async () => {
+        await expect(
+            createListing(
+                { ...FULL_JOB_PAYLOAD, salaryRange: 'Competitive' },
+                { status: 'PUBLISHED', onDuplicate: 'reject' },
+            ),
+        ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_FAILED' });
+        expect(createSpy).not.toHaveBeenCalled();
+    });
+
+    it('refuses to publish a placeholder company', async () => {
+        await expect(
+            createListing(
+                { ...FULL_JOB_PAYLOAD, company: 'Confidential' },
+                { status: 'PUBLISHED', onDuplicate: 'reject' },
+            ),
+        ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_FAILED' });
+    });
+
+    it('refuses duplicate skills and an unknown employment type', async () => {
+        await expect(
+            createListing(
+                { ...FULL_JOB_PAYLOAD, requiredSkills: ['React', 'react'] },
+                { status: 'PUBLISHED', onDuplicate: 'reject' },
+            ),
+        ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_FAILED' });
+
+        await expect(
+            createListing(
+                { ...FULL_JOB_PAYLOAD, employmentTypes: 'PERMANENT' },
+                { status: 'PUBLISHED', onDuplicate: 'reject' },
+            ),
+        ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_FAILED' });
+    });
+
+    it('still allows an incomplete draft, which a human can finish', async () => {
+        await expect(
+            createListing(
+                { ...FULL_JOB_PAYLOAD, salaryRange: 'Competitive', description: 'Short.' },
+                { status: 'DRAFT', onDuplicate: 'reject' },
+            ),
+        ).resolves.toBeDefined();
     });
 });
 
@@ -346,6 +396,42 @@ describe('updateListing', () => {
         expect(data.title).toBe('Software Engineer');
         expect(data.status).toBe('PUBLISHED');
         expect(data.lastVerified).toBeInstanceOf(Date);
+    });
+
+    it('keeps the existing salary period when the payload omits it', async () => {
+        findFirstSpy.mockResolvedValue({
+            id: 'existing-id',
+            slug: 'existing-slug',
+            status: 'DRAFT',
+            title: 'Old Title',
+            company: 'Old Company',
+            salaryPeriod: 'MONTHLY',
+            governmentJobDetails: null,
+            driveDetails: null,
+        });
+
+        const withoutPeriod: Record<string, unknown> = { ...FULL_JOB_PAYLOAD };
+        delete withoutPeriod.salaryPeriod;
+        await updateListing('existing-slug', withoutPeriod as unknown as typeof FULL_JOB_PAYLOAD);
+
+        const data = updateSpy.mock.calls.at(-1)?.[0]?.data as Record<string, unknown>;
+        // A silent YEARLY default here would rewrite an internship's stipend
+        // period on every unrelated edit.
+        expect(data.salaryPeriod).toBe('MONTHLY');
+    });
+
+    it('never writes null into the non-nullable salaryPeriod column', async () => {
+        const result = updateListing('existing-slug', {
+            ...FULL_JOB_PAYLOAD,
+            salaryPeriod: null,
+        } as unknown as typeof FULL_JOB_PAYLOAD);
+
+        await expect(result).resolves.toBeDefined();
+        const data = updateSpy.mock.calls.at(-1)?.[0]?.data as Record<string, unknown>;
+        // The old contract allowed null, and Prisma answered
+        // "Argument salaryPeriod must not be null" — a 500 on a valid request.
+        expect(data.salaryPeriod).not.toBeNull();
+        expect(data.salaryPeriod).toBe('YEARLY');
     });
 
     it('rejects EXPIRED with a 400 instead of letting Prisma throw a 500', async () => {

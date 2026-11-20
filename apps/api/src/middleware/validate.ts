@@ -11,8 +11,15 @@ export function validate(schema: { parseAsync: (data: unknown) => Promise<unknow
             next();
         } catch (error) {
             if (error instanceof ZodError) {
-                const messages = error.issues.map(e => `${e.path.join('.')}: ${e.message}`);
-                return next(new AppError(messages.join(', '), 400));
+                // One entry per failing field, plus the same list as a sentence.
+                // An empty path means the body itself was rejected (e.g. not an
+                // object), so it is reported as `body` rather than as "" measures.
+                const details = error.issues.map((issue) => ({
+                    field: issue.path.join('.') || 'body',
+                    message: issue.message,
+                }));
+                const messages = details.map((detail) => `${detail.field}: ${detail.message}`);
+                return next(new AppError(messages.join(', '), 400, details));
             }
             next(error);
         }

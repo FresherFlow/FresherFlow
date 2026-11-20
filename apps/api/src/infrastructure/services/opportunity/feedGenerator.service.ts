@@ -244,6 +244,24 @@ export class FeedGeneratorService {
                 salaryPeriod: rest.salaryPeriod,
                 applyLink: rest.applyLink,
             };
+            // Fields the lightweight index and the public detail payload advertise.
+            // They are destructured above so the full feed can drop placeholders,
+            // but dropping them unconditionally left every card without a salary,
+            // every walk-in without a venue, and every government listing without
+            // its details — while `FEED_INDEX_FIELDS` still listed them.
+            if (salaryMin !== undefined && salaryMin !== null) cleanObject.salaryMin = salaryMin;
+            if (salaryMax !== undefined && salaryMax !== null) cleanObject.salaryMax = salaryMax;
+            if (salaryRange !== undefined && salaryRange !== null && salaryRange !== '') cleanObject.salaryRange = salaryRange;
+            if (stipend !== undefined && stipend !== null && stipend !== '') cleanObject.stipend = stipend;
+            if (incentives !== undefined && incentives !== null && incentives !== '') cleanObject.incentives = incentives;
+            if (sourceLink !== undefined && sourceLink !== null && sourceLink !== '') cleanObject.sourceLink = sourceLink;
+            if (tags !== undefined && tags !== null && Array.isArray(tags) && tags.length > 0) cleanObject.tags = tags;
+            if (driveDetails !== undefined && driveDetails !== null) cleanObject.driveDetails = driveDetails;
+            if (governmentJobDetails !== undefined && governmentJobDetails !== null) cleanObject.governmentJobDetails = governmentJobDetails;
+            if (registrationDeadline !== undefined && registrationDeadline !== null) cleanObject.registrationDeadline = registrationDeadline;
+            if (applicationDeadline !== undefined && applicationDeadline !== null) cleanObject.applicationDeadline = applicationDeadline;
+            if (rest.passoutYearMin !== undefined && rest.passoutYearMin !== null) cleanObject.passoutYearMin = rest.passoutYearMin;
+            if (rest.passoutYearMax !== undefined && rest.passoutYearMax !== null) cleanObject.passoutYearMax = rest.passoutYearMax;
             // Conditionally add optional fields only if they have non-null values            if (rest.postedAt !== undefined && rest.postedAt !== null) cleanObject.postedAt = rest.postedAt;
             if (rest.publishedAt !== undefined && rest.publishedAt !== null) cleanObject.publishedAt = rest.publishedAt;
             if (rest.expiresAt !== undefined && rest.expiresAt !== null) cleanObject.expiresAt = rest.expiresAt;
@@ -365,7 +383,7 @@ export class FeedGeneratorService {
      * route project identical fields and cannot drift.
      */
     public static readonly FEED_INDEX_FIELDS: readonly string[] = [
-        'id', 'slug', 'type', 'recruitmentMethod', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
+        'id', 'slug', 'type', 'recruitmentMethod', 'sector', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
         'companyStage', 'companySize', 'companyIndustry', 'companyTopics',
         'locations', 'workMode', 'salaryMin', 'salaryMax', 'salaryRange', 'salaryPeriod',
         'stipend', 'incentives', 'employmentTypes', 'jobFunction',

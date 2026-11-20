@@ -676,6 +676,12 @@ async function publishCandidate(
             // the write. The end state is the one we wanted.
             return 'already-published';
         }
+        if (error instanceof ListingWriteError && error.code === 'VALIDATION_FAILED') {
+            // A content rule rejected the row. That is a hold for a human, not a
+            // pipeline failure — the same treatment as a payload the contract
+            // could not parse.
+            throw new ListingHeldError('incomplete-listing', error.message);
+        }
         throw error;
     }
     return 'published';

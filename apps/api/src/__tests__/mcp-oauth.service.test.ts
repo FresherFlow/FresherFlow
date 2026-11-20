@@ -165,15 +165,16 @@ describe('exchangeAuthorizationCode', () => {
         );
     });
 
-    it('refuses a reused code and revokes the tokens it already produced', async () => {
+    it('refuses a reused code without revoking the existing connection', async () => {
         prismaMock.oAuthAuthorizationCode.findUnique.mockResolvedValue(pendingCode({ usedAt: new Date() }));
 
         await expect(exchangeAuthorizationCode(request)).rejects.toMatchObject({ error: 'invalid_grant' });
 
-        expect(prismaMock.oAuthAccessToken.updateMany).toHaveBeenCalledWith(
-            expect.objectContaining({ where: expect.objectContaining({ userId: 'user-1', clientId: 'ffc_abc' }) }),
-        );
-        expect(prismaMock.oAuthRefreshToken.updateMany).toHaveBeenCalled();
+        // OpenSEO behaviour: a replayed code is rejected, but tokens already
+        // issued for this client stay live. Revoking them made one double-click
+        // on the consent screen kill a working MCP connection.
+        expect(prismaMock.oAuthAccessToken.updateMany).not.toHaveBeenCalled();
+        expect(prismaMock.oAuthRefreshToken.updateMany).not.toHaveBeenCalled();
         expect(prismaMock.oAuthAccessToken.create).not.toHaveBeenCalled();
     });
 
@@ -216,7 +217,8 @@ describe('exchangeAuthorizationCode', () => {
         await expect(exchangeAuthorizationCode(request)).rejects.toMatchObject({ error: 'invalid_grant' });
         expect(prismaMock.oAuthAccessToken.create).not.toHaveBeenCalled();
         expect(prismaMock.oAuthRefreshToken.create).not.toHaveBeenCalled();
-        expect(prismaMock.oAuthAccessToken.updateMany).toHaveBeenCalled();
+        // The loser of the race is rejected; the winner's tokens stay live.
+        expect(prismaMock.oAuthAccessToken.updateMany).not.toHaveBeenCalled();
     });
 });
 

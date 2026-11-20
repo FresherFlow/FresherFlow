@@ -8,6 +8,8 @@ interface ExtendedError extends Error {
     code?: string;
     isAppError?: boolean;
     isOperational?: boolean;
+    /** Field-level detail, e.g. `[{ field: 'salary', message: '…' }]`. */
+    details?: unknown;
     name: string;
 }
 
@@ -208,7 +210,10 @@ export function errorHandler(
         error: {
             message,
             code,
-            requestId
+            requestId,
+            // Field-level validation detail, so a client (MCP or web) can name
+            // every offending field instead of only showing one sentence.
+            ...(err.details === undefined ? {} : { details: err.details }),
         }
     });
 }
@@ -264,7 +269,9 @@ function sanitizeClientMessage(input: string): string {
         .replace(/\s+at\s+[^\s]+\s+\([^)]*\)/g, '')
         .replace(/\.ts:\d+:\d+/g, '')
         .replace(/\.js:\d+:\d+/g, '');
-    if (out.length > 500) out = `${out.slice(0, 497)}...`;
+    // A validation message carries one clause per failing field. 500 chars cut
+    // the list off part-way, so the last fields were never reported.
+    if (out.length > 2000) out = `${out.slice(0, 1997)}...`;
     return out || 'Unknown error';
 }
 
@@ -279,13 +286,15 @@ export class AppError extends Error {
     statusCode: number;
     isAppError: boolean;
     isOperational: boolean;
+    details?: unknown;
 
-    constructor(message: string, statusCode: number = 500) {
+    constructor(message: string, statusCode: number = 500, details?: unknown) {
         super(message);
         this.statusCode = statusCode;
         this.name = 'AppError';
         this.isAppError = true;
         this.isOperational = true;
+        this.details = details;
     }
 }
 

@@ -257,7 +257,16 @@ const defaultLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => extractClientIp(req),
-    skip: (req) => req.path === '/api/auth/me' || req.path === '/api/admin/auth/me',
+    skip: (req) =>
+        req.path === '/api/auth/me'
+        || req.path === '/api/admin/auth/me'
+        // MCP and OAuth already have dedicated per-user / per-route limiters
+        // downstream. Counting them in this shared per-IP bucket lets retries
+        // from one connection exhaust the budget of every other connection
+        // behind the same egress IP, which surfaces as an unexplained 429.
+        || req.path.startsWith('/api/internal/mcp/')
+        || req.path.startsWith('/oauth/')
+        || req.path === '/api/auth/refresh',
     handler: (req, res) => {
         logger.warn('Rate limit exceeded', {
             ip: extractClientIp(req),

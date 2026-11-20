@@ -1008,6 +1008,10 @@ export async function resolveSubmitAttributionUserId(userId?: string | null): Pr
 }
 
 export async function submitJob(input: SubmitJobInput) {
+    // The quick-share path (`POST /api/jobs/submit`) intentionally allows a
+    // sparse DRAFT: a person pasting a link is not expected to write the
+    // description. Content rules are enforced where a listing can go live —
+    // `listingWrite` on publish — and on the MCP submit route below.
     const sourceUrl = normalizeUrl(input.sourceUrl);
     const applyUrl = input.applyUrl ? normalizeUrl(input.applyUrl) : undefined;
 

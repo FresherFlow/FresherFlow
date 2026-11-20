@@ -217,7 +217,9 @@ router.get('/.well-known/oauth-authorization-server', (_req: Request, res: Respo
         token_endpoint: `${issuer}/oauth/token`,
         registration_endpoint: `${issuer}/oauth/register`,
         revocation_endpoint: `${issuer}/oauth/revoke`,
-        scopes_supported: [MCP_OAUTH_SCOPE],
+        // OpenAI's MCP connector docs require the refresh-token scope to be
+        // advertised, or ChatGPT can lose access when the original token expires.
+        scopes_supported: [MCP_OAUTH_SCOPE, OFFLINE_ACCESS_SCOPE],
         response_types_supported: ['code'],
         grant_types_supported: ['authorization_code', 'refresh_token'],
         // Public clients only: ChatGPT proves possession with PKCE, not a secret.
@@ -242,7 +244,7 @@ router.get('/.well-known/openid-configuration', (_req: Request, res: Response) =
         authorization_endpoint: `${issuer}/oauth/authorize`,
         token_endpoint: `${issuer}/oauth/token`,
         revocation_endpoint: `${issuer}/oauth/revoke`,
-        scopes_supported: [MCP_OAUTH_SCOPE],
+        scopes_supported: [MCP_OAUTH_SCOPE, OFFLINE_ACCESS_SCOPE],
         // No `jwks_uri`: tokens on this surface are opaque and stored hashed,
         // so there is no key set to publish. Advertising a key endpoint that
         // does not exist makes an OIDC client fail discovery and retry.
@@ -567,7 +569,7 @@ router.post('/oauth/token', tokenLimiter, express.urlencoded({ extended: false }
             return;
         }
         if (grantType === 'refresh_token') {
-            const tokens = await refreshAccessToken(str(body.refresh_token), str(body.client_id));
+            const tokens = await refreshAccessToken(str(body.refresh_token), str(body.client_id) || undefined);
             res.json(tokens);
             return;
         }

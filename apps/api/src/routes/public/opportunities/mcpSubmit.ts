@@ -3,7 +3,8 @@ import prisma from '../../../infrastructure/database/prisma';
 import { validate } from '../../../middleware/validate';
 import { mcpSubmitOpportunitySchema } from '../../../utils/validation';
 import { createRateLimiter } from '../../../middleware/rateLimit';
-import { submitJob } from '../../../infrastructure/services/community/community.service';
+import { submitJob, type SubmitJobInput } from '../../../infrastructure/services/community/community.service';
+import { splitSubmittedLocations, validateListingContent, describeListingIssues } from '@fresherflow/utils';
 import { verifyAccessToken as verifyMcpAccessToken } from '../../../infrastructure/services/platform/mcpOAuth.service';
 import { getMcpPublicUrl } from '../../../utils/runtimeConfig';
 import { resolveMcpIdentity } from '../../../application/mcp/identity';
@@ -79,6 +80,46 @@ const requireMcpUser: RequestHandler = async (req, res, next) => {
     }
 };
 
+/**
+ * Details the posting normally states that this call did not send.
+ *
+ * The gate below rejects a stub, but an accepted submission can still be thin —
+ * and a thin listing is what makes the feed look half-filled. This list is
+ * reported to the agent so it can ask the user or re-read the posting instead
+ * of silently leaving the fields out. It is a hint, not a rejection: a real
+ * posting may genuinely not state a salary or a deadline.
+ */
+function collectMissingSubmissionFields(body: {
+    employmentType?: string;
+    employmentTypes?: string;
+    skills?: string[];
+    eligibility?: string;
+    passoutYears?: number[];
+    salary?: string;
+    stipend?: string;
+    salaryMin?: number | null;
+    salaryMax?: number | null;
+    companyWebsite?: string;
+    workMode?: string;
+    allowedDegrees?: string[];
+    jobFunction?: string;
+    expiresAt?: string;
+}): string[] {
+    const missing: string[] = [];
+    if (!body.employmentType && !body.employmentTypes) missing.push('employmentType');
+    if (!body.skills?.length) missing.push('skills');
+    if (!body.eligibility && !body.passoutYears?.length) missing.push('eligibility');
+    if (!body.salary && !body.stipend && body.salaryMin == null && body.salaryMax == null) {
+        missing.push('salary');
+    }
+    if (!body.companyWebsite) missing.push('companyWebsite');
+    if (!body.workMode) missing.push('workMode');
+    if (!body.allowedDegrees?.length) missing.push('allowedDegrees');
+    if (!body.jobFunction) missing.push('jobFunction');
+    if (!body.expiresAt) missing.push('expiresAt');
+    return missing;
+}
+
 const mcpSubmitLimiter = createRateLimiter({
     windowMs: 60 * 60 * 1000,
     max: 60,
@@ -99,6 +140,7 @@ router.post(
                 companyName: string;
                 jobUrl: string;
                 location?: string;
+                locations?: string[];
                 employmentType?: string;
                 employmentTypes?: string;
                 category?: 'job' | 'internship' | 'walkin' | 'government';
@@ -114,13 +156,25 @@ router.post(
                 sourceUrl?: string;
                 contactEmail?: string;
                 companyWebsite?: string;
+                companyLogoUrl?: string;
                 workMode?: WorkMode;
                 salaryPeriod?: SalaryPeriod;
                 experienceMin?: number;
                 experienceMax?: number;
                 jobFunction?: string;
+                allowedDegrees?: string[];
                 allowedCourses?: string[];
                 allowedSpecializations?: string[];
+                stipend?: string;
+                incentives?: string;
+                selectionProcess?: string;
+                notesHighlights?: string;
+                tags?: string[];
+                salaryMin?: number | null;
+                salaryMax?: number | null;
+                venueLink?: string;
+                reportingTime?: string;
+                applicationDetails?: SubmitJobInput['applicationDetails'];
                 expiresAt?: string;
             };
 
@@ -137,6 +191,51 @@ router.post(
                       ? 'JOB'
                       : (body.category ?? 'job').toUpperCase();
             const employmentTypes = body.employmentTypes ?? body.employmentType ?? null;
+            const submittedLocations = splitSubmittedLocations({ locations: body.locations, location: body.location });
+
+            // The MCP schema checks shape and completeness. These are the value
+            // rules (a salary that is a phrase, duplicated skills, an unknown
+            // employment type, a past deadline). They run here, on the agent
+            // path, so a submission cannot reach review with bad values.
+            const contentIssues = validateListingContent({
+                title: body.title,
+                company: body.companyName,
+                description: body.description ?? null,
+                locations: submittedLocations,
+                salaryRange: body.salary ?? null,
+                stipend: body.stipend ?? null,
+                salaryMin: body.salaryMin ?? null,
+                salaryMax: body.salaryMax ?? null,
+                experienceMin: body.experienceMin ?? null,
+                experienceMax: body.experienceMax ?? null,
+                notesHighlights: body.notesHighlights ?? null,
+                requiredSkills: body.skills ?? [],
+                employmentTypes,
+                category,
+                dates: body.dates ?? null,
+                expiresAt: body.expiresAt ?? null,
+                workMode: body.workMode ?? null,
+                companyWebsite: body.companyWebsite ?? null,
+            });
+            if (contentIssues.length > 0) {
+                // The shared rules use the admin contract names. The MCP caller
+                // sent different ones (`salary`, `skills`), so an error must name
+                // the field the caller can actually fix. Response shape:
+                //   { error: { message, details: [{ field, message }] } }
+                const AGENT_FIELD_NAMES: Record<string, string> = {
+                    salaryRange: 'salary',
+                    requiredSkills: 'skills',
+                };
+                const agentIssues = contentIssues.map((issue) => ({
+                    ...issue,
+                    field: AGENT_FIELD_NAMES[issue.field] ?? issue.field,
+                }));
+                throw new AppError(
+                    `This submission was rejected — ${describeListingIssues(agentIssues)}`,
+                    400,
+                    agentIssues,
+                );
+            }
 
             const result = await submitJob({
                 userId: signedInUserId,
@@ -150,22 +249,37 @@ router.post(
                 company: body.companyName,
                 description: body.description ?? null,
                 companyWebsite: body.companyWebsite ?? null,
+                companyLogoUrl: body.companyLogoUrl ?? null,
                 workMode: body.workMode ?? null,
                 salaryPeriod: body.salaryPeriod,
                 experienceMin: body.experienceMin ?? null,
                 experienceMax: body.experienceMax ?? null,
                 jobFunction: body.jobFunction ?? null,
+                allowedDegrees: body.allowedDegrees ?? [],
                 allowedCourses: body.allowedCourses ?? [],
                 allowedSpecializations: body.allowedSpecializations ?? [],
+                stipend: body.stipend ?? null,
+                incentives: body.incentives ?? null,
+                selectionProcess: body.selectionProcess ?? null,
+                notesHighlights: body.notesHighlights ?? null,
+                tags: body.tags ?? [],
+                salaryMin: body.salaryMin ?? null,
+                salaryMax: body.salaryMax ?? null,
                 expiresAt: body.expiresAt ?? null,
                 category,
-                locations: body.location ? [body.location] : [],
+                // One entry per city. `location` is a single-value alias that may
+                // hold "Hyderabad and Bangalore"; splitting it here is what keeps
+                // a multi-city posting filterable by each city.
+                locations: submittedLocations,
                 employmentTypes,
                 sector: body.category === 'government' ? 'GOVERNMENT' : undefined,
                 dates: body.dates,
                 dateRange: body.dateRange ?? null,
                 timeRange: body.timeRange ?? null,
                 venueAddress: body.venueAddress ?? null,
+                venueLink: body.venueLink || null,
+                reportingTime: body.reportingTime ?? null,
+                applicationDetails: body.applicationDetails ?? null,
                 salaryRange: body.salary ?? null,
                 // Passed through rather than hardcoded empty: the agent read the
                 // posting, so these are the only structured eligibility values
@@ -209,6 +323,7 @@ router.post(
 
             const status = isLive ? 'PUBLISHED' : 'DRAFT';
             const slug = result.slug ?? stored?.slug ?? null;
+            const missingFields = collectMissingSubmissionFields(body);
 
             return res.status(result.existing ? 200 : 201).json({
                 success: true,
@@ -217,6 +332,9 @@ router.post(
                 status,
                 published: isLive,
                 duplicate: Boolean(result.existing),
+                // Reported, not enforced: the agent should fill what the posting
+                // states, and say what it does not.
+                missingFields,
                 message: result.existing
                     ? isLive
                         ? 'This opportunity is already live on FresherFlow.'
