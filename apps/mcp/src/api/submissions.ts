@@ -24,6 +24,7 @@ export async function submitOpportunity(input: SubmitOpportunityInput): Promise<
         jobUrl: input.jobUrl,
     };
     if (input.location) body.location = input.location;
+    if (input.locations) body.locations = input.locations;
     if (input.employmentType) body.employmentType = input.employmentType;
     if (input.employmentTypes) body.employmentTypes = input.employmentTypes;
     if (input.category) body.category = input.category;
@@ -39,13 +40,25 @@ export async function submitOpportunity(input: SubmitOpportunityInput): Promise<
     if (input.sourceUrl) body.sourceUrl = input.sourceUrl;
     if (input.contactEmail) body.contactEmail = input.contactEmail;
     if (input.companyWebsite) body.companyWebsite = input.companyWebsite;
+    if (input.companyLogoUrl) body.companyLogoUrl = input.companyLogoUrl;
     if (input.workMode) body.workMode = input.workMode;
     if (input.salaryPeriod) body.salaryPeriod = input.salaryPeriod;
     if (input.experienceMin !== undefined) body.experienceMin = input.experienceMin;
     if (input.experienceMax !== undefined) body.experienceMax = input.experienceMax;
     if (input.jobFunction) body.jobFunction = input.jobFunction;
+    if (input.allowedDegrees) body.allowedDegrees = input.allowedDegrees;
     if (input.allowedCourses) body.allowedCourses = input.allowedCourses;
     if (input.allowedSpecializations) body.allowedSpecializations = input.allowedSpecializations;
+    if (input.stipend) body.stipend = input.stipend;
+    if (input.incentives) body.incentives = input.incentives;
+    if (input.selectionProcess) body.selectionProcess = input.selectionProcess;
+    if (input.notesHighlights) body.notesHighlights = input.notesHighlights;
+    if (input.tags) body.tags = input.tags;
+    if (input.salaryMin !== undefined && input.salaryMin !== null) body.salaryMin = input.salaryMin;
+    if (input.salaryMax !== undefined && input.salaryMax !== null) body.salaryMax = input.salaryMax;
+    if (input.venueLink) body.venueLink = input.venueLink;
+    if (input.reportingTime) body.reportingTime = input.reportingTime;
+    if (input.applicationDetails !== undefined) body.applicationDetails = input.applicationDetails;
     if (input.expiresAt) body.expiresAt = input.expiresAt;
 
     const data = await apiFetch<SubmitOpportunityOutput>('/api/opportunities/mcp-submit', {

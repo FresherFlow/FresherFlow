@@ -1,6 +1,13 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from 'zod';
 import { rejectSubmissionTool } from '../api/submissions.js';
+
+const OUTPUT_SCHEMA = z.object({
+    success: z.boolean(),
+    submissionId: z.string(),
+    published: z.boolean(),
+    message: z.string(),
+});
 
 /**
  * Write tool: reject a submission.
@@ -23,25 +30,20 @@ export function registerRejectSubmission(server: McpServer): void {
                 + 'opportunity.review permission. Pass a concrete reason the contributor can act on '
                 + '(wrong details, expired posting, duplicate, not a fresher role) — do not say '
                 + '"rejected" and nothing else.',
-            inputSchema: {
-                submissionId: z
-                    .string()
-                    .trim()
-                    .min(1)
-                    .describe('The submission id from review_queue, not the listing id or slug.'),
-                reason: z
-                    .string()
-                    .trim()
-                    .max(500)
-                    .optional()
-                    .describe('Why it was rejected, shown to the contributor. Be specific and factual.'),
-            },
-            outputSchema: {
-                success: z.boolean(),
-                submissionId: z.string(),
-                published: z.boolean(),
-                message: z.string(),
-            },
+            inputSchema: z.object({
+                            submissionId: z
+                                .string()
+                                .trim()
+                                .min(1)
+                                .describe('The submission id from review_queue, not the listing id or slug.'),
+                            reason: z
+                                .string()
+                                .trim()
+                                .max(500)
+                                .optional()
+                                .describe('Why it was rejected, shown to the contributor. Be specific and factual.'),
+                        }),
+            outputSchema: OUTPUT_SCHEMA,
             annotations: {
                 readOnlyHint: false,
                 openWorldHint: false,
@@ -49,7 +51,7 @@ export function registerRejectSubmission(server: McpServer): void {
             },
         },
         async ({ submissionId, reason }) => {
-            const result = await rejectSubmissionTool(submissionId, reason);
+            const result = OUTPUT_SCHEMA.parse(await rejectSubmissionTool(submissionId, reason));
             return {
                 structuredContent: result,
                 content: [

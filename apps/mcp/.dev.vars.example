@@ -2,6 +2,5 @@
 FRESHERFLOW_API_URL=http://127.0.0.1:5001
 PUBLIC_SITE_URL=http://127.0.0.1:3000
 MCP_PUBLIC_URL=http://127.0.0.1:8787
+# Optional: local public catalog origin. Defaults to https://cdn.fresherflow.in.
 PUBLIC_FEED_BASE_URL=http://127.0.0.1:5001
-# Optional for a local unsigned feed. Set only when the local feed verifies signatures.
-# CDN_SIGNATURE_SECRET=

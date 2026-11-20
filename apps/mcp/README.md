@@ -1,8 +1,9 @@
 # FresherFlow MCP Server
 
 MCP service that exposes the FresherFlow API to AI clients (ChatGPT, Claude,
-Cursor, Codex): browse live jobs, submit a job, create or edit a full listing,
-and — for a moderator — review, approve or reject community submissions.
+Cursor, Codex): browse live jobs, submit a job, edit a full listing, and — for
+a moderator — review, approve or reject community submissions. Adding a job is
+always `submit_opportunity`; there is no second creation tool.
 
 Public job discovery works without sign-in. Connecting a FresherFlow account
 with OAuth 2.1 adds account tools; moderator tools are resolved from RBAC on
@@ -25,13 +26,14 @@ calls one function from `src/api/`.
 | `src/http/token.ts` | the per-request access token (AsyncLocalStorage) and bearer parsing |
 | `src/http/client.ts` | the one authenticated `fetch`, plus upstream error mapping and scrubbing |
 | `src/api/identity.ts` | `whoami` |
-| `src/api/jobs.ts` | public CDN feed and listing-shard reads |
-| `src/api/listings.ts` | listing schema, create, update, read |
+| `src/cdn/client.ts` | public catalog transport: origin, bounded JSON, optional 404 |
+| `src/cdn/jobs.ts` | live listing index and detail reads |
+| `src/cdn/companies.ts` | company directory and per-company listing reads |
+| `src/api/listings.ts` | listing read and update |
 | `src/api/submissions.ts` | submit, own submissions, withdraw, review queue and decisions |
 | `src/tools/*.ts` | one file per tool: its schema, description, annotations, and handler |
 | `src/schemas.ts` | zod input/output for `submit_opportunity`; limits mirror the API's `mcpSubmitOpportunitySchema` |
-| `src/templates/listingTemplates.ts` | API-shaped `create_listing` payloads and the content rules, served by `get_listing_template` |
-| `templates/listing-templates.md` | the admin paste-JSON reference, verbatim, and how it differs from the API contract |
+
 | `src/config.ts` | env: API base URL, public site URL, port |
 | `src/logger.ts` | structured logs |
 | `package.json`, `tsconfig.json`, `eslint.config.mjs` | build, types, lint |
@@ -47,37 +49,45 @@ them only in the dashboard: a deploy from this repo would otherwise leave the
 Worker without bindings, and every endpoint would answer
 `{"error":"MCP is not configured"}`.
 
-- `FRESHERFLOW_API_URL`, `PUBLIC_SITE_URL`, `MCP_PUBLIC_URL`, and
-  `PUBLIC_FEED_BASE_URL` are required origin URLs. `MCP_PUBLIC_URL` must match
-  the API OAuth resource configuration exactly.
-- `CDN_SIGNATURE_SECRET` is a secret binding when the feed CDN requires signed
-  requests; use the same signing secret as the feed publisher.
+- `FRESHERFLOW_API_URL`, `PUBLIC_SITE_URL` and `MCP_PUBLIC_URL` are required
+  origin URLs. `MCP_PUBLIC_URL` must match the API OAuth resource configuration
+  exactly.
+- Public job discovery reads the public catalog files on the CDN. They are not
+  version-addressed and not signed, so the Worker holds no CDN secret.
+  `PUBLIC_FEED_BASE_URL` is set in `wrangler.jsonc` for production and may be
+  overridden in `.dev.vars` for local development. The Worker has no hardcoded
+  catalog URL.
 
 For local development, copy `.dev.vars.example` to `.dev.vars` and set the
 loopback API/feed URLs. `.dev.vars` is gitignored. `pnpm --filter
 fresherflow-mcp dev` uses the single `wrangler.jsonc` configuration.
 
-`get_listing_template` is the local one: it makes no API call, because the
-payload skeleton and the filling rules are ours. It exists because the admin
-form's paste-JSON dialect (`type`, `walkInDetails`, `salaryAmount`) and the
-API's write contract (`category`, `driveDetails`, `salaryRange`) look alike and
-are not — the closed `opportunitySchema` drops the admin keys with no error, so
-a copied admin payload publishes a walk-in with no venue. The verbatim admin
-reference is kept in `templates/listing-templates.md`.
+There is no schema, template or rules tool. `submit_opportunity` and
+`update_listing` carry their own field contract in their descriptions, because
+requiring three discovery calls before one write is what made the surface
+unusable. The admin form's paste-JSON dialect (`type`, `walkInDetails`,
+`salaryAmount`) and the API's write contract (`category`, `driveDetails`,
+`salaryRange`) look alike and are not — the closed `opportunitySchema` drops the
+admin keys with no error. That warning is now part of the tool descriptions; the
+extraction rules that produced good JSON live in the shipped `submit-opportunity`
+skill. This app keeps no template files — nothing here is read by the Worker or
+sent to an agent.
 
 ## Tools
 
 | Tool | Calls | Needs | Registered for | Annotations |
 |---|---|---|---|---|
 | `whoami` | `GET /api/internal/mcp/whoami` | signed-in connection | every account | `readOnlyHint: true` |
-| `get_jobs` | versioned public CDN feed | public | `/mcp/public` and authenticated `/mcp` | `readOnlyHint: true` |
+| `get_my_profile` | `GET /api/profile` (narrowed) | signed in; own profile | every account | `readOnlyHint: true` |
+| `list_saved_jobs` | `GET /api/saved?limit=50` | signed in; own bookmarks | every account | `readOnlyHint: true` |
+| `save_job` | `POST /api/saved/:id` | signed in; own bookmarks | every account | `readOnlyHint: false`, `idempotentHint: true` |
+| `list_my_applications` | `GET /api/applications/me` | signed in; own records | every account | `readOnlyHint: true` |
+| `get_jobs` | public CDN feed index | public | `/mcp/public` and authenticated `/mcp` | `readOnlyHint: true` |
+| `get_company_jobs` | `${CDN}/companies.json` + `/companies/{slug}.json` | public | `/mcp/public` and authenticated `/mcp` | `readOnlyHint: true` |
 | `get_job` | versioned public CDN listing shard | public | `/mcp/public` and authenticated `/mcp` | `readOnlyHint: true`, `idempotentHint: true` |
 | `submit_opportunity` | `POST /api/opportunities/mcp-submit` | signed-in connection | every account | `readOnlyHint: false` |
 | `list_my_submissions` | `GET /api/internal/mcp/submissions` | signed in; own rows | every account | `readOnlyHint: true` |
 | `withdraw_submission` | `POST /api/internal/mcp/submissions/:id/withdraw` | signed in; own `PENDING_REVIEW` rows | every account | `destructiveHint: true` |
-| `get_listing_schema` | `GET /api/internal/mcp/schema` | `opportunity.review` | moderator | `readOnlyHint: true` |
-| `get_listing_template` | local: `src/templates/listingTemplates.ts` | `opportunity.review` | moderator | `readOnlyHint: true` |
-| `create_listing` | `POST /api/internal/mcp/listings` | `opportunity.create` or `opportunity.edit` | moderator | `readOnlyHint: false` |
 | `update_listing` | `PUT /api/internal/mcp/listings/:id` | `opportunity.edit` | moderator | `readOnlyHint: false` |
 | `get_listing` | `GET /api/internal/mcp/listings/:id` | `opportunity.review` | moderator | `readOnlyHint: true` |
 | `review_queue` | `GET /api/internal/mcp/review-queue` | `opportunity.review` | moderator | `readOnlyHint: true` |
@@ -115,8 +125,8 @@ identity can only come from an authorization-code + PKCE flow.
 - The account is re-checked on every call, so a suspended account's still-valid
   token is refused (`403`) rather than left usable until the token expires.
 - The caller's role is resolved once per request (`src/identity.ts`) and decides
-  which tools are registered. A normal account never sees `create_listing`,
-  `update_listing` or the moderation tools.
+  which tools are registered. A normal account never sees `update_listing`
+  or the moderation tools.
 - Tokens are opaque and stored hashed; access tokens last 1 hour, refresh tokens
   90 days and rotate on use. Users disconnect from
   `<site>/account?tab=connected` ("Connected apps"), which revokes every token
@@ -150,14 +160,28 @@ Two write contracts, deliberately not interchangeable:
   and waits for a moderator. The route also runs the publish side effects when a
   moderator submits, so the listing reaches the CDN feed rather than existing
   only in Postgres.
-- **Full listing** — `get_listing_schema` / `create_listing` / `update_listing` /
-  `get_listing`. The complete admin field set. Moderators only, because
-  `opportunity.create` / `opportunity.edit` are moderator-level grants on this
-  surface; `create_listing` defaults to `PUBLISHED` for them.
+- **Full listing edits** — `update_listing` / `get_listing`. The complete admin
+  field set, used to correct an existing listing. Moderators only, because
+  `opportunity.edit` is a moderator-level grant on this surface.
 
-`get_jobs` searches the versioned public feed index. `get_job` reads a detail
-shard for an exact public id or slug. Both tools are available anonymously and
-return only published, unexpired opportunities. They do not expose job
+There is no `create_listing` tool. Adding a job is always `submit_opportunity`;
+`POST /api/internal/mcp/listings` still exists for the pipeline's service key,
+but the MCP surface has one creation path so an agent cannot pick the wrong
+contract.
+
+The candidate-side tools mirror what a job seeker actually asks after discovery:
+`get_my_profile` (education, pass-out year, skills, preferred cities — sex/DOB/
+category are deliberately not returned), `list_saved_jobs` + `save_job`
+(bookmarks), and `list_my_applications` (funnel stage). Applying and withdrawing
+stay on the website; this surface only reads them.
+
+`get_jobs` searches the public feed index. `get_job` reads one listing's detail
+file for an exact public id or slug. `get_company_jobs` answers "does this
+company have jobs?" from `companies.json` plus that company's own listing file,
+so it does not scan the whole index. Both tools are available anonymously and
+return only published, unexpired opportunities. `get_jobs` also filters by
+degree bucket, skill, work mode, posting age and deadline window, and each
+result carries the apply link, required skills and allowed degree buckets. They do not expose job
 discussion from **Firebase RTDB** (`/comments/{id}`).
 
 ## Run
@@ -182,10 +206,12 @@ by local API and web instances.
 | `FRESHERFLOW_API_URL` | `http://127.0.0.1:5001` | Local API base URL |
 | `PUBLIC_SITE_URL` | `http://127.0.0.1:3000` | Local web origin |
 | `MCP_PUBLIC_URL` | `http://127.0.0.1:8787` | Local MCP resource origin; must equal the API's `MCP_PUBLIC_URL` |
-| `PUBLIC_FEED_BASE_URL` | `http://127.0.0.1:5001` | Local public feed origin |
-`PUBLIC_FEED_BASE_URL` points to the local API feed endpoint. Anonymous job
-discovery uses this public feed; protected API calls use the connected
-account's OAuth token. The MCP Worker has no shared service key.
+| `PUBLIC_FEED_BASE_URL` | `http://127.0.0.1:5001` | Optional local catalog origin |
+`PUBLIC_FEED_BASE_URL` is an override for local development; production reads it
+from `wrangler.jsonc`. The Worker has no hardcoded catalog URL and fails closed
+with a configuration error if the value is missing. Anonymous job discovery uses
+the public catalog; protected API calls use the connected account's OAuth token.
+The MCP Worker has no shared service key.
 
 Health: `GET /health`. Public MCP endpoint: `/mcp/public`. OAuth MCP endpoint:
 `/mcp` (both use Streamable HTTP with JSON POST responses and no SSE stream).
@@ -205,8 +231,8 @@ every metadata document, because OpenAI hosts compare it exactly.
 - Zod validation on tool input and output; limits mirror the API schemas.
 - Upstream rate limits: `submit_opportunity` 60/hour **per user** (keyed by the
   resolved account, because every MCP call shares one caller IP); identity and
-  listing writes 60/minute; listing reads 120/minute; moderation actions
-  30/minute.
+  own-submission reads 180/minute; listing writes 60/minute; listing reads
+  120/minute; moderation actions 30/minute.
 - `PENDING_REVIEW` and `DRAFT` are reported explicitly so an agent cannot claim a
   job is live.
 - Upstream error text is scrubbed of filesystem paths and stack frames before it

@@ -1,6 +1,13 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from 'zod';
 import { withdrawSubmission } from '../api/submissions.js';
+
+const OUTPUT_SCHEMA = z.object({
+    success: z.boolean(),
+    submissionId: z.string(),
+    listingState: z.enum(['archived', 'none']),
+    message: z.string(),
+});
 
 /**
  * Write tool: take back a submission the user changed their mind about.
@@ -21,19 +28,14 @@ export function registerWithdrawSubmission(server: McpServer): void {
                 + 'The unpublished listing is removed and the submission is closed. A listing that is '
                 + 'already live CANNOT be withdrawn here: tell the user a moderator must remove it. '
                 + 'Never claim it was removed unless the response says success.',
-            inputSchema: {
-                submissionId: z
-                    .string()
-                    .trim()
-                    .min(1)
-                    .describe('The submission id from list_my_submissions, not a listing slug.'),
-            },
-            outputSchema: {
-                success: z.boolean(),
-                submissionId: z.string(),
-                listingState: z.enum(['archived', 'none']),
-                message: z.string(),
-            },
+            inputSchema: z.object({
+                            submissionId: z
+                                .string()
+                                .trim()
+                                .min(1)
+                                .describe('The submission id from list_my_submissions, not a listing slug.'),
+                        }),
+            outputSchema: OUTPUT_SCHEMA,
             annotations: {
                 readOnlyHint: false,
                 openWorldHint: false,
@@ -41,7 +43,7 @@ export function registerWithdrawSubmission(server: McpServer): void {
             },
         },
         async ({ submissionId }) => {
-            const result = await withdrawSubmission(submissionId);
+            const result = OUTPUT_SCHEMA.parse(await withdrawSubmission(submissionId));
             return {
                 structuredContent: result,
                 content: [{ type: 'text' as const, text: result.message }],

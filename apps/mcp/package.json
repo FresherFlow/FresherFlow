@@ -2,7 +2,7 @@
   "name": "fresherflow-mcp",
   "version": "1.0.0",
   "type": "module",
-  "description": "MCP server exposing FresherFlow submit_opportunity over the existing API",
+  "description": "MCP server exposing FresherFlow job discovery, submissions, listings and moderation over the existing API",
   "main": "src/worker.ts",
   "scripts": {
     "dev": "wrangler dev",
@@ -13,8 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.25.2",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@modelcontextprotocol/server": "^2.4.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",

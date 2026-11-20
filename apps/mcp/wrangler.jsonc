@@ -11,7 +11,7 @@
     "FRESHERFLOW_API_URL": "https://api.fresherflow.in",
     "PUBLIC_SITE_URL": "https://fresherflow.in",
     "MCP_PUBLIC_URL": "https://mcp.fresherflow.in",
-    "PUBLIC_FEED_BASE_URL": "https://api.fresherflow.in",
+    "PUBLIC_FEED_BASE_URL": "https://cdn.fresherflow.in",
   },
   "routes": [{ "pattern": "mcp.fresherflow.in", "custom_domain": true }],
   "observability": {

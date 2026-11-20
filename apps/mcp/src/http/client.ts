@@ -32,23 +32,66 @@ function scrubErrorText(value: string): string {
         .trim();
 }
 
+/** One field-level failure, as the API reports it. */
+interface ApiFieldIssue {
+    field: string;
+    message: string;
+}
+
+interface SafeApiError {
+    message: string;
+    details?: unknown;
+}
+
+function asFieldIssues(details: unknown): ApiFieldIssue[] {
+    if (!Array.isArray(details)) return [];
+    return details.flatMap((entry) => {
+        if (typeof entry === 'string' && entry.trim()) return [{ field: '', message: entry.trim() }];
+        if (!entry || typeof entry !== 'object') return [];
+        const record = entry as Record<string, unknown>;
+        const field = typeof record.field === 'string' ? record.field : '';
+        const message = typeof record.message === 'string' ? record.message : '';
+        if (!message.trim()) return [];
+        return [{ field, message: message.trim() }];
+    });
+}
+
 /**
- * Build a safe, useful error message from a non-2xx upstream response.
- * Forwards the upstream message (minus paths/stacks); HTML bodies and
- * unparseable payloads collapse to a generic status message.
+ * Build a safe, useful error from a non-2xx upstream response.
+ *
+ * The API returns `{ error: { message, details } }`, where `details` names every
+ * failing field. Dropping `details` (and slicing the message at 300 chars) is
+ * why an agent used to see only the first problem, or a bare "API error (400)".
  */
-async function toSafeApiError(res: Response): Promise<string> {
+async function toSafeApiError(res: Response): Promise<SafeApiError> {
     const fallback = `FresherFlow API error (${res.status})`;
     try {
         const contentType = res.headers.get('content-type') ?? '';
         const text = await readBoundedText(res, 16_384);
-        if (!text || contentType.includes('text/html') || /^\s*</.test(text)) return fallback;
-        const body = JSON.parse(text) as { error?: { message?: unknown }; message?: unknown };
+        if (!text || contentType.includes('text/html') || /^\s*</.test(text)) return { message: fallback };
+        const body = JSON.parse(text) as {
+            error?: { message?: unknown; details?: unknown };
+            message?: unknown;
+            details?: unknown;
+        };
+        const details = body?.error?.details ?? body?.details;
         const raw = body?.error?.message ?? body?.message;
-        if (typeof raw !== 'string' || !raw.trim()) return fallback;
-        return scrubErrorText(raw).slice(0, 300) || fallback;
+        const base = typeof raw === 'string' && raw.trim() ? scrubErrorText(raw) : fallback;
+
+        // Append any detail the message does not already mention, one line per
+        // field. Duplicates are common because Zod's message is the same list.
+        const missing = asFieldIssues(details).filter((issue) => {
+            if (!issue.field) return false;
+            return !base.includes(issue.field);
+        });
+        const withDetails = missing.length > 0
+            ? `${base}\n${missing.map((issue) => `- ${issue.field}: ${issue.message}`).join('\n')}`
+            : base;
+
+        // 2000 chars fits a full field list; 300 used to cut later fields off.
+        return { message: withDetails.slice(0, 2000) || fallback, details };
     } catch {
-        return fallback;
+        return { message: fallback };
     }
 }
 
@@ -98,11 +141,14 @@ function discardResponseBody(res: Response): void {
  */
 export class ApiHttpError extends Error {
     readonly status: number;
+    /** Field-level issues from the API, when the error carries them. */
+    readonly details?: unknown;
 
-    constructor(message: string, status: number) {
+    constructor(message: string, status: number, details?: unknown) {
         super(message);
         this.name = 'ApiHttpError';
         this.status = status;
+        this.details = details;
     }
 }
 
@@ -172,7 +218,8 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
             logger.error('FresherFlow API rejected the caller credentials', { path, status: res.status });
             // A 403 is an authorization decision, not a broken credential.
             if (res.status === 403) {
-                throw new ApiHttpError(await toSafeApiError(res), 403);
+                const safe = await toSafeApiError(res);
+                throw new ApiHttpError(safe.message, 403, safe.details);
             }
             discardResponseBody(res);
             throw new ApiHttpError(
@@ -183,7 +230,8 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
         }
         if (!res.ok) {
             logger.error('FresherFlow API request failed', { path, status: res.status });
-            throw new ApiHttpError(await toSafeApiError(res), res.status);
+            const safe = await toSafeApiError(res);
+            throw new ApiHttpError(safe.message, res.status, safe.details);
         }
         try {
             const contentType = res.headers.get('content-type') ?? '';

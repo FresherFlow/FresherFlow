@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from 'zod';
 import { whoami } from '../api/identity.js';
 
@@ -26,17 +26,17 @@ export function registerWhoami(server: McpServer): void {
                 + 'stable across token refresh and reconnection, so the same account is recognised '
                 + 'again. Call this when you need to know which account you are acting for, or to '
                 + 'distinguish two connected accounts.',
-            inputSchema: {},
-            outputSchema: {
-                id: z.string().min(1).describe(
-                    'Opaque FresherFlow profile identifier, unchanged across token refresh and reconnection.',
-                ),
-                name: z.string().optional().describe('Display name for the connected profile.'),
-                email: z.string().optional().describe('Email for display; never used as the profile identity.'),
-                nickname: z.string().optional().describe(
-                    'Human label that distinguishes this connection, including its FresherFlow role.',
-                ),
-            },
+            inputSchema: z.object({}),
+            outputSchema: z.object({
+                            id: z.string().min(1).describe(
+                                'Opaque FresherFlow profile identifier, unchanged across token refresh and reconnection.',
+                            ),
+                            name: z.string().optional().describe('Display name for the connected profile.'),
+                            email: z.string().optional().describe('Email for display; never used as the profile identity.'),
+                            nickname: z.string().optional().describe(
+                                'Human label that distinguishes this connection, including its FresherFlow role.',
+                            ),
+                        }),
             _meta: {
                 // The marker OpenAI uses to find the profile tool. It is the
                 // whole key, not a nested flag: `{ profile: true }` is ignored.

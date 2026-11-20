@@ -1,4 +1,4 @@
-import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+import { createMcpHandler } from "@modelcontextprotocol/server";
 import { createFresherFlowMcpServer } from './server.js';
 import { resolveConnectionIdentity } from './identity.js';
 import { bearerFromHeaders, runWithAccessToken } from './http/token.js';
@@ -22,7 +22,6 @@ interface Env {
   PUBLIC_SITE_URL: string;
   MCP_PUBLIC_URL: string;
   PUBLIC_FEED_BASE_URL?: string;
-  CDN_SIGNATURE_SECRET?: string;
 }
 
 const MCP_CORS_HEADERS = {
@@ -70,6 +69,27 @@ function jsonResponse(body: unknown, status = 200, extraHeaders: Record<string, 
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...MCP_CORS_HEADERS, 'Content-Type': 'application/json', ...extraHeaders },
+  });
+}
+
+/** Read the JSON-RPC id from a cloned request so an error can echo it. */
+async function jsonRpcId(request: Request): Promise<string | number | null> {
+  try {
+    const body = await request.json() as { id?: unknown };
+    return typeof body?.id === 'string' || typeof body?.id === 'number' ? body.id : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The SDK owns the transport response; add the CORS headers browsers need. */
+function withCors(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(MCP_CORS_HEADERS)) headers.set(key, value);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
@@ -123,8 +143,8 @@ function escapeHtml(value: string): string {
 /**
  * The bare origin, for a human who opened it in a browser.
  *
- * `https://mcp.fresherflow.in` is the most common thing to paste into an AI
- * client, and a bare 404 reads as "this server is broken". The transport
+ * The bare MCP origin is the most common thing to paste into an AI client,
+ * and a bare 404 reads as "this server is broken". The transport
  * accepts that origin as an MCP endpoint too (see `isMcpPath`), so the same
  * URL works for a client; this page answers the browser with the exact URL to
  * use and where the setup guide lives.
@@ -132,7 +152,7 @@ function escapeHtml(value: string): string {
 function landingPage(env: Env): Response {
   const { mcpPublicUrl, siteUrl } = getUrls(env);
   const endpoint = mcpPublicUrl ? `${mcpPublicUrl}/mcp` : '/mcp';
-  const docs = siteUrl ? `${siteUrl}/docs/mcp` : 'https://fresherflow.in/docs/mcp';
+  const docs = siteUrl ? `${siteUrl}/docs/mcp` : '/docs/mcp';
   const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -251,7 +271,7 @@ const handler: ExportedHandler<Env> = {
     const isPublicMcpPath = url.pathname === '/mcp/public';
     const isRootPath = url.pathname === '/';
     // The bare origin is the same endpoint as /mcp. Clients that are given
-    // `https://mcp.fresherflow.in` (no path) POST here; before this alias they
+    // The bare MCP origin (no path) POSTs here; before this alias they
     // got a 404 and the connection looked broken, even though /mcp worked.
     const isMcpPath = url.pathname === '/mcp' || url.pathname === '/mcp/' || isPublicMcpPath || isRootPath;
 
@@ -305,15 +325,21 @@ const handler: ExportedHandler<Env> = {
     if (!apiBaseUrl || !mcpPublicUrl || !siteUrl) return configurationError();
     setApiBaseUrl(apiBaseUrl);
 
+    // The SDK consumes the request body. Keep a clone so rate-limit and upstream
+    // failures can echo the real JSON-RPC id; id:null makes clients fail the
+    // whole connection instead of just the one call that hit the 429.
+    const errorRequestBody = request.clone();
+
     const ip = request.headers.get('cf-connecting-ip') ?? 'unknown';
     if (!checkRateLimit(ip)) {
       return jsonResponse(
         {
           jsonrpc: '2.0',
           error: { code: -32000, message: 'Rate limit exceeded, slow down.' },
-          id: null,
+          id: await jsonRpcId(errorRequestBody),
         },
         429,
+        { 'Retry-After': '60' },
       );
     }
 
@@ -335,24 +361,18 @@ const handler: ExportedHandler<Env> = {
         // send a valid account token to it.
         const identity = isPublicMcpPath ? null : verifiedIdentity;
         const feedBaseUrl = originOf(env.PUBLIC_FEED_BASE_URL) || '';
-        const server = createFresherFlowMcpServer(
+        // v2 owns the Streamable HTTP transport: the handler runs this factory
+        // once per request, which is what keeps the surface role-filtered with
+        // no session state and no Durable Object.
+        const handler = createMcpHandler(() => createFresherFlowMcpServer(
           identity,
           siteUrl,
           feedBaseUrl,
-          env.CDN_SIGNATURE_SECRET,
           // Same document `unauthorized()` advertises below, so a tool-level
           // challenge and the transport challenge point at one URL.
           `${mcpPublicUrl}/.well-known/oauth-protected-resource/mcp`,
-        );
-        const transport = new WebStandardStreamableHTTPServerTransport({
-          // Stateless: no session id, no resumability, no Durable Object.
-          sessionIdGenerator: undefined,
-          // JSON responses instead of an SSE stream: a Worker has no long-lived
-          // socket to keep open, and every tool call is a single round trip.
-          enableJsonResponse: true,
-        });
-        await server.connect(transport);
-        return await transport.handleRequest(request);
+        ), { responseMode: 'json' });
+        return withCors(await handler.fetch(request));
       };
       // A supplied but invalid credential must never silently downgrade to anonymous.
       return token ? await runWithAccessToken(token, run) : await run();
@@ -361,7 +381,7 @@ const handler: ExportedHandler<Env> = {
       if (error instanceof ApiHttpError && error.status === 401) {
         return unauthorized(
           env,
-          'This FresherFlow connection could not confirm the signed-in account. Disconnect and reconnect FresherFlow, then sign in again.',
+          'This FresherFlow connection needs re-authorization. Reconnect the server to sign in again.',
         );
       }
       if (error instanceof ApiHttpError && error.status === 403) {
@@ -372,8 +392,9 @@ const handler: ExportedHandler<Env> = {
       }
       if (error instanceof ApiHttpError && error.status === 429) {
         return jsonResponse(
-          { jsonrpc: '2.0', error: { code: -32000, message: 'FresherFlow is rate limiting this request. Please retry shortly.' }, id: null },
+          { jsonrpc: '2.0', error: { code: -32000, message: 'FresherFlow is rate limiting this request. Please retry shortly.' }, id: await jsonRpcId(errorRequestBody) },
           429,
+          { 'Retry-After': '60' },
         );
       }
       return jsonResponse(

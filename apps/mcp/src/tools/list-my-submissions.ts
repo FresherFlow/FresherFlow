@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from 'zod';
 import { listMySubmissions } from '../api/submissions.js';
 
@@ -24,6 +24,12 @@ const SUBMISSION_SHAPE = {
         .optional(),
 };
 
+const OUTPUT_SCHEMA = z.object({
+    submissions: z.array(z.object(SUBMISSION_SHAPE)),
+    total: z.number(),
+    status: z.string(),
+});
+
 /**
  * Read tool: the caller's own submission history.
  *
@@ -42,17 +48,13 @@ export function registerListMySubmissions(server: McpServer): void {
                 + 'linked listing when there is one. Use it to answer "did my job get posted?", to find '
                 + 'the submissionId for withdraw_submission, or instead of re-submitting the same job. '
                 + 'An empty list means this account has not submitted anything yet.',
-            inputSchema: {
-                status: z
-                    .enum(['PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'MERGED'])
-                    .optional()
-                    .describe('Optional filter. Omit to see the full history.'),
-            },
-            outputSchema: {
-                submissions: z.array(z.object(SUBMISSION_SHAPE)),
-                total: z.number(),
-                status: z.string(),
-            },
+            inputSchema: z.object({
+                            status: z
+                                .enum(['PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'MERGED'])
+                                .optional()
+                                .describe('Optional filter. Omit to see the full history.'),
+                        }),
+            outputSchema: OUTPUT_SCHEMA,
             annotations: {
                 readOnlyHint: true,
                 openWorldHint: false,
@@ -60,7 +62,7 @@ export function registerListMySubmissions(server: McpServer): void {
             },
         },
         async ({ status }) => {
-            const result = await listMySubmissions(status);
+            const result = OUTPUT_SCHEMA.parse(await listMySubmissions(status));
             return {
                 structuredContent: result,
                 content: [

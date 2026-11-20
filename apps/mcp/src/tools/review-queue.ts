@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from 'zod';
 import { getReviewQueue } from '../api/submissions.js';
 
@@ -33,6 +33,12 @@ const QUEUE_ROW_SHAPE = {
         .optional(),
 };
 
+const OUTPUT_SCHEMA = z.object({
+    submissions: z.array(z.object(QUEUE_ROW_SHAPE)),
+    pendingCount: z.number(),
+    status: z.string(),
+});
+
 /**
  * Read tool: the moderation queue.
  *
@@ -52,17 +58,13 @@ export function registerReviewQueue(server: McpServer): void {
                 + 'id this returns (not the listing id). Reading the queue does not decide anything. '
                 + 'This needs the opportunity.review permission; if it is refused, the user is not a '
                 + 'moderator and you must not offer to approve anything.',
-            inputSchema: {
-                status: z
-                    .enum(['PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'MERGED'])
-                    .optional()
-                    .describe('Optional filter. Defaults to PENDING_REVIEW, the queue that needs work.'),
-            },
-            outputSchema: {
-                submissions: z.array(z.object(QUEUE_ROW_SHAPE)),
-                pendingCount: z.number(),
-                status: z.string(),
-            },
+            inputSchema: z.object({
+                            status: z
+                                .enum(['PENDING_REVIEW', 'PUBLISHED', 'REJECTED', 'MERGED'])
+                                .optional()
+                                .describe('Optional filter. Defaults to PENDING_REVIEW, the queue that needs work.'),
+                        }),
+            outputSchema: OUTPUT_SCHEMA,
             annotations: {
                 readOnlyHint: true,
                 openWorldHint: false,
@@ -70,7 +72,7 @@ export function registerReviewQueue(server: McpServer): void {
             },
         },
         async ({ status }) => {
-            const result = await getReviewQueue(status);
+            const result = OUTPUT_SCHEMA.parse(await getReviewQueue(status));
             return {
                 structuredContent: result,
                 content: [
