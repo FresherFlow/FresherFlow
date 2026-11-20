@@ -181,7 +181,7 @@ export function SourcesWorkspace() {
       {loading && !payload ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-5" aria-busy="true" aria-label="Loading source stats">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} variant="panel" className="h-[104px]" />
+            <Skeleton key={i} variant="panel" className="h-26" />
           ))}
           <Skeleton variant="surface" className="col-span-2 h-64 md:col-span-5" />
         </div>
@@ -249,11 +249,12 @@ export function SourcesWorkspace() {
                 <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <Input
                   variant="search"
+                  bare
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Filter sites and channels"
                   aria-label="Filter sites and channels"
-                  className="border-0 bg-transparent px-0"
+                  className="px-0"
                 />
               </div>
               <NativeSelect
@@ -307,7 +308,7 @@ export function SourcesWorkspace() {
                             }}
                             tabIndex={0}
                             aria-expanded={isOpen}
-                            className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            variant="interactive"
                           >
                             <TableCell>
                               <span className="flex items-center gap-2">
@@ -326,17 +327,17 @@ export function SourcesWorkspace() {
                             <TableCell>
                               <Sparkline points={r.daily} />
                             </TableCell>
-                            <TableCell className="text-right tabular-nums">{r.links7d ?? '—'}</TableCell>
-                            <TableCell className="text-right tabular-nums">
+                            <TableCell variant="numeric" className="text-right">{r.links7d ?? '—'}</TableCell>
+                            <TableCell variant="numeric" className="text-right">
                               {r.jobs7d}
                               <Delta current={r.jobs7d} prior={r.jobsPrior7d} />
                             </TableCell>
-                            <TableCell className="text-right tabular-nums">{r.totalJobs}</TableCell>
-                            <TableCell className="text-right text-muted-foreground">{r.lastRun ?? '—'}</TableCell>
-                            <TableCell className="text-right text-muted-foreground">{r.fetch ?? '—'}</TableCell>
+                            <TableCell variant="numeric" className="text-right">{r.totalJobs}</TableCell>
+                            <TableCell variant="muted" className="text-right">{r.lastRun ?? '—'}</TableCell>
+                            <TableCell variant="muted" className="text-right">{r.fetch ?? '—'}</TableCell>
                           </TableRow>
                           {isOpen ? (
-                            <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableRow variant="subtle">
                               <TableCell colSpan={7}>
                                 <div className="text-micro font-medium uppercase tracking-wide text-muted-foreground">
                                   Daily jobs · last 14 days

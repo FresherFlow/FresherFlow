@@ -404,7 +404,7 @@ export function MobileFilterDrawer({
                     >
                         <div className="space-y-3">
                             {profileOwnedDims.includes('city') && (
-                                <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                                <p className="flex items-center gap-1.5 text-micro font-medium text-muted-foreground">
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
                                     From your profile
                                 </p>
@@ -578,7 +578,7 @@ export function MobileFilterDrawer({
                                 onToggle={() => setOpenSection(openSection === 'year' ? null : 'year')}
                             >
                                 {profileOwnedDims.includes('batch') && (
-                                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground pb-2">
+                                    <p className="flex items-center gap-1.5 text-micro font-medium text-muted-foreground pb-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
                                         From your profile
                                     </p>
@@ -642,7 +642,7 @@ export function MobileFilterDrawer({
                                 onToggle={() => setOpenSection(openSection === 'workMode' ? null : 'workMode')}
                             >
                                 {profileOwnedDims.includes('workMode') && (
-                                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground pb-2">
+                                    <p className="flex items-center gap-1.5 text-micro font-medium text-muted-foreground pb-2">
                                         <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
                                         From your profile
                                     </p>

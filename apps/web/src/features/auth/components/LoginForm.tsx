@@ -390,7 +390,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
             <div className="m-auto flex w-full ff-form-col flex-col gap-5 lg:ff-form-col-lg">
                 <div className="space-y-3">
                     {step !== 'email' && step !== 'username' && (
-                        <button onClick={() => { setStep('email'); navigatedRef.current=false; }} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary mb-1 transition-colors cursor-pointer active:scale-[0.97] motion-reduce:transform-none">
+                        <button onClick={() => { setStep('email'); navigatedRef.current=false; }} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary mb-1 transition-colors cursor-pointer ff-press motion-reduce:transform-none">
                             <ChevronLeftIcon className="w-3.5 h-3.5" /><span>{isSignupIntent ? 'Back to sign up options' : 'Back to sign in options'}</span>
                         </button>
                     )}

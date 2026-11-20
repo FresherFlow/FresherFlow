@@ -41,7 +41,7 @@ export default function CompanyArchiveView({ companyName, slug, archivedRoles }:
                                 priority
                             />
                             <div className="min-w-0">
-                                <h1 className="text-2xl font-bold leading-[1.15] tracking-tight text-foreground text-balance md:text-3xl">
+                                <h1 className="text-2xl font-bold leading-tight tracking-tight text-foreground text-balance md:text-3xl">
                                     {companyName}
                                 </h1>
                                 <p className="mt-1 text-pretty text-sm text-muted-foreground">

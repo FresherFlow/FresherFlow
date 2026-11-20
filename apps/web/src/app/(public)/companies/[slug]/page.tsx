@@ -460,7 +460,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                                 className="size-12 shrink-0 rounded-xl md:size-14"
                                 priority
                             />
-                            <h1 className="min-w-0 max-w-3xl text-2xl font-bold leading-[1.15] tracking-tight text-foreground text-balance md:text-3xl">
+                            <h1 className="min-w-0 max-w-3xl text-2xl font-bold leading-tight tracking-tight text-foreground text-balance md:text-3xl">
                                 {companyName}
                             </h1>
                         </div>

@@ -47,10 +47,16 @@ export type InputVariant = keyof typeof inputVariants;
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
     /** Surface + typography treatment. Defaults to `default`. */
     variant?: InputVariant;
+    /**
+     * Drop the primitive's own surface and border when the input sits inside
+     * another control's chrome (for example a filter toolbar's search row).
+     * Orthogonal to `variant` so the search typography still applies.
+     */
+    bare?: boolean;
 };
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-    ({ className, type, variant = "default", ...props }, ref) => {
+    ({ className, type, variant = "default", bare = false, ...props }, ref) => {
         return (
             <input
                 type={type}
@@ -61,6 +67,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                     "disabled:cursor-not-allowed disabled:opacity-50",
                     "transition-all",
                     inputVariants[variant],
+                    bare && "border-0 bg-transparent",
                     className
                 )}
                 ref={ref}

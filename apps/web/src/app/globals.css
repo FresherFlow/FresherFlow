@@ -1332,6 +1332,41 @@ html.ff-smooth {
   grid-template-columns: 45% 55%;
 }
 
+/* ── Bespoke measures and column templates ─────────────────────────────
+   Values with no Tailwind scale step (ch measures, minmax tracks, a 45vw
+   cap and a sub-1 line-height). Named here so call sites never carry an
+   arbitrary value; the widths are the ones the layouts were tuned with. */
+@utility ff-measure-tight {
+  max-width: 20ch;
+}
+@utility ff-measure-intro {
+  max-width: 62ch;
+}
+@utility ff-measure-copy {
+  max-width: 68ch;
+}
+@utility ff-leading-display {
+  line-height: 1.05;
+}
+@utility ff-code-inline-size {
+  font-size: 0.85em;
+}
+@utility ff-skill-cap {
+  max-width: 45vw;
+}
+@utility ff-legal-cols {
+  grid-template-columns: 11rem minmax(0, 1fr);
+}
+@utility ff-legal-section-cols {
+  grid-template-columns: 3rem minmax(0, 1fr) minmax(0, 2fr);
+}
+@utility ff-feed-cols-40-60 {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+@utility ff-pane-max-h {
+  max-height: calc(100dvh - 12rem);
+}
+
 /* ── Jobs feed view switcher ──────────────────────────────
    List and Split are the same grid, one column boundary apart. Both states
    are two percentage tracks — the only shape CSS can interpolate — so the

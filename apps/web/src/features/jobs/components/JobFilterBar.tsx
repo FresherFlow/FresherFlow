@@ -102,7 +102,7 @@ type DropdownOption =
     | { kind: 'company'; company: string; count: number }
     | { kind: 'role'; role: string };
 
-const pillBase = 'h-8 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition duration-150 ease-out active:scale-[0.97] whitespace-nowrap select-none cursor-pointer outline-none shrink-0 motion-reduce:transform-none motion-reduce:transition-none';
+const pillBase = 'h-8 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition duration-150 ease-out ff-press whitespace-nowrap select-none cursor-pointer outline-none shrink-0 motion-reduce:transform-none motion-reduce:transition-none';
 const pillDefault = 'text-muted-foreground hover:text-foreground hover:bg-muted';
 const pillOpen = 'bg-muted text-foreground ring-1 ring-border';
 

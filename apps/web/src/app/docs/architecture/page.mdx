@@ -1,0 +1,138 @@
+# Architecture
+
+FresherFlow is a monorepo with hard boundaries between apps. The web and mobile apps never touch the database; they call the API through shared wrappers. The MCP server is a thin Worker over that same API, and background work runs in a separate BullMQ worker process.
+
+## Apps
+
+<table>
+  <thead>
+    <tr><th>App</th><th>Role</th><th>Stack</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>apps/web</code></td><td>Public feed, company and detail pages, account and admin UI</td><td>Next.js App Router, TypeScript, Tailwind CSS</td></tr>
+    <tr><td><code>apps/api</code></td><td>REST surface, auth, validation, business rules, queue producers</td><td>Node.js, Express, Zod, Prisma</td></tr>
+    <tr><td><code>apps/mcp</code></td><td>AI-client surface; every tool is an HTTP call with the caller's token</td><td>Cloudflare Worker, Streamable HTTP, OAuth 2.1</td></tr>
+    <tr><td><code>apps/mobile</code></td><td>Candidate app with an offline feed cache</td><td>Expo, React Native, MMKV</td></tr>
+    <tr><td><code>apps/admin-mobile</code></td><td>Internal moderation and operations</td><td>Expo, React Native</td></tr>
+    <tr><td><code>apps/ingestion</code></td><td>Feed and job ingestion</td><td>Node.js</td></tr>
+    <tr><td><code>apps/api/src/worker.ts</code></td><td>BullMQ processors, run as a separate process</td><td>Node.js, Redis</td></tr>
+  </tbody>
+</table>
+
+## Boundaries
+
+Architecture boundaries are enforced with Turborepo tags in the root `turbo.json`. Run `npx turbo boundaries` to check them locally; the check is advisory, not CI-blocking.
+
+<table>
+  <thead>
+    <tr><th>Tag</th><th>Packages</th><th>Rule</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>client-ui</code></td><td>mobile, admin-mobile, ui, frontend-core</td><td>Must not import <code>@fresherflow/database</code> or <code>@fresherflow/queue</code></td></tr>
+    <tr><td><code>server-only</code></td><td>database, queue</td><td>Must not be imported by client-ui packages</td></tr>
+    <tr><td>untagged</td><td>types, constants, utils, api-client</td><td>Shared-neutral; both sides may depend on them</td></tr>
+  </tbody>
+</table>
+
+Other hard rules:
+
+- Frontend apps call backend data through `packages/api-client`, never through Prisma or `apps/api`.
+- API routes validate input, then delegate to application or infrastructure services.
+- Multi-table writes use `prisma.$transaction`.
+- Heavy work runs in BullMQ workers, not request handlers.
+- Mobile feed data flows through `syncModule.ts` only.
+- Feed regeneration starts from an admin or publish flow, never from a public frontend route.
+
+## Shared packages
+
+<table>
+  <thead>
+    <tr><th>Package</th><th>Owns</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>@fresherflow/types</code></td><td>Shared request and response types</td></tr>
+    <tr><td><code>@fresherflow/utils</code></td><td>Pure business helpers: eligibility, opportunity rules, location</td></tr>
+    <tr><td><code>@fresherflow/constants</code></td><td>Shared constants and location taxonomy</td></tr>
+    <tr><td><code>@fresherflow/api-client</code></td><td>Frontend API wrappers</td></tr>
+    <tr><td><code>@fresherflow/parser</code></td><td>Extraction and ingestion logic</td></tr>
+    <tr><td><code>@fresherflow/pipeline</code></td><td>Canonical job identity and pipeline primitives</td></tr>
+    <tr><td><code>@fresherflow/database</code></td><td>Prisma client and Redis clients — server-only</td></tr>
+    <tr><td><code>@fresherflow/queue</code></td><td>BullMQ contracts — server-only</td></tr>
+    <tr><td><code>@fresherflow/ui</code>, <code>@fresherflow/frontend-core</code></td><td>Shared UI primitives</td></tr>
+  </tbody>
+</table>
+
+There is no `packages/domain` and you should not create one. Business rules live in API application and infrastructure services, or as pure helpers in `packages/utils` and `packages/types`.
+
+## Data flow
+
+### From posting to public page
+
+1. **Discovery** — `scripts/job-discovery` finds candidate postings and writes discovery state.
+2. **Processing** — `scripts/job-processor` and `apps/ingestion` turn raw postings into structured jobs.
+3. **Validation** — `opportunitySchema` in `apps/api/src/utils/validation.ts` is the single listing contract. It is a closed `z.object`: unknown keys are dropped silently.
+4. **Write** — every full listing write goes through `listingWrite.ts`. Pure payload builders live in `listingPayload.ts`.
+5. **Review** — community submissions become drafts; a moderator approves or fixes and publishes them.
+6. **Publish** — the publish flow regenerates the feed, bumps its version, uploads objects to R2 and invalidates the affected tags.
+7. **Serve** — the CDN serves versioned feed files to web, mobile and the MCP public tools.
+
+### Listing write paths
+
+Three callers write full listings, and all three converge on the same function:
+
+<table>
+  <thead>
+    <tr><th>Caller</th><th>Credential</th><th>Result</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Admin form</td><td>Admin session</td><td>Draft or published listing</td></tr>
+    <tr><td>Draft ingester</td><td><code>INTERNAL_API_SECRET</code></td><td>Draft listing</td></tr>
+    <tr><td>MCP <code>submit_opportunity</code></td><td>OAuth bearer</td><td>Draft for users, published for moderators</td></tr>
+  </tbody>
+</table>
+
+### MCP surface
+
+`apps/mcp` resolves the caller's role from the API on each request, then registers only the tools that role may use. Account tools authenticate with the caller's own bearer token. `/mcp/public` is read-only and anonymous. See the [MCP guide](/docs/mcp).
+
+## Caching and freshness
+
+Public feed and category pages carry **no** ISR timer. A publish invalidates a feed tag and the next request regenerates that page once. A numeric `revalidate` on a public page would make every visitor pay for a full render.
+
+Auth, profile, dashboard, admin, saved jobs, alerts and user-specific reads use `no-store`. Cache keys and tags use the smallest safe scope; per-user mutations never invalidate global feed tags. The only public route with a timer is `/u/[username]` at 300 seconds, because profiles have no invalidation channel.
+
+## Security
+
+- Parse dynamic URLs with `new URL()`; check protocol and hostname, never `includes()` on a full URL.
+- Validate outbound URLs before `fetch` to prevent server-side request forgery.
+- Use `crypto.randomInt` for backend randomness.
+- Log detailed errors on the server; return generic client messages.
+- Filter user-owned queries by `req.user.id`.
+- Use `SameSite=Lax` or `Strict` cookies and validate origin or CSRF on cookie-auth mutations.
+- GitHub Actions declare explicit top-level `permissions`.
+- CDN and R2 URLs go through signed URL helpers; raw private object URLs are never exposed.
+
+## Deployment
+
+<table>
+  <thead>
+    <tr><th>Target</th><th>Runs</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Vercel</td><td>Web app; preview deployments on pull requests</td></tr>
+    <tr><td>Render</td><td>API and BullMQ worker, configured in <code>render.yaml</code></td></tr>
+    <tr><td>Cloudflare</td><td>R2 feed storage, CDN Worker, and the MCP Worker</td></tr>
+  </tbody>
+</table>
+
+The MCP Worker's `MCP_PUBLIC_URL` must match the API's OAuth resource configuration exactly; otherwise valid tokens fail verification.
+
+## Validation
+
+CI runs lint, typecheck and build for the API and web apps, then the API test suite. After a Prisma schema change, run `pnpm db:generate` before typechecking. See [Overview](/docs/overview) for the commands.
+
+## Related
+
+- [Overview](/docs/overview) — platform summary and local setup.
+- [API reference](/docs/api) — the REST surface.
+- [MCP server](/docs/mcp) — the AI-client surface.

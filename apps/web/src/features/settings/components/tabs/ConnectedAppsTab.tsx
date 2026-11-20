@@ -136,19 +136,20 @@ export default function ConnectedAppsTab() {
                                     </span>
                                 </span>
                                 {/* The Button primitive owns the secondary-action shape and
-                                    focus ring; only the busy label is local. */}
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => void revoke(connection)}
-                                    disabled={isRevoking}
-                                    className="shrink-0"
-                                >
-                                    {isRevoking
-                                        ? <ArrowPathIcon className="size-3.5 animate-spin" aria-hidden="true" />
-                                        : <TrashIcon className="size-3.5" aria-hidden="true" />}
-                                    {isRevoking ? 'Disconnecting…' : 'Disconnect'}
-                                </Button>
+                                    focus ring; layout lives on the wrapper. */}
+                                <div className="shrink-0">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => void revoke(connection)}
+                                        disabled={isRevoking}
+                                    >
+                                        {isRevoking
+                                            ? <ArrowPathIcon className="size-3.5 animate-spin" aria-hidden="true" />
+                                            : <TrashIcon className="size-3.5" aria-hidden="true" />}
+                                        {isRevoking ? 'Disconnecting…' : 'Disconnect'}
+                                    </Button>
+                                </div>
                             </div>
                         );
                     })}

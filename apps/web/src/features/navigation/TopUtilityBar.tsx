@@ -38,13 +38,13 @@ export function TopUtilityBar() {
                 <div className="flex items-center gap-2">
                     <Link
                         href="/jobs"
-                        className="auth-user-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0"
+                        className="auth-user-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out ff-press motion-reduce:transform-none shadow-sm shrink-0"
                     >
                         Dashboard
                     </Link>
                     <Link
                         href="/register"
-                        className="auth-guest-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0"
+                        className="auth-guest-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out ff-press motion-reduce:transform-none shadow-sm shrink-0"
                     >
                         Create Profile
                     </Link>
@@ -62,7 +62,7 @@ export function TopUtilityBar() {
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition duration-150 ease-out active:scale-[0.97] hover:border-primary/40 motion-reduce:transform-none cursor-pointer focus:outline-none">
+                                <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition duration-150 ease-out ff-press hover:border-primary/40 motion-reduce:transform-none cursor-pointer focus:outline-none">
                                     {initialLetter}
                                 </button>
                             </DropdownMenuTrigger>

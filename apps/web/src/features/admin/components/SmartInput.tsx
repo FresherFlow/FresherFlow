@@ -27,15 +27,21 @@ const SmartInput = React.forwardRef<HTMLInputElement, SmartInputProps>(
 
         return (
             <Field
-                className={containerClassName}
+                className={
+                    containerClassName === 'flex-1'
+                        ? 'flex-1'
+                        : containerClassName === 'w-full'
+                          ? 'w-full'
+                          : undefined
+                }
                 label={label}
+                labelClassName={labelClassName}
                 icon={icon}
                 description={helpText}
                 descriptionId={descriptionId}
                 error={error}
                 errorId={errorId}
                 required={required}
-                labelClassName={labelClassName}
                 htmlFor={inputId}
             >
                 <Input

@@ -149,7 +149,7 @@ export default function TopNav() {
                                 <button
                                     onClick={handleAccountClick}
                                     className={cn(
-                                        "flex items-center justify-center w-9 h-9 rounded-full transition-transform active:scale-[0.97] shadow-sm overflow-hidden motion-reduce:transform-none",
+                                        "flex items-center justify-center w-9 h-9 rounded-full transition-transform ff-press shadow-sm overflow-hidden motion-reduce:transform-none",
                                         user
                                             ? "bg-primary text-primary-foreground"
                                             : "bg-muted text-muted-foreground hover:bg-muted/80"

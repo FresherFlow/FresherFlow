@@ -52,9 +52,9 @@ export const metadata: Metadata = {
 
 export default function FaqPage() {
     return (
-        <div className="mx-auto w-full max-w-[1200px] px-5 sm:px-8 py-10 sm:py-20">
-            <h1 className="ff-h1 font-display max-w-[680px]">Questions about the board.</h1>
-            <p className="ff-body-3 mt-5 max-w-[560px] text-muted-foreground">
+        <div className="mx-auto w-full max-w-300 px-5 sm:px-8 py-10 sm:py-20">
+            <h1 className="ff-h1 font-display max-w-170">Questions about the board.</h1>
+            <p className="ff-body-3 mt-5 max-w-140 text-muted-foreground">
                 Short answers to what people ask before they sign up. If yours is missing, ask it
                 on the discussions board.
             </p>

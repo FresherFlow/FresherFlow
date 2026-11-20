@@ -158,11 +158,11 @@ export function DetailSidebarActions({
                         <h3 className="text-sm font-semibold text-foreground">Apply now</h3>
                     </div>
                     {deadline && (
-                        <span className="text-[11px] font-medium text-muted-foreground">By {deadline}</span>
+                        <span className="text-micro font-medium text-muted-foreground">By {deadline}</span>
                     )}
                 </div>
                 {hasApplyLink && listingState !== 'EXPIRED' ? (
-                    <BrandButton variant="neutral" onClick={handleApply} className="h-12 w-full rounded-md active:scale-[0.97] motion-reduce:transform-none">
+                    <BrandButton variant="neutral" onClick={handleApply} className="h-12 w-full">
                         <ApplyActionContent
                             applyLink={opp.applyLink}
                             isGovernment={Boolean(opp.governmentJobDetails)}
@@ -203,7 +203,7 @@ export function DetailSidebarActions({
                                 <span className="text-xs font-medium text-foreground">{item.label}</span>
                             </>
                         );
-                        const itemClass = 'group flex cursor-pointer flex-col items-center gap-1.5 rounded-lg p-1.5 transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-sunken active:scale-[0.96] motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+                        const itemClass = 'group flex cursor-pointer flex-col items-center gap-1.5 rounded-lg p-1.5 transition-colors duration-150 ease-out [@media(hover:hover)_and_(pointer:fine)]:hover:bg-surface-sunken ff-press motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
                         return item.href ? (
                             <a
                                 key={item.label}
@@ -233,7 +233,7 @@ export function DetailSidebarActions({
                         readOnly
                         aria-label="Job link"
                         value={pageUrl}
-                        className="min-w-0 flex-1 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-[11px] text-muted-foreground"
+                        className="min-w-0 flex-1 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-micro text-muted-foreground"
                     />
                     <button
                         type="button"

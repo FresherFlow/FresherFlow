@@ -45,13 +45,13 @@ export function LegalPage({
     crossLink,
 }: LegalPageProps) {
     return (
-        <main className="mx-auto w-full max-w-[1120px] px-5 pb-20 pt-10 sm:px-8 sm:pb-24 sm:pt-16">
+        <main className="mx-auto w-full max-w-280 px-5 pb-20 pt-10 sm:px-8 sm:pb-24 sm:pt-16">
             <div className="flex items-center gap-2.5 font-record text-xs uppercase tracking-widest text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-warning" aria-hidden />
                 Legal
             </div>
 
-            <h1 className="mt-5 max-w-[20ch] font-display text-3xl font-extrabold leading-[1.05] tracking-tight sm:text-4xl">
+            <h1 className="mt-5 ff-measure-tight font-display text-3xl font-extrabold ff-leading-display tracking-tight sm:text-4xl">
                 {title}
             </h1>
 
@@ -59,7 +59,7 @@ export function LegalPage({
                 Last updated {updated}
             </p>
 
-            <p className="mt-5 max-w-[62ch] text-base leading-relaxed text-muted-foreground text-pretty">
+            <p className="mt-5 ff-measure-intro text-base leading-relaxed text-muted-foreground text-pretty">
                 {intro}
             </p>
 
@@ -90,7 +90,7 @@ export function LegalPage({
             {/* Desktop only: a legal page is long, and a reader who came for one
                 clause should not have to scroll to find it. The rail collapses
                 on small screens rather than adding another block of matter. */}
-            <div className="mt-12 lg:grid lg:grid-cols-[11rem_minmax(0,1fr)] lg:items-start lg:gap-12">
+            <div className="mt-12 lg:grid lg:ff-legal-cols lg:items-start lg:gap-12">
                 <nav aria-labelledby="legal-toc" className="hidden lg:sticky lg:top-24 lg:block">
                     <h2
                         id="legal-toc"
@@ -103,7 +103,7 @@ export function LegalPage({
                             <li key={section.n}>
                                 <a
                                     href={`#${sectionId(section)}`}
-                                    className="-ml-px block border-l border-transparent py-0.5 pl-3 text-[13px] leading-snug text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+                                    className="-ml-px block border-l border-transparent py-0.5 pl-3 text-meta leading-snug text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
                                 >
                                     {section.title}
                                 </a>
@@ -117,7 +117,7 @@ export function LegalPage({
                     <section
                         key={section.n}
                         id={sectionId(section)}
-                        className="grid scroll-mt-24 gap-2 border-b border-border py-7 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,2fr)] sm:gap-6"
+                        className="grid scroll-mt-24 gap-2 border-b border-border py-7 sm:ff-legal-section-cols sm:gap-6"
                     >
                         <div className="font-record text-xs font-semibold tabular-nums text-muted-foreground">
                             {section.n}
@@ -126,11 +126,11 @@ export function LegalPage({
                             {section.title}
                         </h2>
                         <div>
-                            <p className="max-w-[68ch] text-base leading-relaxed text-muted-foreground text-pretty">
+                            <p className="ff-measure-copy text-base leading-relaxed text-muted-foreground text-pretty">
                                 {section.body}
                             </p>
                             {section.points ? (
-                                <ul className="mt-3 max-w-[68ch] list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground">
+                                <ul className="mt-3 ff-measure-copy list-disc space-y-1.5 pl-5 text-sm leading-relaxed text-muted-foreground">
                                     {section.points.map((point) => (
                                         <li key={point.slice(0, 32)}>{point}</li>
                                     ))}

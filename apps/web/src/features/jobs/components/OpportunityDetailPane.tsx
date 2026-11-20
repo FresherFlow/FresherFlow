@@ -389,7 +389,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         ) : (
                             <button
                                 onClick={handleApply}
-                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.97] rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition motion-reduce:transform-none"
+                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 ff-press rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition motion-reduce:transform-none"
                             >
                                 {/* Same ATS-aware label and mark as the desktop
                                     pane: the phone was told "Apply on Website"

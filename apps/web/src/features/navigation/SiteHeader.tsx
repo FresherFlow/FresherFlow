@@ -110,14 +110,14 @@ function SiteHeaderContent() {
                             {resolvedUser ? (
                                 <Link
                                     href="/jobs"
-                                    className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-90 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-90 transition duration-150 ease-out ff-press motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard
                                 </Link>
                             ) : (
                                 <Link
                                     href="/register"
-                                    className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-90 transition duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-90 transition duration-150 ease-out ff-press motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Create Profile
                                 </Link>

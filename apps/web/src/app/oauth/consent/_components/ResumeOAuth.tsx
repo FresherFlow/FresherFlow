@@ -47,6 +47,9 @@ export function ResumeOAuth({ authorizeUrl, signInUrl }: ResumeOAuthProps) {
                     credentials: 'include',
                     headers: {
                         'Content-Type': 'application/json',
+                        // /api/auth/refresh is behind the CSRF gate; without this
+                        // the restore always 403s and forces an interactive login.
+                        'X-Requested-From': 'fresherflow-web',
                         'x-refresh-token': refreshToken,
                     },
                 });

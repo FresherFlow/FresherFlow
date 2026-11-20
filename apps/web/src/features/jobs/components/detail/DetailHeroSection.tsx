@@ -142,7 +142,7 @@ export function DetailHeroSection({
 
                 {/* The one bold moment. */}
                 <h1 className={cn(
-                    'mt-4 max-w-3xl font-bold leading-[1.15] tracking-tight text-foreground text-balance',
+                    'mt-4 max-w-3xl font-bold leading-tight tracking-tight text-foreground text-balance',
                     'text-2xl md:text-3xl'
                 )}>
                     {opp.title}

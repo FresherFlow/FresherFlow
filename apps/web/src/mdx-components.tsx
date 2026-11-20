@@ -1,4 +1,7 @@
 import type { MDXComponents } from "mdx/types";
+import Link from "next/link";
+import { Callout } from "@/features/docs/Callout";
+import { CodeBlock } from "@/features/docs/CodeBlock";
 
 /**
  * Element mapping for every `.mdx` page in the app.
@@ -14,18 +17,19 @@ import type { MDXComponents } from "mdx/types";
  */
 
 const components: MDXComponents = {
+  Callout,
   h1: ({ children }) => (
     <h1 className="font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="font-display mt-12 border-b border-border pb-2 text-2xl font-bold tracking-tight text-foreground">
+    <h2 className="font-display mt-12 scroll-mt-24 border-b border-border pb-2 text-2xl font-bold tracking-tight text-foreground">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mt-8 text-lg font-semibold text-foreground">{children}</h3>
+    <h3 className="mt-8 scroll-mt-24 text-lg font-semibold text-foreground">{children}</h3>
   ),
   h4: ({ children }) => (
     <h4 className="mt-6 text-base font-semibold text-foreground">{children}</h4>
@@ -35,14 +39,27 @@ const components: MDXComponents = {
       {children}
     </p>
   ),
-  a: ({ children, href }) => (
-    <a
-      href={href}
-      className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ children, href }) => {
+    const destination = href ?? "#";
+    if (destination.startsWith("/")) {
+      return (
+        <Link
+          href={destination}
+          className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+        >
+          {children}
+        </Link>
+      );
+    }
+    return (
+      <a
+        href={destination}
+        className="text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-foreground"
+      >
+        {children}
+      </a>
+    );
+  },
   ul: ({ children }) => (
     <ul className="mt-4 list-disc space-y-2 pl-6 text-sm leading-7 text-muted-foreground sm:text-base">
       {children}
@@ -71,16 +88,12 @@ const components: MDXComponents = {
       return <code className={className}>{children}</code>;
     }
     return (
-      <code className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.85em] text-foreground">
+      <code className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono ff-code-inline-size text-foreground">
         {children}
       </code>
     );
   },
-  pre: ({ children }) => (
-    <pre className="mt-6 overflow-x-auto rounded-lg border border-border bg-muted p-4 font-mono text-xs leading-6 text-foreground sm:text-sm">
-      {children}
-    </pre>
-  ),
+  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
   table: ({ children }) => (
     <div className="mt-6 overflow-x-auto">
       <table className="w-full border-collapse text-left text-sm">{children}</table>

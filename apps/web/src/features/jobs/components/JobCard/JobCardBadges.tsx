@@ -109,7 +109,7 @@ export function JobCardBadges({
                         size={compact ? 'xs' : 'sm'}
                         hideFallbackIcon={compact}
                         variant="plain"
-                        className={compact ? 'h-6 max-w-[45vw]' : 'h-6'}
+                        className={compact ? 'h-6 ff-skill-cap' : 'h-6'}
                     />
                 );
 

@@ -83,7 +83,7 @@ export function DesktopNav() {
                         if (pathname === '/') event.preventDefault();
                     }}
                     aria-label="FresherFlow home"
-                    className="flex items-center gap-2.5 shrink-0 group z-10 active:scale-[0.97] transition-transform duration-150 ease-out motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                    className="flex items-center gap-2.5 shrink-0 group z-10 ff-press transition-transform duration-150 ease-out motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
                 >
                     <LogoImage width={28} height={28} className="w-7 h-7 object-contain" />
                     <span className="text-lg font-semibold tracking-wide text-foreground leading-none">
@@ -115,7 +115,7 @@ export function DesktopNav() {
                                 }}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    'px-2 lg:px-2.5 xl:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition duration-150 ease-out active:scale-[0.97] relative shrink-0 motion-reduce:transform-none after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-out after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
+                                    'px-2 lg:px-2.5 xl:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition duration-150 ease-out ff-press relative shrink-0 motion-reduce:transform-none after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-out after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
                                     isActive
                                         ? 'text-foreground after:scale-x-100'
                                         : 'text-muted-foreground hover:text-foreground after:scale-x-0'
@@ -141,14 +141,14 @@ export function DesktopNav() {
                             {resolvedUser ? (
                                 <Link
                                     href="/jobs"
-                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out ff-press shadow-sm shrink-0 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard
                                 </Link>
                             ) : (
                                 <Link
                                     href="/register"
-                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition duration-150 ease-out ff-press shadow-sm shrink-0 motion-reduce:transform-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Create Profile
                                 </Link>

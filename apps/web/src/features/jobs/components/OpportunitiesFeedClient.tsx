@@ -453,7 +453,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                         {/* 40/60: the list is for scanning, the detail is the reason
                             split view exists. Equal columns made rows too wide and
                             the listing too cramped. */}
-                        <div className="w-full grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-6 items-start">
+                        <div className="w-full grid grid-cols-1 lg:ff-feed-cols-40-60 gap-6 items-start">
                             {/* Left Column: Grid list — px gutters keep cards off the
                                 column edges instead of butting against the screen
                                 border and the detail pane.
@@ -464,7 +464,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                 `overflow-y-auto` never engaged and the page scrolled
                                 both panes together. `ff-scrollbar` is the visible,
                                 themed scrollbar (globals.css). */}
-                            <div className="min-w-0 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-12rem)] lg:overflow-y-auto lg:overscroll-contain lg:px-3 ff-scrollbar" ref={leftColumnRef}>
+                            <div className="min-w-0 lg:sticky lg:top-24 lg:ff-pane-max-h lg:overflow-y-auto lg:overscroll-contain lg:px-3 ff-scrollbar" ref={leftColumnRef}>
                                 <OpportunityGrid
                                     opportunities={pagedOpps}
                                     isLoading={isLoading}
@@ -490,7 +490,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                             </div>
 
                             {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                            <div className="hidden lg:flex flex-col sticky top-24 max-h-[calc(100dvh-12rem)] min-h-0 overflow-hidden rounded-xl border border-border bg-card">
+                            <div className="hidden lg:flex flex-col sticky top-24 ff-pane-max-h min-h-0 overflow-hidden rounded-xl border border-border bg-card">
                                 {selectedOpp ? (
                                     <div className="flex-1 min-h-0">
                                         <OpportunityDetailPane

@@ -29,6 +29,12 @@ const tableRowVariants = cva(
         // Lift + fade for the row being dragged in a sortable table. Pair with
         // `data-dragging` on the row.
         dragging: "relative z-10 data-[dragging=true]:opacity-80",
+        // Keyboard-operable row: the focus ring and pointer affordance belong
+        // to the primitive, not to every call site that makes a row clickable.
+        interactive:
+          "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+        // Secondary detail row under an expanded parent.
+        subtle: "bg-muted/30 hover:bg-muted/30",
       },
     },
     defaultVariants: {
@@ -119,16 +125,32 @@ const TableHead = React.forwardRef<
 ))
 TableHead.displayName = "TableHead"
 
+const tableCellVariants = cva(
+  "px-4 py-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+  {
+    variants: {
+      variant: {
+        default: "",
+        // Dense number columns read as a column, not a jumble of widths.
+        numeric: "tabular-nums",
+        // De-emphasised metadata such as last-run timestamps.
+        muted: "text-muted-foreground",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
-  React.TdHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
+  React.TdHTMLAttributes<HTMLTableCellElement> &
+    VariantProps<typeof tableCellVariants>
+>(({ className, variant, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn(
-      "px-4 py-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
-      className
-    )}
+    className={cn(tableCellVariants({ variant }), className)}
     {...props}
   />
 ))

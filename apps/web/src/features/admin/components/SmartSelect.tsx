@@ -43,13 +43,19 @@ export const SmartSelect = React.forwardRef<HTMLButtonElement, SmartSelectProps>
 
     return (
         <Field
-            className={containerClassName}
+            className={
+                containerClassName === 'flex-1'
+                    ? 'flex-1'
+                    : containerClassName === 'w-full'
+                      ? 'w-full'
+                      : undefined
+            }
             label={label}
+            labelClassName={labelClassName}
             icon={icon}
             description={helpText}
             error={error}
             required={required}
-            labelClassName={labelClassName}
             htmlFor={inputId}
         >
             <Select

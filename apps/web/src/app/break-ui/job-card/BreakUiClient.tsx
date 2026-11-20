@@ -78,7 +78,7 @@ export default function BreakUiClient() {
                 </h1>
             </header>
 
-            <main className="mx-auto w-full max-w-[720px] px-3 py-4">
+            <main className="mx-auto w-full max-w-180 px-3 py-4">
                 {state === 'empty' ? (
                     <p className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
                         The card renders nothing for an empty list; the feed owns the empty state.
@@ -100,7 +100,7 @@ export default function BreakUiClient() {
 
             {/* Harness chrome: deliberately plain, fixed out of the card's way. */}
             <div
-                className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full border border-neutral-300 bg-neutral-100 p-1 shadow-lg"
+                className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 rounded-full border border-border bg-muted p-1 shadow-lg"
                 role="group"
                 aria-label="Dataset"
             >
@@ -113,8 +113,8 @@ export default function BreakUiClient() {
                             aria-pressed={state === entry.key}
                             className={
                                 state === entry.key
-                                    ? 'rounded-full bg-white px-3 py-1.5 text-xs font-medium text-neutral-900 shadow-sm'
-                                    : 'rounded-full px-3 py-1.5 text-xs font-medium text-neutral-600 hover:text-neutral-900'
+                                    ? 'rounded-full bg-white px-3 py-1.5 text-xs font-medium text-foreground shadow-sm'
+                                    : 'rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground'
                             }
                             style={{ fontFamily: 'system-ui, sans-serif' }}
                         >

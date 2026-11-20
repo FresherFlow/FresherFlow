@@ -569,7 +569,10 @@ export async function apiClient<T = unknown>(
                 // Only force logout when refresh proves the session is actually invalid.
                 // Transient refresh failures (timeouts, 5xx, deploy/network blips) should not
                 // wipe the user's session and send them back to login.
-                const isExplicitAuthFailure = error?.status === 401 || error?.status === 403 || err instanceof UnauthorizedError;
+                // A 429 or 5xx from refresh is not proof the session is invalid.
+                // The refresh function already clears tokens on a definitive 401/403;
+                // clearing here for any UnauthorizedError logs the user out on a blip.
+                const isExplicitAuthFailure = error?.status === 401 || error?.status === 403;
                 const isNetworkError = error instanceof OfflineError || (error instanceof TypeError && error.message.includes('fetch'));
 
                 if (isExplicitAuthFailure && !isNetworkError) {

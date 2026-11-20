@@ -59,23 +59,23 @@ export const metadata: Metadata = {
 function JobsShellFallback() {
     return (
         <div className="w-full px-3 md:px-6" role="status" aria-label="Loading jobs">
-            <div className="flex h-[50px] items-center justify-between gap-3 border-b border-border/50">
+            <div className="flex h-12.5 items-center justify-between gap-3 border-b border-border/50">
                 <Skeleton className="h-4 w-28" />
                 <div className="flex items-center gap-2">
-                    <Skeleton className="h-8 w-24 rounded-xl" />
-                    <Skeleton className="h-8 w-20 rounded-xl" />
-                    <Skeleton className="h-8 w-24 rounded-xl" />
+                    <Skeleton variant="tile" className="h-8 w-24" />
+                    <Skeleton variant="tile" className="h-8 w-20" />
+                    <Skeleton variant="tile" className="h-8 w-24" />
                 </div>
             </div>
             <div className="mt-2 overflow-hidden rounded-xl border border-border/60 bg-card">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                     <div key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-3 last:border-b-0">
-                        <Skeleton className="h-9 w-9 shrink-0 rounded-md" />
+                        <Skeleton variant="action" className="h-9 w-9 shrink-0" />
                         <div className="min-w-0 flex-1 space-y-1.5">
                             <Skeleton className="h-3.5 w-2/5" />
                             <Skeleton className="h-3 w-3/5" />
                         </div>
-                        <Skeleton className="h-5 w-5 shrink-0 rounded" />
+                        <Skeleton className="h-5 w-5 shrink-0" />
                     </div>
                 ))}
             </div>

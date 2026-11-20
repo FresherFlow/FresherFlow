@@ -1,0 +1,154 @@
+# API Reference
+
+The FresherFlow API is the backend for the web app, the mobile apps and the MCP server. The route files under `apps/api/src/routes/` are authoritative for the exact methods and payloads.
+
+## Base URL
+
+```txt
+https://api.fresherflow.in/api
+```
+
+There is no `/v1` path prefix. OAuth endpoints live at the origin root, for example `https://api.fresherflow.in/oauth/token`.
+
+## Authentication
+
+Most account routes require a bearer token:
+
+```txt
+Authorization: Bearer <access_token>
+```
+
+Sign in with `POST /api/auth/login` to obtain one. Public routes are marked `PUBLIC` below and need no token. Admin routes require an admin session and the relevant permission.
+
+## Public endpoints
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>GET</code></td><td><code>/api/health</code></td><td>Liveness check</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/ready</code></td><td>Readiness check</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/public/stats</code></td><td>Public platform statistics</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/public/companies/search</code></td><td>Search the company directory</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/public/companies/:name</code></td><td>One company and its listings</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/public/sitemap</code></td><td>Public sitemap data</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/public/profiles/:username</code></td><td>Public candidate profile</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/public/government-jobs</code></td><td>Government vacancy feed</td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/public/submit-job-link</code></td><td>Submit a job link for review</td></tr>
+  </tbody>
+</table>
+
+All public routes are rate limited.
+
+## Account endpoints
+
+<table>
+  <thead>
+    <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>GET</code>, <code>PUT</code></td><td><code>/api/profile</code></td><td>Read or update your profile</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/profile/completion</code></td><td>Profile completion state</td></tr>
+    <tr><td><code>PUT</code></td><td><code>/api/profile/education</code></td><td>Education and pass-out year</td></tr>
+    <tr><td><code>PUT</code></td><td><code>/api/profile/preferences</code></td><td>Preferred cities, work modes and job types</td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/profile/publish</code></td><td>Publish your public candidate page</td></tr>
+    <tr><td><code>GET</code>, <code>POST</code></td><td><code>/api/saved</code>, <code>/api/saved/:id</code></td><td>List bookmarks; bookmark or unbookmark a listing</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/applications/me</code></td><td>Your applications and their stages</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/dashboard</code></td><td>Dashboard data</td></tr>
+    <tr><td><code>GET</code>, <code>POST</code></td><td><code>/api/alerts</code></td><td>Job alerts</td></tr>
+    <tr><td><code>GET</code>, <code>POST</code></td><td><code>/api/follows</code></td><td>Followed companies, tags and contributors</td></tr>
+    <tr><td><code>GET</code></td><td><code>/api/opportunities</code></td><td>List opportunities (optional auth)</td></tr>
+    <tr><td><code>POST</code></td><td><code>/api/opportunities</code></td><td>Submit an opportunity — requires <code>opportunity.create</code></td></tr>
+  </tbody>
+</table>
+
+Community features live under `/api/jobs`, `/api/discussions`, `/api/community`, `/api/rooms`, `/api/notifications` and `/api/users`.
+
+## Admin endpoints
+
+Admin routes are mounted under `/api/admin/` and require an admin session plus the matching permission. Examples include:
+
+<table>
+  <thead>
+    <tr><th>Path</th><th>Purpose</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>/api/admin/opportunities</code></td><td>Create, edit and manage listings</td></tr>
+    <tr><td><code>/api/admin/moderation</code></td><td>Moderation queue and decisions</td></tr>
+    <tr><td><code>/api/admin/moderators</code></td><td>Moderator permissions and RBAC grants</td></tr>
+    <tr><td><code>/api/admin/ingestion</code></td><td>Ingestion controls</td></tr>
+    <tr><td><code>/api/admin/audit</code></td><td>Audit log</td></tr>
+    <tr><td><code>/api/admin/system</code></td><td>System and queue health</td></tr>
+  </tbody>
+</table>
+
+Admin mutations are audit-logged and use admin-specific rate limits. A missing or mismatched `JWT_ADMIN_SECRET` makes every `/api/admin/**` route deny with 403 — it fails closed, never open.
+
+## MCP
+
+MCP tools are not REST endpoints. They are invoked over the MCP protocol at `https://mcp.fresherflow.in/mcp` with an OAuth 2.1 bearer token issued by this API. See the [MCP guide](/docs/mcp).
+
+The internal surface at `/api/internal/mcp/*` accepts either a user's MCP bearer token or the service key. It is not part of the public API.
+
+## Request validation
+
+POST and PUT bodies are validated with Zod before a handler runs. The central listing schema is `opportunitySchema`:
+
+```typescript
+// apps/api/src/utils/validation.ts
+export const opportunitySchema = z.object({
+  title: z.string().min(1),
+  company: z.string().min(1),
+  // ... more fields
+});
+```
+
+> `opportunitySchema` is a **closed** `z.object`. Unknown keys are stripped, not rejected, so a misspelled field disappears silently. Use the exact field names from the route or tool documentation.
+
+A `Json` column such as `applicationDetails` must be set to `Prisma.DbNull`, not bare `null`, when you want a SQL NULL.
+
+## Error format
+
+Errors use one envelope across the API:
+
+```json
+{
+  "error": {
+    "message": "Validation failed",
+    "details": [{ "field": "title", "message": "Required" }],
+    "requestId": "req_01J..."
+  }
+}
+```
+
+Common status codes:
+
+<table>
+  <thead>
+    <tr><th>Status</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>400</code></td><td>Validation failed</td></tr>
+    <tr><td><code>401</code></td><td>Missing or invalid credentials</td></tr>
+    <tr><td><code>403</code></td><td>Insufficient permission or inactive account</td></tr>
+    <tr><td><code>404</code></td><td>Resource not found</td></tr>
+    <tr><td><code>409</code></td><td>Conflict, including duplicate submissions</td></tr>
+    <tr><td><code>429</code></td><td>Rate limit exceeded</td></tr>
+    <tr><td><code>500</code></td><td>Unexpected server error — generic message, details logged server-side</td></tr>
+  </tbody>
+</table>
+
+## Rate limiting
+
+Public routes, auth routes, admin mutations and the MCP surface all have rate limits. MCP and OAuth paths use dedicated per-user or per-route limiters rather than the global per-IP bucket; see the [MCP rate limits](/docs/mcp#rate-limits). A 429 response includes `X-RateLimit-Limit`, `X-RateLimit-Remaining` and `X-RateLimit-Reset` headers.
+
+## Client libraries
+
+- `@fresherflow/api-client` — TypeScript wrappers used by the frontend and MCP server.
+
+## Related
+
+- [Overview](/docs/overview) — platform summary and local setup.
+- [MCP server](/docs/mcp) — the AI-client surface over this API.
+- [Architecture](/docs/architecture) — where these routes sit in the system.

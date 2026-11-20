@@ -165,13 +165,14 @@ export function NavMegaMenu({ isLanding: _isLanding, marqueeHidden: _marqueeHidd
 
             <div
                 className={cn(
-                    'fixed left-1/2 z-50 w-[min(1040px,calc(100vw-2rem))] -translate-x-1/2',
-                    'before:absolute before:inset-x-0 before:-top-3 before:h-3 before:content-[""]',
-                    'rounded-lg border border-border bg-card p-6 shadow-lg shadow-black/10 transition-[opacity,transform] duration-150 ease-out',
+                    'fixed left-1/2 z-50 w-11/12 max-w-5xl -translate-x-1/2',
+                    'rounded-lg border border-border bg-card p-6 shadow-lg shadow-black/10 transition duration-150 ease-out',
                     open ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                 )}
                 style={{ top: panelTop }}
             >
+                {/* Bridges the gap so moving from trigger to panel never leaves hover. */}
+                <div className="absolute inset-x-0 -top-3 h-3" aria-hidden="true" />
                 <div className="grid grid-cols-2 gap-6 md:grid-cols-5">
                     <Column title="Explore" links={EXPLORE} />
                     <Column
