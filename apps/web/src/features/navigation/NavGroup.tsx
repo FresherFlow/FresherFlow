@@ -51,6 +51,11 @@ type ActiveProps = {
  */
 export function NavGroup({ group }: { group: SidebarNavGroupData }) {
     const { state, isMobile } = useSidebar();
+    // Docs groups read as plain text when expanded; keep icons for the
+    // collapsed rail so its rows never become empty tiles.
+    const iconClass = group.iconOnlyWhenCollapsed
+        ? 'hidden group-data-[collapsible=icon]:block'
+        : undefined;
     const pathname = usePathname() || '';
     const searchParams = useSearchParams();
     // Defer the collapsed-rail dropdown branch until after mount: server and
@@ -71,6 +76,7 @@ export function NavGroup({ group }: { group: SidebarNavGroupData }) {
                             <SidebarMenuLink
                                 key={`${item.title}-${item.href}`}
                                 item={item}
+                                iconClass={iconClass}
                                 pathname={pathname}
                                 searchParams={searchParams}
                             />
@@ -82,6 +88,7 @@ export function NavGroup({ group }: { group: SidebarNavGroupData }) {
                             <SidebarCollapsedDropdown
                                 key={`${item.title}-group`}
                                 item={item}
+                                iconClass={iconClass}
                                 pathname={pathname}
                                 searchParams={searchParams}
                             />
@@ -92,6 +99,7 @@ export function NavGroup({ group }: { group: SidebarNavGroupData }) {
                         <SidebarMenuCollapsible
                             key={`${item.title}-group`}
                             item={item}
+                            iconClass={iconClass}
                             pathname={pathname}
                             searchParams={searchParams}
                         />
@@ -116,9 +124,10 @@ function NavBadge({ children }: { children: ReactNode }) {
 
 function SidebarMenuLink({
     item,
+    iconClass,
     pathname,
     searchParams,
-}: { item: SidebarNavLinkData } & ActiveProps) {
+}: { item: SidebarNavLinkData; iconClass?: string } & ActiveProps) {
     const { setOpenMobile } = useSidebar();
     const ItemIcon = item.icon;
     return (
@@ -129,7 +138,7 @@ function SidebarMenuLink({
                 tooltip={item.title}
             >
                 <Link href={item.href} onClick={() => setOpenMobile(false)}>
-                    <ItemIcon />
+                    <ItemIcon className={iconClass} />
                     <span>{item.title}</span>
                     {hasBadge(item.badge) && <NavBadge>{formatBadge(item.badge)}</NavBadge>}
                 </Link>
@@ -140,9 +149,10 @@ function SidebarMenuLink({
 
 function SidebarMenuCollapsible({
     item,
+    iconClass,
     pathname,
     searchParams,
-}: { item: SidebarNavCollapsibleData } & ActiveProps) {
+}: { item: SidebarNavCollapsibleData; iconClass?: string } & ActiveProps) {
     const { setOpenMobile } = useSidebar();
     const ItemIcon = item.icon;
     const hasActiveChild = item.items.some((sub) =>
@@ -168,7 +178,7 @@ function SidebarMenuCollapsible({
                         marked active. `hasActiveChild` still drives auto-open.
                     */}
                     <SidebarMenuButton tooltip={item.title}>
-                        <ItemIcon />
+                        <ItemIcon className={iconClass} />
                         <span>{item.title}</span>
                         <ChevronRight className="ms-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
@@ -216,9 +226,10 @@ function SidebarMenuSubRow({
 
 function SidebarCollapsedDropdown({
     item,
+    iconClass,
     pathname,
     searchParams,
-}: { item: SidebarNavCollapsibleData } & ActiveProps) {
+}: { item: SidebarNavCollapsibleData; iconClass?: string } & ActiveProps) {
     const ItemIcon = item.icon;
     const isActive = item.items.some((sub) => isSpaceItemActive(sub, pathname, searchParams));
     return (
@@ -226,7 +237,7 @@ function SidebarCollapsedDropdown({
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <SidebarMenuButton tooltip={item.title} isActive={isActive}>
-                        <ItemIcon />
+                        <ItemIcon className={iconClass} />
                         <span>{item.title}</span>
                         <ChevronRight className="ms-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>

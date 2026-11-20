@@ -222,6 +222,7 @@ export const SIDEBAR_ROUTES = [
     '/contribute',
     '/resources',
     '/community',
+    '/docs',
 ];
 
 export function isSidebarPage(pathname: string): boolean {

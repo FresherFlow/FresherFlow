@@ -2,10 +2,12 @@
 /* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import * as React from "react"
+import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 
 import { NavGroup } from "@/features/navigation/NavGroup"
-import { getSidebarGroups } from "@/features/navigation/sidebar-data"
+import { LogoImage } from "@/features/shell/LogoImage"
+import { getNavGroups, isDocsPath } from "@/features/navigation/sidebar-data"
 import { useNavCounts } from "@/features/navigation/useNavCounts"
 import { NavUser } from "@/features/navigation/NavUser"
 import { SpaceSwitcher } from "@/features/navigation/SpaceSwitcher"
@@ -99,7 +101,8 @@ function AppSidebarRail() {
   const { variant, collapsible } = useAppLayout()
   const [isScrolled, setIsScrolled] = React.useState(false)
 
-  const groups = getSidebarGroups({ spaceId, isAuthed, mounted, badges: navBadges })
+  const pathname = usePathname() || ""
+  const groups = getNavGroups(pathname, { spaceId, isAuthed, mounted, badges: navBadges })
 
   // Switching space is a navigation: the page must follow the switcher, and
   // each space navigates to its own `homeHref`.
@@ -131,12 +134,25 @@ function AppSidebarRail() {
             tiles (white logo, then black space icon) at two offsets — the
             "logo and switcher in different positions" bug. Passing `logo`
             folds the brand into the switcher, so there is one row and one tile. */}
-        <SpaceSwitcher
-          spaces={SPACES}
-          activeId={spaceId}
-          onChange={handleSpaceChange}
-          logo
-        />
+        {isDocsPath(pathname) ? (
+          <Link
+            href="/docs"
+            className="flex h-8 items-center gap-2 rounded-md px-1 text-sm font-semibold text-sidebar-foreground outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+          >
+            <LogoImage width={24} height={24} className="size-6 shrink-0 object-contain" />
+            <span className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate text-sm font-semibold text-sidebar-foreground">FresherFlow</span>
+              <span className="text-micro text-muted-foreground">Documentation</span>
+            </span>
+          </Link>
+        ) : (
+          <SpaceSwitcher
+            spaces={SPACES}
+            activeId={spaceId}
+            onChange={handleSpaceChange}
+            logo
+          />
+        )}
       </SidebarHeader>
       <SidebarContent
         onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 2)}
@@ -146,7 +162,19 @@ function AppSidebarRail() {
         ))}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border px-2 pb-1 pt-1">
-        <NavUser />
+        {isDocsPath(pathname) ? (
+          <ThemeSwitcher className="w-full">
+            <button
+              type="button"
+              className="mt-1 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-sidebar-foreground transition-colors duration-150 ease-out hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Moon className="size-4 shrink-0 opacity-70" aria-hidden="true" />
+              <span className="flex-1 text-left">Theme</span>
+            </button>
+          </ThemeSwitcher>
+        ) : (
+          <NavUser />
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
@@ -165,7 +193,8 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
   const { spaceId, setSpaceId, mounted, isAuthed } = useSpaceSelection()
   const navBadges = useNavCounts() ?? undefined
 
-  const groups = getSidebarGroups({ spaceId, isAuthed, mounted, badges: navBadges })
+  const pathname = usePathname() || ""
+  const groups = getNavGroups(pathname, { spaceId, isAuthed, mounted, badges: navBadges })
 
   const handleSpaceChange = (id: SpaceId) => {
     setSpaceId(id)
@@ -177,12 +206,25 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
     <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
       <div className="flex-1 overflow-y-auto px-2 py-3">
         {/* Same single-row header as the rail: the switcher carries the logo. */}
-        <SpaceSwitcher
-          spaces={SPACES}
-          activeId={spaceId}
-          onChange={handleSpaceChange}
-          logo
-        />
+        {isDocsPath(pathname) ? (
+          <Link
+            href="/docs"
+            className="flex h-8 items-center gap-2 rounded-md px-1 text-sm font-semibold text-sidebar-foreground"
+          >
+            <LogoImage width={24} height={24} className="size-6 shrink-0 object-contain" />
+            <span className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate text-sm font-semibold text-sidebar-foreground">FresherFlow</span>
+              <span className="text-micro text-muted-foreground">Documentation</span>
+            </span>
+          </Link>
+        ) : (
+          <SpaceSwitcher
+            spaces={SPACES}
+            activeId={spaceId}
+            onChange={handleSpaceChange}
+            logo
+          />
+        )}
         {/* Close on link clicks only: collapsible parents expand in place
             via chevron and must NOT dismiss the drawer. */}
         <div
@@ -197,7 +239,7 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
         </div>
       </div>
       <div className="shrink-0 border-t border-sidebar-border p-2">
-        <NavUser />
+        {!isDocsPath(pathname) && <NavUser />}
         <ThemeSwitcher className="w-full">
           <button
             type="button"

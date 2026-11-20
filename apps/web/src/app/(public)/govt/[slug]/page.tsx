@@ -154,8 +154,10 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
 
         if (!opp) {
             logRouteResult('/govt/[slug]', '404');
-            const { unstable_noStore } = await import('next/cache');
-            unstable_noStore();
+            // No unstable_noStore() here: this route is statically generated
+            // (revalidate = false, dynamicParams = true) and Next.js throws
+            // E132 "Page changed from static to dynamic at runtime" when a
+            // dynamic API is hit while generating an on-demand path.
             notFound();
         }
 

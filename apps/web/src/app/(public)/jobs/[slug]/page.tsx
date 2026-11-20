@@ -262,15 +262,15 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // injects the noindex tag, so Google keeps the page out of results
         // instead of soft-404ing a 200 that looks like a listing.
         //
-        // Opt out of the ISR cache before 404-ing: with `revalidate = false`
-        // and `dynamicParams = true`, every bot-invented slug would otherwise
-        // get an ISR write cached under that bogus URL — unbounded cache
-        // entries. `unstable_noStore()` mirrors companies/[slug]/page.tsx and
-        // keeps bogus slugs out of the ISR write path entirely.
+        // Do NOT call unstable_noStore() here. This route is statically
+        // generated (revalidate = false, dynamicParams = true), and Next.js
+        // throws E132 "Page changed from static to dynamic at runtime" when a
+        // dynamic API is reached while an on-demand path is being generated.
+        // `notFound()` alone returns a proper 404 without flipping the route's
+        // rendering mode. Unlike noStore(), it does not write a dynamic bailout
+        // into the render, so the 404 path no longer 500s on cache misses.
         if (!opportunityData) {
             logRouteResult('/[slug]', '404');
-            const { unstable_noStore } = await import('next/cache');
-            unstable_noStore();
             notFound();
         }
 

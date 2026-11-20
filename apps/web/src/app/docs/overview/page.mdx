@@ -1,70 +1,59 @@
+<DocBackLink />
+
 # FresherFlow
 
-FresherFlow is a job and walk-in opportunity platform for freshers in India. It ingests postings from external sources, normalizes them into one listing contract, serves them through a public feed, and lets candidates search, save and apply — from the web, the mobile app, or an AI client over MCP.
+FresherFlow is a job and walk-in opportunity platform for freshers in India. It collects postings from external sources, normalizes them into one listing contract, serves them through a public feed, and lets candidates search, save and apply — from the web, the mobile app, or an AI client over MCP.
 
-If you want to connect an AI assistant, start with the [MCP guide](/docs/mcp). If you are building against the backend, start with the [API reference](/docs/api).
+<DocCallout variant="note" title="One listing contract">
+  The admin form, the ingestion pipeline and the MCP server all write listings through the same `opportunitySchema`. Unknown keys are dropped rather than rejected, so field names must be exact.
+</DocCallout>
 
 ## What the platform does
 
 - **Collects** postings through the job-discovery and job-processor scripts.
-- **Normalizes** them into a single listing shape (`opportunitySchema`) shared by the admin form, ingestion and MCP.
+- **Normalizes** them into a single listing shape shared by every write path.
 - **Publishes** through a versioned feed on Cloudflare R2, served over the CDN.
-- **Serves** public job and company pages, personalized dashboards, and mobile apps.
+- **Serves** public job pages, dashboards and the mobile app.
 - **Exposes** the same data as MCP tools, with role-filtered tool lists.
 
-## Architecture at a glance
+## The apps
 
-<table>
-  <thead>
-    <tr><th>Layer</th><th>What it is</th><th>Stack</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Public web</td><td>Job feed, company and detail pages</td><td>Next.js App Router, TypeScript, Tailwind CSS</td></tr>
-    <tr><td>Mobile</td><td>Candidate app with offline feed cache</td><td>Expo, React Native, MMKV</td></tr>
-    <tr><td>Admin mobile</td><td>Internal moderation and operations</td><td>Expo, React Native</td></tr>
-    <tr><td>API</td><td>REST surface, auth, validation, business rules</td><td>Node.js, Express, Zod, Prisma</td></tr>
-    <tr><td>MCP</td><td>AI-client surface over the API</td><td>Cloudflare Worker, Streamable HTTP, OAuth 2.1</td></tr>
-    <tr><td>Worker</td><td>Background jobs and feed regeneration</td><td>BullMQ, Redis</td></tr>
-    <tr><td>Database &amp; storage</td><td>Relational data and versioned feed objects</td><td>PostgreSQL, Cloudflare R2</td></tr>
-  </tbody>
-</table>
+- **Web** — public feed, company pages, accounts and admin UI. Next.js App Router and Tailwind CSS.
+- **API** — REST surface, auth, validation and business rules. Node.js, Express, Zod and Prisma.
+- **MCP** — AI-client surface. A Cloudflare Worker over the API with OAuth 2.1.
+- **Mobile** — candidate app with an offline feed cache. Expo, React Native and MMKV.
+- **Worker** — BullMQ processors for background work.
 
-The full boundary rules, caching policy and source-of-truth table live in the repository's `AGENTS.md`. A short version is in [Architecture](/docs/architecture).
+Frontend apps never import Prisma. They call the API through `packages/api-client`.
 
 ## How a posting reaches a candidate
 
-1. **Discover** — scripts find postings on external sources and record them as raw jobs.
+1. **Discover** — scripts find postings on external sources and record raw jobs.
 2. **Parse** — `packages/parser` extracts structured fields from the raw text.
-3. **Validate** — the API's closed `opportunitySchema` is the one listing contract. Unknown keys are dropped, so field names must be exact.
-4. **Review** — community submissions become drafts; moderators approve or fix and publish.
-5. **Publish** — the publish flow regenerates the feed from the admin/publish path, never from a public request.
-6. **Serve** — a versioned feed object is uploaded to R2 and the CDN serves it to web, mobile and the MCP public tools.
+3. **Validate** — `opportunitySchema` is the single listing contract.
+4. **Review** — community submissions become drafts until a moderator publishes them.
+5. **Publish** — the publish flow regenerates the feed and invalidates the affected tags.
+6. **Serve** — a versioned feed object on R2 is served to web, mobile and the MCP public tools.
+
+Feed regeneration always starts from an admin or publish flow, never from a public route.
 
 ## Shared packages
 
-<table>
-  <thead>
-    <tr><th>Package</th><th>Owns</th></tr>
-  </thead>
-  <tbody>
-    <tr><td><code>@fresherflow/types</code></td><td>Shared request and response types</td></tr>
-    <tr><td><code>@fresherflow/utils</code></td><td>Pure helpers, including eligibility and location rules</td></tr>
-    <tr><td><code>@fresherflow/api-client</code></td><td>Frontend API wrappers</td></tr>
-    <tr><td><code>@fresherflow/parser</code></td><td>Extraction and normalization from raw postings</td></tr>
-    <tr><td><code>@fresherflow/database</code></td><td>Prisma client and Redis clients (server-only)</td></tr>
-    <tr><td><code>@fresherflow/queue</code></td><td>BullMQ queue contracts (server-only)</td></tr>
-    <tr><td><code>@fresherflow/ui</code></td><td>Shared UI primitives</td></tr>
-  </tbody>
-</table>
+- `@fresherflow/types` — shared request and response types.
+- `@fresherflow/utils` — pure helpers for eligibility, opportunity rules and locations.
+- `@fresherflow/api-client` — frontend API wrappers.
+- `@fresherflow/parser` — extraction and normalization.
+- `@fresherflow/database` — Prisma and Redis clients. Server-only.
+- `@fresherflow/queue` — BullMQ queue contracts. Server-only.
+- `@fresherflow/ui` — shared UI primitives.
 
-Frontend apps never import Prisma or the database package. They go through `packages/api-client`. Backend business rules live in API application and infrastructure services, with pure helpers in `packages/utils` and `packages/types`.
+There is no `packages/domain`. Business rules live in API services or pure helpers in `packages/utils` and `packages/types`.
 
 ## Local development
 
 ```bash
 pnpm install --frozen-lockfile
 pnpm db:generate
-pnpm turbo lint --filter=fresherflow-api --filter=fresherflow-web
 pnpm turbo typecheck --filter=fresherflow-api --filter=fresherflow-web
 pnpm turbo build --filter=fresherflow-api --filter=fresherflow-web
 pnpm --filter fresherflow-api test
@@ -74,7 +63,7 @@ pnpm --filter fresherflow-api test
 
 ## Where to go next
 
-- [MCP server](/docs/mcp) — connect ChatGPT, Claude, Cursor or Codex, and see the available tools.
-- [API reference](/docs/api) — endpoints, authentication and error shapes.
 - [Architecture](/docs/architecture) — package boundaries, data flow and deployment.
-- [Skills](/docs/skills) — the workflow playbooks that ship with the plugin.
+- [API reference](/docs/api) — endpoints, authentication and error shapes.
+- [MCP server](/docs/mcp) — connect an AI client and see the available tools.
+- [Agent skills](/docs/skills) — the workflow playbooks that ship with the plugin.

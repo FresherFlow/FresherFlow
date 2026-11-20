@@ -48,6 +48,8 @@ export type SidebarNavItemData = SidebarNavLinkData | SidebarNavCollapsibleData;
 export type SidebarNavGroupData = {
     title: string;
     items: SidebarNavItemData[];
+    /** Docs rail: plain rows when expanded, icons when collapsed to a rail. */
+    iconOnlyWhenCollapsed?: boolean;
 };
 
 type BuilderOptions = {
@@ -143,4 +145,46 @@ export function getSidebarGroups({
     }
 
     return groups;
+}
+
+/* Documentation rail: same AppSidebar component and NavGroup rows as the rest
+   of the app, only the data changes on /docs. No second sidebar implementation. */
+import { BookOpen, Code2, Network, PlugZap } from 'lucide-react';
+
+const DOCS_GROUPS: SidebarNavGroupData[] = [
+    {
+        title: 'Get started',
+        items: [{ title: 'Overview', href: '/docs/overview', icon: BookOpen, exact: true }],
+    },
+    {
+        title: 'Platform',
+        items: [
+            { title: 'Architecture', href: '/docs/architecture', icon: Network },
+            { title: 'API reference', href: '/docs/api', icon: Code2 },
+            { title: 'MCP server', href: '/docs/mcp', icon: PlugZap },
+        ],
+    },
+    {
+        title: 'AI & agents',
+        items: [
+            {
+                title: 'Agent skills',
+                icon: BookOpen,
+                items: [
+                    { title: 'FresherFlow Coach', href: '/docs/skills/fresherflow-coach' },
+                    { title: 'Job Search', href: '/docs/skills/job-search' },
+                    { title: 'Review Submissions', href: '/docs/skills/review-submissions' },
+                    { title: 'Submit Opportunity', href: '/docs/skills/submit-opportunity' },
+                ],
+            },
+        ],
+    },
+];
+
+export function isDocsPath(pathname: string): boolean {
+    return pathname === '/docs' || pathname.startsWith('/docs/');
+}
+
+export function getNavGroups(pathname: string, options: BuilderOptions): SidebarNavGroupData[] {
+    return isDocsPath(pathname) ? DOCS_GROUPS : getSidebarGroups(options);
 }

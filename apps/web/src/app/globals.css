@@ -1623,3 +1623,10 @@ html.ff-smooth {
     background-color: var(--color-muted-foreground);
   }
 }
+
+/* Docs reading surface: the first paragraph after a page title is a lead. */
+.docs-article > h1 + p {
+  font-size: 1.125rem;
+  line-height: 1.75;
+  color: var(--color-muted-foreground);
+}

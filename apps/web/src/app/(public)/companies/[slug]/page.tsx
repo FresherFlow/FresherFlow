@@ -42,20 +42,6 @@ export const revalidate = false;
 export const dynamicParams = true;
 
 /**
- * Never cache a miss.
- *
- * With `dynamicParams = true`, any slug a crawler invents renders through
- * this route. Without this call the 404 is written to the ISR cache under
- * that invented URL, and every later request re-renders it — an unbounded,
- * bot-writable set of cached pages. `/jobs/[slug]` and `/govt/[slug]` already
- * mark their miss paths this way; this route was the gap.
- */
-async function markMissUncacheable(): Promise<void> {
-    const { unstable_noStore } = await import('next/cache');
-    unstable_noStore();
-}
-
-/**
  * The most common real titles, each kept with a linkable job. The page renders
  * these as individual chips, never as one comma-joined sentence.
  */
@@ -267,7 +253,11 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
             );
             if (!knownSlugs.has(properSlug)) {
                 logRouteResult('/companies/[slug]', '404');
-                await markMissUncacheable();
+                // No unstable_noStore() on this miss path: the route is
+                // statically generated (revalidate = false, dynamicParams =
+                // true) and Next.js throws E132 "Page changed from static to
+                // dynamic at runtime" when a dynamic API is reached while an
+                // on-demand path is being generated.
                 notFound();
             }
         }
@@ -313,7 +303,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
         if (!everPublished) {
             logRouteResult('/companies/[slug]', '404');
-            await markMissUncacheable();
+            // See the miss path above: no dynamic API inside an SSG render.
             notFound();
         }
 
