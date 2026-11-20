@@ -4,7 +4,7 @@
  */
 import { OpportunityCategory, WorkMode } from '@fresherflow/types';
 import nlp from 'compromise';
-import { City } from '@fresherflow/constants';
+import { INDIAN_CITIES } from '@fresherflow/constants';
 import {
     COMMON_SKILLS, COMMON_CITIES, KNOWN_COMPANIES, TITLE_KEYWORDS,
     STOP_WORDS, GENERIC_TITLES,
@@ -79,7 +79,7 @@ export function extractLocations(text: string): string[] {
     const doc = nlp(text);
     const rawLocations = doc.places().out('array') as string[];
     const validLocations = rawLocations.filter(loc =>
-        City.getCitiesOfCountry('IN')?.some(c => c.name.toLowerCase() === loc.trim().toLowerCase())
+        INDIAN_CITIES.some(c => c.toLowerCase() === loc.trim().toLowerCase())
     );
 
     const found: string[] = [];

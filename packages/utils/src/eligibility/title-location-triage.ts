@@ -1,8 +1,11 @@
-import { State, City, Country } from '@fresherflow/constants';
+import { COUNTRY_LIST, INDIAN_CITIES as INDIAN_CITY_NAMES, INDIAN_STATES as INDIAN_STATE_NAMES } from '@fresherflow/constants';
+import { FOREIGN_STATE_NAMES } from './data/foreignStates.js';
 
-// Pre-compute sets of valid Indian cities and states (lowercase for case-insensitive matching)
-const INDIAN_STATES = new Set((State.getStatesOfCountry('IN') || []).map(s => s.name.toLowerCase()));
-const INDIAN_CITIES = new Set((City.getCitiesOfCountry('IN') || []).map(c => c.name.toLowerCase()));
+// Pre-compute sets of valid Indian cities and states (lowercase for case-insensitive matching).
+// Data comes from the checked-in India-only extract, not country-state-city —
+// importing that package put the world city database in the web bundle.
+const INDIAN_STATES = new Set(INDIAN_STATE_NAMES.map(s => s.toLowerCase()));
+const INDIAN_CITIES = new Set(INDIAN_CITY_NAMES.map(c => c.toLowerCase()));
 
 // Add common aliases, variations, and tech hubs that country-state-city misses or spells differently
 const EXTRA_INDIAN_CITIES = [
@@ -16,7 +19,7 @@ for (const city of EXTRA_INDIAN_CITIES) {
     INDIAN_CITIES.add(city);
 }
 
-const FOREIGN_COUNTRIES = (Country.getAllCountries() || [])
+const FOREIGN_COUNTRIES = COUNTRY_LIST
     .map(c => c.name.toLowerCase())
     .filter(c => c !== 'india');
 // Add some common abbreviations and regions to the foreign list
@@ -26,12 +29,8 @@ FOREIGN_COUNTRIES.push('us', 'usa', 'uk', 'dubai', 'uae', 'emea', 'americas', 'a
 const foreignCountriesPattern = FOREIGN_COUNTRIES.map(c => c.replace(/([.*+?^=!:${}()|[\]/\\-])/g, "\\$1")).join('|');
 const foreignMegaRegex = new RegExp(`\\b(${foreignCountriesPattern})\\b`, 'i');
 
-// Use the package to get all foreign states for accurate location filtering
-const FOREIGN_STATES_SET = new Set(
-    (State.getAllStates() || [])
-        .filter(s => s.countryCode !== 'IN')
-        .map(s => s.name.toLowerCase())
-);
+// Foreign state/province names for accurate location filtering.
+const FOREIGN_STATES_SET = new Set(FOREIGN_STATE_NAMES.map(s => s.toLowerCase()));
 
 export function isIndiaOrRemoteLocation(loc: string): boolean {
     if (!loc) return false;

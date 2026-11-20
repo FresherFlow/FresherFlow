@@ -15,6 +15,7 @@
     "@fresherflow/types": "workspace:*",
     "axios": "^1.7.9",
     "cheerio": "^1.2.0",
+    "country-state-city": "^3.2.1",
     "https-proxy-agent": "^7.0.6",
     "playwright": "^1.62.1",
     "socks-proxy-agent": "^8.0.5",

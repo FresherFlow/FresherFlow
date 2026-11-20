@@ -1,6 +1,7 @@
 import { LocationDto } from '../base/models/index.js';
 
-import { State } from '@fresherflow/constants';
+// Server-only module: the full world dataset is fine here.
+import { State } from 'country-state-city';
 
 const usStatesData = State.getStatesOfCountry('US');
 

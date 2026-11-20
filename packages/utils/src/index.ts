@@ -50,6 +50,7 @@ export type { ProfileCompletionResult } from './profile/completion.js';
 // ── Opportunity Display, Normalization & Routing ─────────────
 export * from './opportunity/location.js';
 export * from './opportunity/normalization.js';
+export * from './opportunity/listingRules.js';
 export * from './opportunity/display.js';
 export * from './opportunity/routing.js';
 export * from './opportunity/events.js';

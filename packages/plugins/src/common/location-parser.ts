@@ -1,6 +1,8 @@
 import { LocationDto } from '../base/models/index.js';
 
-import { State, INDIAN_STATES, STATE_ALIASES, getStateForCity } from '@fresherflow/constants';
+// Server-only module: the full world dataset is fine here.
+import { State } from 'country-state-city';
+import { INDIAN_STATES, STATE_ALIASES, getStateForCity } from '@fresherflow/constants';
 import { canonicalCountryName, countryNameFromCode } from './country-name.js';
 
 /** Canonical India name from the shared dataset — the ISO code is the only literal. */

@@ -17,8 +17,7 @@
     "constants"
   ],
   "dependencies": {
-    "@fresherflow/types": "^1.0.0",
-    "country-state-city": "^3.2.1"
+    "@fresherflow/types": "^1.0.0"
   },
   "devDependencies": {
     "eslint": "^10.10.0",

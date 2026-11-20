@@ -1,11 +1,11 @@
-import { City } from '@fresherflow/constants';
+import { INDIAN_CITIES } from '@fresherflow/constants';
 import { EnrichedJobPayload } from './enricher-schema.js';
 import { EducationLevel, SalaryPeriod, OpportunityCategory } from '@fresherflow/types';
 
 // Pre-compute map of lowercase city names to properly capitalized City names in India
 const INDIAN_CITY_MAP = new Map<string, string>();
-for (const city of (City.getCitiesOfCountry('IN') || [])) {
-    INDIAN_CITY_MAP.set(city.name.toLowerCase(), city.name);
+for (const city of INDIAN_CITIES) {
+    INDIAN_CITY_MAP.set(city.toLowerCase(), city);
 }
 
 // Common Indian & Global State/Country suffixes to strip for City-Only Rule

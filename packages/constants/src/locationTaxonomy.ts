@@ -3,13 +3,21 @@
  *
  * Single Source of Truth for static fallback location mapping and metadata.
  * Derived structures are dynamically built at load time to prevent duplication.
+ *
+ * The data is a checked-in India-only extract, NOT `country-state-city`.
+ * Importing that package pulls every city on earth (~8 MB of coordinates) into
+ * whatever bundle references this module — which, via the package barrel, was
+ * the web app's shared chunk on every page. Regenerate the extract with
+ * `node scripts/generate-indian-locations.mjs` when the source data changes.
  */
 
-import { State, City, Country } from 'country-state-city';
-export { State, City, Country };
+import { INDIAN_CITIES_DATA, INDIAN_STATES_DATA } from './data/indianLocations.js';
 
-const indianStatesData = State.getStatesOfCountry('IN');
-const indianCitiesData = City.getCitiesOfCountry('IN') || [];
+export { COUNTRY_LIST } from './data/countries.js';
+export type { CountryRecord } from './data/countries.js';
+
+const indianStatesData = INDIAN_STATES_DATA;
+const indianCitiesData = INDIAN_CITIES_DATA;
 
 // 1. Dynamically derived list of states
 export const INDIAN_STATES: string[] = indianStatesData.map(s => s.name);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Country } from '@fresherflow/constants';
+import { COUNTRY_LIST } from '@fresherflow/constants';
 import { formatLocationText, normalizeLocationLabels } from './location';
 
 const labelsOf = (locations: string[] | null | undefined): string[] =>
@@ -28,7 +28,7 @@ describe('normalizeLocationLabels', () => {
 
     it('retains the country when the entries disagree', () => {
         const homeCountry = normalizeLocationLabels(['Bengaluru, Karnataka, India'])[0]?.country;
-        const otherCountry = Country.getAllCountries().find((country) => country.name !== homeCountry);
+        const otherCountry = COUNTRY_LIST.find((country) => country.name !== homeCountry);
         expect(otherCountry).toBeDefined();
 
         const labels = labelsOf(['Bengaluru, Karnataka, India', otherCountry!.name]);

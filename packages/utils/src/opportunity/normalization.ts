@@ -138,6 +138,48 @@ export const normalizeLocations = (locations?: string[] | null): NormalizedLocat
     };
 };
 
+/**
+ * Turn what a submitter sends into one entry per location.
+ *
+ * Agents and humans put several cities in one string: "Hyderabad and
+ * Bangalore", "Hyderabad, Bangalore", "Hyderabad / Bangalore" or
+ * "Hyderabad;Bangalore". Storing that verbatim creates a single location that
+ * no city filter can ever match, and the card renders "Hyderabad and
+ * Bangalore" as one city. Split first, then dedupe case-insensitively.
+ *
+ * Bounded before matching: the column caps each entry at 120 chars and a
+ * listing at 15 locations, and untrusted input never reaches an unbounded
+ * split.
+ */
+export function splitSubmittedLocations(input: {
+    locations?: string[] | null;
+    location?: string | null;
+}): string[] {
+    const raw = [
+        ...(input.locations ?? []),
+        ...(input.location ? [input.location] : []),
+    ];
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    for (const value of raw) {
+        if (typeof value !== 'string') continue;
+        // Bound before the regex runs.
+        const bounded = value.slice(0, 500);
+        for (const part of bounded.split(/[,;|]|\s+(?:and|&)\s+/i)) {
+            const cleaned = part.replace(/\s+/g, ' ').trim().slice(0, 120);
+            if (!cleaned) continue;
+            const key = cleaned.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            result.push(cleaned);
+            if (result.length >= 15) return result;
+        }
+    }
+
+    return result;
+}
+
 // ── Date Normalization ────────────────────────────────────────────────────────
 
 function toLocalInputString(date: Date): string {

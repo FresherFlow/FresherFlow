@@ -11,13 +11,18 @@
  *
  * This module collapses a label that is already contained in a fuller one,
  * folds a split state/country back into its city, canonicalises names through
- * the `country-state-city` dataset (re-exported by `@fresherflow/constants`),
- * and drops a country when every location shares it.
+ * the shared location taxonomy, and drops a country when every location shares
+ * it.
+ *
+ * The taxonomy is the checked-in India-only extract plus a country list — NOT
+ * `country-state-city`. Importing that package pulled every city on earth
+ * (~8 MB) into the web bundle through this module. Indian places canonicalise
+ * exactly as before; a foreign city/state keeps the text it arrived with.
  *
  * No city, state or country name is written in this file. Every name comes
  * from the dataset.
  */
-import { City, Country, State } from '@fresherflow/constants';
+import { CITY_TO_STATE, COUNTRY_LIST, INDIAN_CITIES, INDIAN_STATES } from '@fresherflow/constants';
 
 export interface LocationLabel {
     /** Ready-to-render label, e.g. "Bengaluru, Karnataka". */
@@ -46,7 +51,7 @@ const REMOTE_VALUES = new Set(['remote', 'work from home', 'wfh', 'anywhere']);
 
 /** Every country, keyed by lowercase name and ISO code. */
 const COUNTRY_BY_KEY = new Map<string, CountryRecord>();
-for (const country of Country.getAllCountries()) {
+for (const country of COUNTRY_LIST) {
     const record: CountryRecord = { name: country.name, isoCode: country.isoCode };
     COUNTRY_BY_KEY.set(locationKey(country.name), record);
     COUNTRY_BY_KEY.set(locationKey(country.isoCode), record);
@@ -55,6 +60,8 @@ for (const country of Country.getAllCountries()) {
 /** Per-country state and city indexes, built lazily and cached. */
 const STATE_INDEX_BY_COUNTRY = new Map<string, Map<string, string>>();
 const CITY_INDEX_BY_COUNTRY = new Map<string, Map<string, CityRecord>>();
+const EMPTY_STATE_INDEX = new Map<string, string>();
+const EMPTY_CITY_INDEX = new Map<string, CityRecord>();
 
 interface ParsedLocation {
     raw: string;
@@ -76,25 +83,32 @@ function locationKey(value: string): string {
 }
 
 function stateIndex(countryCode: string): Map<string, string> {
+    // Only India is carried in the client-safe extract. A foreign state keeps
+    // its raw text instead of being canonicalised.
+    if (countryCode !== 'IN') return EMPTY_STATE_INDEX;
+
     const cached = STATE_INDEX_BY_COUNTRY.get(countryCode);
     if (cached) return cached;
 
     const index = new Map<string, string>();
-    for (const state of State.getStatesOfCountry(countryCode) ?? []) {
-        index.set(locationKey(state.name), state.name);
-        index.set(locationKey(state.isoCode), state.name);
+    for (const name of INDIAN_STATES) {
+        index.set(locationKey(name), name);
     }
     STATE_INDEX_BY_COUNTRY.set(countryCode, index);
     return index;
 }
 
 function cityIndex(countryCode: string): Map<string, CityRecord> {
+    if (countryCode !== 'IN') return EMPTY_CITY_INDEX;
+
     const cached = CITY_INDEX_BY_COUNTRY.get(countryCode);
     if (cached) return cached;
 
     const index = new Map<string, CityRecord>();
-    for (const city of City.getCitiesOfCountry(countryCode) ?? []) {
-        index.set(locationKey(city.name), { name: city.name, stateCode: city.stateCode });
+    for (const name of INDIAN_CITIES) {
+        // `stateCode` holds the state NAME here: the state index is keyed by
+        // name, so a city and its state resolve against the same map.
+        index.set(locationKey(name), { name, stateCode: CITY_TO_STATE[name.toLowerCase()] ?? '' });
     }
     CITY_INDEX_BY_COUNTRY.set(countryCode, index);
     return index;

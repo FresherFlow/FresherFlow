@@ -1,4 +1,4 @@
-import { Country } from '@fresherflow/constants';
+import { Country } from 'country-state-city';
 
 const REGION_CODE_RE = /^[A-Za-z]{2}$/;
 
