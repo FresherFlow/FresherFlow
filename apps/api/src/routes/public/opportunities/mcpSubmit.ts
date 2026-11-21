@@ -7,13 +7,25 @@ import { submitJob, type SubmitJobInput } from '../../../infrastructure/services
 import { splitSubmittedLocations, validateListingContent, describeListingIssues } from '@fresherflow/utils';
 import { verifyAccessToken as verifyMcpAccessToken } from '../../../infrastructure/services/platform/mcpOAuth.service';
 import { getMcpPublicUrl } from '../../../utils/runtimeConfig';
-import { resolveMcpIdentity } from '../../../application/mcp/identity';
+import { resolveMcpIdentity, type McpIdentityView } from '../../../application/mcp/identity';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { AppError } from '../../../middleware/errorHandler';
 import type { Opportunity } from '@fresherflow/types';
 import { WorkMode, SalaryPeriod } from '@fresherflow/types';
 
 const router = Router();
+
+// The caller's RBAC-derived MCP identity, resolved once before the rate limiter
+// so a moderator can be exempted from the shared submit quota without a second
+// permissions lookup in the handler.
+declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace Express {
+        interface Request {
+            mcpIdentity?: McpIdentityView;
+        }
+    }
+}
 
 /**
  * POST /api/opportunities/mcp-submit
@@ -120,17 +132,40 @@ function collectMissingSubmissionFields(body: {
     return missing;
 }
 
+/**
+ * Resolve the caller once, after `requireMcpUser` has set `req.userId` and before
+ * the limiter, so the moderator exemption and the publish decision use the same
+ * RBAC snapshot. A suspended account fails here, before it can consume quota.
+ */
+const resolveMcpCaller: RequestHandler = async (req, _res, next) => {
+    if (!req.userId) {
+        next(new AppError('Connect FresherFlow and sign in first.', 401));
+        return;
+    }
+    try {
+        req.mcpIdentity = await resolveMcpIdentity(req.userId);
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
 const mcpSubmitLimiter = createRateLimiter({
     windowMs: 60 * 60 * 1000,
     max: 60,
     message: 'Too many MCP submissions. Please slow down.',
     keyPrefix: 'mcp_submit',
     keyGenerator: (req) => req.userId ?? req.ip ?? 'unknown-user',
+    // Moderators publish on submit and may add listings in bulk. They are
+    // trusted staff, so the fresher-facing 60/hour quota must not block them.
+    // Every other account keeps the exact same per-user bucket and limit.
+    skip: (req) => req.mcpIdentity?.role === 'moderator',
 });
 
 router.post(
     '/mcp-submit',
     requireMcpUser,
+    resolveMcpCaller,
     mcpSubmitLimiter,
     validate(mcpSubmitOpportunitySchema),
     async (req: Request, res: Response, next: NextFunction) => {
@@ -179,7 +214,9 @@ router.post(
             };
 
             const signedInUserId = req.userId as string;
-            const identity = await resolveMcpIdentity(signedInUserId);
+            // Resolved by `resolveMcpCaller` before the limiter; the fallback is
+            // only for callers that bypass the router stack (unit tests).
+            const identity = req.mcpIdentity ?? await resolveMcpIdentity(signedInUserId);
             const publishes = identity.capabilities.submitPublishes;
 
             // Walk-ins are a recruitment method (dated drive), government is a

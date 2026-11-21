@@ -546,3 +546,31 @@ describe('every field rule is enforced, not only documented', () => {
         expect(JSON.stringify(res.body)).toContain('company');
     });
 });
+
+describe('POST /api/opportunities/mcp-submit: 60/hour quota', () => {
+    const body = () => ({
+        title: 'Software Engineer',
+        companyName: 'Acme',
+        jobUrl: nextJobUrl(),
+    });
+
+    it('still limits a normal account to 60 submissions per hour', async () => {
+        for (let i = 0; i < 60; i += 1) {
+            expect((await submit('member-token', body())).status).toBe(201);
+        }
+
+        const res = await submit('member-token', body());
+        expect(res.status).toBe(429);
+    });
+
+    it('does not limit a moderator, who publishes on submit', async () => {
+        grantedPermissions = [...MODERATOR_GRANTS];
+        prismaMock.user.findUnique.mockResolvedValue({ id: 'user-moderator', status: 'ACTIVE' });
+
+        // More than the 60/hour quota a normal account hits.
+        for (let i = 0; i < 65; i += 1) {
+            const res = await submit('moderator-token', body());
+            expect(res.status).toBe(201);
+        }
+    });
+});

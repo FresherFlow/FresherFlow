@@ -32,6 +32,13 @@ interface RateLimitOptions {
      * person's submissions exhaust everyone else's budget.
      */
     keyGenerator?: (req: Request) => string;
+    /**
+     * Optional predicate: when true the request is not counted at all — no Redis
+     * increment and no rate-limit headers. Use only for trusted, already-
+     * authenticated identities that must not share a quota with ordinary users.
+     * An error here fails closed: the request stays limited.
+     */
+    skip?: (req: Request) => boolean | Promise<boolean>;
 }
 
 /**
@@ -39,6 +46,14 @@ interface RateLimitOptions {
  */
 export function createRateLimiter(options: RateLimitOptions) {
     return async (req: Request, res: Response, next: NextFunction) => {
+        if (options.skip) {
+            try {
+                if (await options.skip(req)) return next();
+            } catch (err: unknown) {
+                logger.error('[RateLimit] skip check failed; keeping the request limited', { error: err });
+            }
+        }
+
         // Key on `req.ip`, which `app.set('trust proxy', 1)` in `src/index.ts`
         // resolves from exactly one proxy hop. The raw `x-forwarded-for` header
         // is client-supplied before it reaches that proxy: keying on it let any

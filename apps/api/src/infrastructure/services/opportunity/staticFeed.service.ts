@@ -802,8 +802,13 @@ export class StaticFeedService {
                         }
                     });
                 });
+                // Batch hubs already earn search demand before they reach three
+                // live roles, especially the current and next graduating years.
+                // Keep the three-role threshold for older batches, but list a
+                // current or future year as soon as one live role declares it.
+                const currentYear = new Date().getUTCFullYear();
                 const validBatches = Array.from(activeBatchesCounts.entries())
-                    .filter(([_, count]) => count >= 3)
+                    .filter(([year, count]) => count >= 3 || (year >= currentYear && count >= 1))
                     .map(([b]) => b);
 
                 // 1. sitemap-jobs.xml
