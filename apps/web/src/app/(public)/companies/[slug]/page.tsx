@@ -282,11 +282,11 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                     return <CompanyArchiveView companyName={archiveName} slug={properSlug} archivedRoles={[]} />;
                 }
                 logRouteResult('/companies/[slug]', '404');
-                // No unstable_noStore() on this miss path: the route is
-                // statically generated (revalidate = false, dynamicParams =
-                // true) and Next.js throws E132 "Page changed from static to
-                // dynamic at runtime" when a dynamic API is reached while an
-                // on-demand path is being generated.
+                // Never cache a miss: with dynamicParams = true, any slug a
+                // crawler invents renders here. Without this call the 404 is
+                // written to the ISR cache under that invented URL.
+                const { unstable_noStore: noStoreMiss } = await import('next/cache');
+                noStoreMiss();
                 notFound();
             }
         }
@@ -332,7 +332,8 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
         if (!everPublished) {
             logRouteResult('/companies/[slug]', '404');
-            // See the miss path above: no dynamic API inside an SSG render.
+            const { unstable_noStore: noStoreMiss } = await import('next/cache');
+            noStoreMiss();
             notFound();
         }
 
