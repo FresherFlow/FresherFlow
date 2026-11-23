@@ -42,6 +42,16 @@ export function getTypeHubPath(type?: CategoryFeedType | string | null) {
     return '/jobs';
 }
 
+/**
+ * The detail namespace an opportunity belongs to. Government and walk-in
+ * events have their own namespaces; jobs and internships share `/jobs`.
+ */
+export function getDetailType(opportunity: Opportunity): 'GOVERNMENT' | 'WALKIN' | undefined {
+    if (isGovernmentOpportunity(opportunity)) return 'GOVERNMENT';
+    if (isWalkinOpportunity(opportunity)) return 'WALKIN';
+    return undefined;
+}
+
 function parseNumericAmount(input: string): number | null {
     const normalized = input.trim().toLowerCase().replace(/,/g, '');
     const match = normalized.match(/(\d+(?:\.\d+)?)(\s*)(lpa|lac|lakh|lakhs|k|m|cr|crore|crores)?/i);
@@ -222,15 +232,22 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const location = parsedLocation.fullLabel;
     const isCampusDrive = isCampusDriveOpportunity(opportunity as Opportunity);
     const driveDates = getDriveDates(opportunity as Opportunity);
+    // Classification precedence follows the user's intent: a walk-in is an
+    // event first, even when the underlying opportunity is an internship.
+    // Show both in the title instead of hiding the recruitment method.
+    const isWalkinSeo = isWalkinOpportunity(opportunity);
+    const isInternSeo = isInternshipOpportunity(opportunity);
     const type = isCampusDrive
         ? 'Campus Drive'
         : isGovernmentOpportunity(opportunity)
             ? 'Government Job'
-        : isInternshipOpportunity(opportunity)
-            ? 'Internship'
-            : isWalkinOpportunity(opportunity)
-                ? 'Walk-in'
-                : 'Job';
+            : isWalkinSeo && isInternSeo
+                ? 'Walk-in Internship'
+                : isWalkinSeo
+                    ? 'Walk-in Drive'
+                    : isInternSeo
+                        ? 'Internship'
+                        : 'Job';
 
     let rawTitle = `${role} at ${company} | ${type}`;
     if (batch) rawTitle += ` | ${batch}`;
@@ -257,7 +274,7 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const description = truncateDescription(rawDescription);
 
     const canonicalId = opportunity.slug || opportunity.id;
-    const canonicalPath = getOpportunityPath(isGovernmentOpportunity(opportunity) ? 'GOVERNMENT' : undefined, canonicalId);
+    const canonicalPath = getOpportunityPath(getDetailType(opportunity), canonicalId);
     const url = `${SITE_URL}${canonicalPath}`;
 
     // Use the pre-generated static OG image from R2 (generated at publish time).
@@ -459,7 +476,7 @@ function buildDiscussionPosting(
 ) {
     const [first] = discussion.comments;
     const path = getOpportunityPath(
-        isGovernmentOpportunity(opportunity) ? 'GOVERNMENT' : undefined,
+        getDetailType(opportunity),
         opportunity.slug || opportunity.id
     );
 
@@ -497,8 +514,8 @@ function buildDiscussionPosting(
 function buildCompanyBreadcrumbs(opportunity: Opportunity, base: string) {
     const isInternSeo = isInternshipOpportunity(opportunity);
     const isWalkinSeo = isWalkinOpportunity(opportunity);
-    const typeLabel = isInternSeo ? 'Internships' : isWalkinSeo ? 'Walk-ins' : 'Jobs';
-    const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/drives/walk-in' : '/jobs';
+    const typeLabel = isWalkinSeo ? 'Walk-ins' : isInternSeo ? 'Internships' : 'Jobs';
+    const typePath = isWalkinSeo ? '/drives/walk-in' : isInternSeo ? '/jobs/internships' : '/jobs';
     const companySlug = (opportunity as { companySlug?: string }).companySlug || slugify(opportunity.company || '');
 
     return {
@@ -526,7 +543,7 @@ function buildCompanyBreadcrumbs(opportunity: Opportunity, base: string) {
                 '@type': 'ListItem',
                 position: 4,
                 name: opportunity.title,
-                item: `${base}${getOpportunityPath(isGovernmentOpportunity(opportunity) ? 'GOVERNMENT' : undefined, opportunity.slug || opportunity.id)}`
+                item: `${base}${getOpportunityPath(getDetailType(opportunity), opportunity.slug || opportunity.id)}`
             }
         ]
     };

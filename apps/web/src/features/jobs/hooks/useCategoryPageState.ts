@@ -801,8 +801,9 @@ export function useCategoryPageState({
   const jobKey = searchParams?.get("job") ?? null;
   const resolvedJobRef = useRef<{ key: string; found: boolean } | null>(null);
   useEffect(() => {
-    if (!jobKey || type === "GOVERNMENT" || type === "WALKIN") {
-      // These pages render no detail pane, so a `job` param means nothing here.
+    if (!jobKey || type === "GOVERNMENT") {
+      // Government has its own detail route. Walk-ins DO honor `?job=`: the
+      // map pane opens with the named drive's pin and detail card selected.
       resolvedJobRef.current = null;
       return;
     }
@@ -845,12 +846,10 @@ export function useCategoryPageState({
     }
   }, [isDesktop, visibleOpps, selectedOpp, type, jobKey]);
 
-  // Ensure selectedOpp is strictly null on government and walkin pages initially
+  // Government has no split pane. Walk-ins keep their selection: a `?job=`
+  // link must be able to open a drive on the map instead of being cleared.
   useEffect(() => {
-    if (
-      type === 'GOVERNMENT' ||
-      type === 'WALKIN'
-    ) {
+    if (type === 'GOVERNMENT') {
       setSelectedOpp(null);
     }
   }, [type]);

@@ -105,7 +105,7 @@ export function SpaceSwitcher({
                   </div>
                   <div className="grid flex-1 text-left leading-tight">
                     <span className="text-sm font-medium">{space.name}</span>
-                    <span className="text-xs text-foreground/60">{space.subtitle}</span>
+                    <span className="text-xs text-muted-foreground">{space.subtitle}</span>
                   </div>
                   {isActive && <Check className="ml-auto size-4 shrink-0" />}
                 </DropdownMenuItem>

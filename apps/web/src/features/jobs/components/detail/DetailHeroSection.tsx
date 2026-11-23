@@ -31,6 +31,8 @@ interface DetailHeroSectionProps {
     locationInfo: { shortLabel: string; fullLabel: string; cities?: string[] };
     formatDeadline: (opp: Opportunity) => string | null;
     educationDetails: { level: string; courses: string | null; specializations: string | null };
+    /** Drive-first rendering: recruitment method is primary, employment type secondary. */
+    driveMode?: boolean;
 }
 
 /**
@@ -49,19 +51,26 @@ export function DetailHeroSection({
     locationInfo,
     formatDeadline,
     educationDetails,
+    driveMode = false,
 }: DetailHeroSectionProps) {
     const isGovernmentJob = Boolean(opp.governmentJobDetails);
     const govDetails = opp.governmentJobDetails;
     const applicationStart = govDetails?.applicationStartDate;
     const applicationEnd = govDetails?.applicationEndDate;
 
+    // On a drive detail page the recruitment event is the primary thing the
+    // reader opened. Internship/full-time is still shown, as a secondary label,
+    // instead of being hidden by the old internship-first check.
     const typeLabel = isCampusDrive
         ? 'Hiring Drive'
-        : isInternshipOpportunity(opp)
-            ? 'Internship'
+        : driveMode
+            ? 'Walk-in'
             : isWalkinOpportunity(opp)
                 ? 'Walk-in'
-                : 'Job';
+                : isInternshipOpportunity(opp)
+                    ? 'Internship'
+                    : 'Job';
+    const secondaryLabel = driveMode && isInternshipOpportunity(opp) ? 'Internship' : null;
 
     const statusClass = listingState === 'EXPIRED'
         ? 'border-destructive/25 bg-destructive/5 text-destructive'
@@ -125,6 +134,11 @@ export function DetailHeroSection({
                     <div className="flex items-center gap-2.5">
                         <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
                         <span className="text-meta font-medium text-muted-foreground">{typeLabel}</span>
+                        {secondaryLabel && (
+                            <span className="rounded-md border border-border bg-surface-sunken px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+                                {secondaryLabel}
+                            </span>
+                        )}
                         {opp.governmentJobDetails && (
                             <span className="rounded-md border border-warning/25 bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
                                 Government

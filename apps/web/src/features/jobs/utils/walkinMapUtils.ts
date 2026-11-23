@@ -1011,17 +1011,16 @@ export function getWalkingFromStationUrl(opp: Opportunity): string | null {
 }
 
 /**
- * Tile URL providers with high-speed CDNs
+ * Keyless tile providers. CartoDB's public raster tiles now return an
+ * "API KEY REQUIRED" watermark image, so they are no longer a usable source.
+ * Dark mode is a CSS filter on the tile pane (see MAP_DARK_MODE_FILTER).
  */
-export function getMapTileConfig(isDark: boolean) {
+export function getMapTileConfig(_isDark: boolean) {
     return {
-        // High-contrast clean CartoDB tiles
-        url: isDark
-            ? 'https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
-            : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',
-        // Fallback OpenStreetMap tile URL in case CDN encounters transient issues
-        fallbackUrl: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        subdomains: 'abcd',
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        fallbackUrl: 'https://tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+        attribution: '&copy; OpenStreetMap contributors',
+        subdomains: 'abc',
         maxZoom: 19,
         minZoom: 10,
         keepBuffer: 6, // Keeps surrounding tiles in memory for smooth pan/zoom
@@ -1067,24 +1066,30 @@ function viewportFor(
  * @param spanDegrees Width of the visible box around the marker. 0.004 is
  * roughly a 400 m box, which reads as "here is the pin" at card height.
  */
+export function getOsmEmbedUrlForCoords(
+    latitude: number | null | undefined,
+    longitude: number | null | undefined,
+    spanDegrees = 0.004,
+): string | null {
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') return null;
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+    // A pin at (0, 0) is the classic "missing coordinate" artefact, not a venue
+    // in the Gulf of Guinea.
+    if (latitude === 0 && longitude === 0) return null;
+
+    const half = spanDegrees / 2;
+    // OSM's bbox is minlon,minlat,maxlon,maxlat - longitude first.
+    const bbox = [longitude - half, latitude - half, longitude + half, latitude + half]
+        .map((n) => n.toFixed(5))
+        .join(',');
+    const marker = `${latitude.toFixed(5)},${longitude.toFixed(5)}`;
+
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
+}
+
 export function getOsmEmbedUrl(
     details: DriveDetailsLike | null | undefined,
     spanDegrees = 0.004,
 ): string | null {
-    const lat = details?.latitude;
-    const lng = details?.longitude;
-    if (typeof lat !== 'number' || typeof lng !== 'number') return null;
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    // A pin at (0, 0) is the classic "missing coordinate" artefact, not a venue
-    // in the Gulf of Guinea.
-    if (lat === 0 && lng === 0) return null;
-
-    const half = spanDegrees / 2;
-    // OSM's bbox is minlon,minlat,maxlon,maxlat - longitude first.
-    const bbox = [lng - half, lat - half, lng + half, lat + half]
-        .map((n) => n.toFixed(5))
-        .join(',');
-    const marker = `${lat.toFixed(5)},${lng.toFixed(5)}`;
-
-    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
+    return getOsmEmbedUrlForCoords(details?.latitude, details?.longitude, spanDegrees);
 }

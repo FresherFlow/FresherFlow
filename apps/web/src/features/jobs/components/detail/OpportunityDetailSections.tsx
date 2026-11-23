@@ -5,7 +5,7 @@ import type { ComponentProps } from 'react';
 import type { Opportunity } from '@fresherflow/types';
 import { ExpiredWarning } from '@/features/jobs/components/detail/ExpiredWarning';
 import { DetailCampusDriveInfo } from '@/features/jobs/components/detail/DetailCampusDriveInfo';
-import { getDriveDetails, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
+import { getDriveDetails, getOpportunityCoords, isWalkinOpportunity, type DriveDetailsLike } from '@/features/jobs/utils/walkinMapUtils';
 
 /**
  * The detail view's *conditional* sections, in one place.
@@ -47,15 +47,31 @@ export function FormComplexityCard({ opp }: { opp: Opportunity }) {
     return <ComplexityCard applicationDetails={applicationDetails} />;
 }
 
-/** The walk-in venue card, for a drive that declares where it is held. */
+/**
+ * The venue/map card for a walk-in. A drive can be genuinely classified as a
+ * walk-in without the source publishing a venue or date. In that case we still
+ * show an honest city-level card instead of nothing: getOpportunityCoords()
+ * resolves a known city to its centre, and the card labels the map as
+ * approximate so a reader never mistakes it for the exact venue.
+ */
 export function WalkInDetailsCardIfAny({ opp }: { opp: Opportunity }) {
-    const driveDetails = isWalkinOpportunity(opp) ? getDriveDetails(opp) : null;
-    if (!driveDetails) return null;
-    return (
-        <WalkInDetailsCard
-            walkInDetails={driveDetails as NonNullable<Opportunity['walkInDetails']>}
-        />
-    );
+    if (!isWalkinOpportunity(opp)) return null;
+
+    const stored = getDriveDetails(opp);
+    const city = stored?.city?.trim() || opp.locations?.[0] || '';
+    const hasExactVenue = Boolean(stored?.venueAddress && stored.latitude != null && stored.longitude != null);
+    const [latitude, longitude] = hasExactVenue
+        ? [stored!.latitude!, stored!.longitude!]
+        : getOpportunityCoords(opp);
+
+    const details: DriveDetailsLike = {
+        ...(stored ?? {}),
+        city,
+        latitude,
+        longitude,
+    };
+
+    return <WalkInDetailsCard walkInDetails={details} approximate={!hasExactVenue} />;
 }
 
 type CampusDriveInfoProps = ComponentProps<typeof DetailCampusDriveInfo>;

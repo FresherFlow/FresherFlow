@@ -10,9 +10,9 @@ const HREF_TO_COUNT: Record<string, string> = {
     '/jobs': 'opportunities',
     '/jobs?type=internship': 'internships',
     '/jobs?mode=remote': 'remote',
-    '/drives': 'walkins',
-    '/drives/off-campus': 'walkins',
-    '/drives/walk-in': 'walkins',
+    // Drives/Off-Campus/Walk-ins deliberately have no count badge: a number on
+    // a navigation row reads as unread mail and says nothing useful about a
+    // discovery surface. The hub itself shows its live count in the page.
     '/govt': 'government',
     '/companies': 'companies',
 };

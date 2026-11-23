@@ -12,12 +12,15 @@ import { useNavCounts } from "@/features/navigation/useNavCounts"
 import { NavUser } from "@/features/navigation/NavUser"
 import { SpaceSwitcher } from "@/features/navigation/SpaceSwitcher"
 import { ThemeSwitcher } from "@/ui/ThemeSwitcher"
-import { Moon } from "lucide-react"
+import { ArrowLeft, Moon } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/ui/sidebar"
@@ -94,6 +97,36 @@ function useSpaceSelection() {
   return { pathname, spaceId, setSpaceId, mounted, isAuthed, user }
 }
 
+/**
+ * Docs footer shared by the desktop rail and the mobile drawer. Keeping one
+ * definition matters because the rail is hidden below `lg`: a footer added to
+ * only one tree leaves mobile docs visitors with no way back to the site.
+ */
+function DocsFooter() {
+  const { setOpenMobile } = useSidebar()
+
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild tooltip="Back to site">
+          <Link href="/" onClick={() => setOpenMobile(false)}>
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <span>Back to site</span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+      <SidebarMenuItem>
+        <ThemeSwitcher className="w-full">
+          <SidebarMenuButton>
+            <Moon className="size-4 opacity-70" aria-hidden="true" />
+            <span>Theme</span>
+          </SidebarMenuButton>
+        </ThemeSwitcher>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  )
+}
+
 function AppSidebarRail() {
   const router = useRouter()
   const { spaceId, setSpaceId, mounted, isAuthed } = useSpaceSelection()
@@ -162,19 +195,7 @@ function AppSidebarRail() {
         ))}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border px-2 pb-1 pt-1">
-        {isDocsPath(pathname) ? (
-          <ThemeSwitcher className="w-full">
-            <button
-              type="button"
-              className="mt-1 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-sidebar-foreground transition-colors duration-150 ease-out hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <Moon className="size-4 shrink-0 opacity-70" aria-hidden="true" />
-              <span className="flex-1 text-left">Theme</span>
-            </button>
-          </ThemeSwitcher>
-        ) : (
-          <NavUser />
-        )}
+        {isDocsPath(pathname) ? <DocsFooter /> : <NavUser />}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
@@ -239,16 +260,22 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
         </div>
       </div>
       <div className="shrink-0 border-t border-sidebar-border p-2">
-        {!isDocsPath(pathname) && <NavUser />}
-        <ThemeSwitcher className="w-full">
-          <button
-            type="button"
-            className="mt-1 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-sidebar-foreground transition-colors duration-150 ease-out hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <Moon className="size-4 shrink-0 opacity-70" aria-hidden="true" />
-            <span className="flex-1 text-left">Theme</span>
-          </button>
-        </ThemeSwitcher>
+        {isDocsPath(pathname) ? (
+          <DocsFooter />
+        ) : (
+          <>
+            <NavUser />
+            <ThemeSwitcher className="w-full">
+              <button
+                type="button"
+                className="mt-1 flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm font-medium text-sidebar-foreground transition-colors duration-150 ease-out hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <Moon className="size-4 shrink-0 opacity-70" aria-hidden="true" />
+                <span className="flex-1 text-left">Theme</span>
+              </button>
+            </ThemeSwitcher>
+          </>
+        )}
       </div>
     </div>
   )

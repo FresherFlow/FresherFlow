@@ -13,6 +13,7 @@ import {
     generateOpportunityJsonLd,
     getExpiryState,
     getTypeHubPath,
+    getDetailType,
     ExtendedOpportunity
 } from '@/features/jobs/domain/opportunitySeo';
 import { fetchGovernmentFeed, fetchFeedIndex, fetchCompaniesMetadata } from '@/lib/api/feedServer';
@@ -222,6 +223,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // state and noindex metadata (see generateMetadata); only unknown
         // slugs fall through to the job branch and its 404 below.
         logRouteResult('/[slug] (board)', '200');
+
         return (
             <Suspense fallback={<FeedPageSkeleton />}>
                 <TopicBoardPage
@@ -274,18 +276,21 @@ export default async function OpportunityDetailPage({ params }: Props) {
             notFound();
         }
 
+        // Government and walk-in drives each have their own namespace. Use the
+        // same predicate the canonical/JSON-LD builder uses so a listing that
+        // is both never gets a /drives URL with a /govt canonical (or vice
+        // versa). Existing bookmarks and shared links resolve in one hop.
+        const detailType = getDetailType(opportunityData);
+        if (detailType) {
+            permanentRedirect(getOpportunityPath(detailType, opportunityData.slug || opportunityData.id));
+        }
+
         const expiry = getExpiryState(opportunityData);
 
         // SEO Enforcement: Redirect to slug if ID was used
         if (slugOrId === opportunityData.id && opportunityData.slug) {
             logRouteResult('/[slug]', '308');
             permanentRedirect(getOpportunityPath(getFeedBadgeLabel(opportunityData), opportunityData.slug));
-        }
-
-        // Expired pages stay live for grace period, then redirect to the type hub.
-        if (expiry.pastGrace) {
-            logRouteResult('/[slug]', '308');
-            permanentRedirect(getTypeHubPath(getFeedBadgeLabel(opportunityData)));
         }
 
         // The listing payload carries no company slug, so the detail links and
@@ -296,6 +301,17 @@ export default async function OpportunityDetailPage({ params }: Props) {
         const companySlug = companyDirectory ? new CompanySlugger(companyDirectory).getSlug(opportunityData) : null;
         if (companySlug) {
             opportunityData = { ...opportunityData, companySlug } as ExtendedOpportunity;
+        }
+
+        // Expired pages stay live for the grace period, then move to the most
+        // specific live page. Company profiles are evergreen now, so they are
+        // the better destination; the type board is the fallback when the
+        // company cannot be resolved. A 308 beats a 404 or a dead 200 here.
+        if (expiry.pastGrace) {
+            logRouteResult('/[slug]', '308');
+            permanentRedirect(
+                companySlug ? `/companies/${companySlug}` : getTypeHubPath(getFeedBadgeLabel(opportunityData))
+            );
         }
 
         if (feed?.opportunities) {
@@ -327,10 +343,10 @@ export default async function OpportunityDetailPage({ params }: Props) {
                 {opportunityData.title} at {opportunityData.company}
             </h1>
             <p>
-                {isInternshipOpportunity(opportunityData)
-                    ? 'Internship'
-                    : isWalkinOpportunity(opportunityData)
-                        ? 'Walk-in drive'
+                {isWalkinOpportunity(opportunityData)
+                    ? 'Walk-in drive'
+                    : isInternshipOpportunity(opportunityData)
+                        ? 'Internship'
                         : 'Job opening'}{' '}
                 at {opportunityData.company}.
                 {opportunityData.description

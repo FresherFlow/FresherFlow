@@ -10,6 +10,51 @@ import ShieldCheckIcon from '@heroicons/react/24/solid/ShieldCheckIcon';
 // Global in-memory cache for instant resolution
 const logoCache = new Map<string, string>();
 
+// ATS / job-board hosts are vendors, not employers. Their favicon is the vendor
+// logo, so falling through to the apply-link host when a company favicon is
+// rejected (Google drops 16x16 results) would render e.g. the SmartRecruiters
+// or Workday mark instead of the hiring company's logo.
+const ATS_DOMAINS: string[] = [
+    'smartrecruiters.com',
+    'myworkdayjobs.com',
+    'myworkdaysite.com',
+    'workdayjobs.com',
+    'lever.co',
+    'greenhouse.io',
+    'workable.com',
+    'workablehr.com',
+    'ashbyhq.com',
+    'breezy.hr',
+    'talismatic.com',
+    'keka.com',
+    'darwinbox.in',
+    'zohorecruit.in',
+    'goodfit.so',
+    'eightfold.ai',
+    'oraclecloud.com',
+    'ultipro.com',
+    'peoplestrong.com',
+    'taleo.net',
+    'successfactors.com',
+    'icims.com',
+    'jobvite.com',
+    'avature.net',
+    'bamboohr.com',
+    'naukri.com',
+    'linkedin.com',
+    'internshala.com',
+    'unstop.com',
+    'wellfound.com',
+    'hireyukti.ai',
+];
+
+// `domain` is expected to be getRootDomain()'s output: it parses the URL with
+// `new URL()` and normalises to a lowercase, www-free, registrable hostname.
+// Compare that hostname exactly or by subdomain suffix — never includes() on
+// the full URL.
+const isAtsDomain = (domain: string | null): boolean =>
+    !!domain && ATS_DOMAINS.some((ats) => domain === ats || domain.endsWith(`.${ats}`));
+
 interface CompanyLogoProps {
     companyName: string;
     companyWebsite?: string | null;
@@ -77,7 +122,10 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
 
         // 2. Resolve Domain
         const websiteDomain = companyWebsite ? getRootDomain(companyWebsite) : null;
-        const applyDomain = applyLink ? getRootDomain(applyLink) : null;
+        const resolvedApplyDomain = applyLink ? getRootDomain(applyLink) : null;
+        // Skip ATS / job-board hosts so we never show the vendor logo in place
+        // of the employer's. websiteDomain and knownDomain are unaffected.
+        const applyDomain = isAtsDomain(resolvedApplyDomain) ? null : resolvedApplyDomain;
 
         const cleanName = normalizedName.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
         const knownDomain = BRAND_DOMAINS[cleanName] ||

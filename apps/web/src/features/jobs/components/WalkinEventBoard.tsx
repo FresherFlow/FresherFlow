@@ -11,6 +11,7 @@ import {
 } from '@/features/jobs/utils/walkinEventUtils';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
 import { getDriveDetails } from '@/features/jobs/utils/walkinMapUtils';
+import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import { cn } from '@fresherflow/ui/utils/cn';
 
 /**
@@ -65,7 +66,7 @@ export function WalkinEventBoard({ opportunities }: { opportunities: Opportunity
                         {items.map((opp) => (
                             <Link
                                 key={`${bucket.key}-${opp.id}`}
-                                href={`/jobs/${opp.slug}`}
+                                href={getOpportunityPath('WALKIN', opp.slug || opp.id)}
                                 className="snap-start shrink-0 w-60 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:shadow-sm transition-all flex flex-col gap-1.5 group active-press-soft duration-150 ease-out motion-reduce:transform-none"
                             >
                                 <div className="flex items-start justify-between gap-2">

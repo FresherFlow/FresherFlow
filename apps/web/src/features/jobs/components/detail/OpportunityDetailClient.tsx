@@ -54,13 +54,16 @@ type Props = {
     initialData?: Opportunity | null;
     initialRelatedData?: Opportunity[];
     validDirectoryLinks?: { validSkills: string[]; validLocations: string[] };
+    /** Drive-first rendering for `/drives/walk-in/{slug}` detail pages. */
+    variant?: 'job' | 'drive';
 };
 
 export default function OpportunityDetailClient({ 
     id, 
     initialData,
     initialRelatedData = [],
-    validDirectoryLinks
+    validDirectoryLinks,
+    variant = 'job',
 }: Props) {
     const router = useRouter();
     const { user } = useAuth();
@@ -113,6 +116,11 @@ export default function OpportunityDetailClient({
     }, [user, handleToggleSave]);
 
     const ds = useOpportunityDerivedState(opp as Opportunity);
+
+    // Recruitment method is the primary classification for a drive detail.
+    // Keep the fallback so a walk-in reached through a stale /jobs link still
+    // renders with the drive-first layout.
+    const driveMode = variant === 'drive' || Boolean(opp && isWalkinOpportunity(opp));
 
     const [showStickyHeader, setShowStickyHeader] = useState(false);
 
@@ -291,8 +299,8 @@ export default function OpportunityDetailClient({
                 <nav className="md:hidden flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground font-medium select-none mb-4">
                     <Link href="/" className="hover:text-primary transition-colors">Home</Link>
                     <span className="text-muted-foreground/40">/</span>
-                    <Link href={isInternshipOpportunity(opp) ? '/jobs/internships' : isWalkinOpportunity(opp) ? '/drives/walk-in' : '/jobs'} className="hover:text-primary transition-colors">
-                        {isInternshipOpportunity(opp) ? 'Internships' : isWalkinOpportunity(opp) ? 'Walk-ins' : 'Jobs'}
+                    <Link href={driveMode ? '/drives/walk-in' : isInternshipOpportunity(opp) ? '/jobs/internships' : '/jobs'} className="hover:text-primary transition-colors">
+                        {driveMode ? 'Walk-ins' : isInternshipOpportunity(opp) ? 'Internships' : 'Jobs'}
                     </Link>
                     <span className="text-muted-foreground/40">/</span>
                     <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="hover:text-primary transition-colors truncate max-w-30">
@@ -316,13 +324,14 @@ export default function OpportunityDetailClient({
                             locationInfo={ds.locationInfo}
                             formatDeadline={ds.formatDeadline}
                             educationDetails={ds.educationDetails}
+                            driveMode={driveMode}
                         />
 
                         <ExpiredWarningIfAny opp={opp} isExpired={ds.isExpired} />
 
                         <FormComplexityCard opp={opp} />
 
-                        <WalkInDetailsCardIfAny opp={opp} />
+                        {!driveMode && <WalkInDetailsCardIfAny opp={opp} />}
 
                         <CampusDriveInfoIfCampus
                             isCampusDrive={ds.isCampusDrive}
@@ -335,6 +344,10 @@ export default function OpportunityDetailClient({
                             timelineEvents={ds.timelineEvents}
                             upcomingTimelineEvents={ds.upcomingTimelineEvents}
                         />
+
+                        {/* On a drive detail the venue/date checklist is the
+                            reason the reader opened the page, so it leads. */}
+                        {driveMode && <WalkInDetailsCardIfAny opp={opp} />}
 
                         <div className="overflow-hidden rounded-2xl border border-border-strong bg-card p-5 md:p-7 dark:border-transparent">
                             <DescriptionSection
@@ -452,7 +465,10 @@ export default function OpportunityDetailClient({
                             </div>
                         </div>
 
-                        {(isLoadingRelated || relatedForMode.length > 0) && (
+                        {/* The related list is derived from client feed state. It can be
+                            populated on the first client render while the server had
+                            none, so mounting-gate it to keep SSR markup identical. */}
+                        {isMounted && (isLoadingRelated || relatedForMode.length > 0) && (
                             <div className="mt-4">
                                 <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} layout="rail" />
                             </div>

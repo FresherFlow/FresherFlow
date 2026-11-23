@@ -25,6 +25,7 @@ import {
     Users,
     type LucideIcon,
 } from 'lucide-react';
+
 // NOTE: fetchCompaniesMetadata / fetchCompanyShard / fetchFeedIndex are already
 // wrapped in React cache() inside lib/api/feedServer.ts, so generateMetadata and
 // the page component share one set of CDN round-trips per request.
@@ -157,12 +158,15 @@ export async function generateMetadata(
     const properSlug = slugify(decodeURIComponent(rawSlug));
     const base = SITE_URL.replace(/\/+$/, '');
 
-    const shard = await fetchCompanyShard(properSlug);
+    const [shard, slugHistory] = await Promise.all([
+        fetchCompanyShard(properSlug),
+        fetchCompanySlugHistory(),
+    ]);
 
     // Metadata must declare the canonical URL we actually serve — resolve
-    // aliases against the static seed so an old slug's canonical points at
-    // the live page instead of endorsing itself.
-    const canonicalSlug = resolveCompanySlugAlias(properSlug);
+    // aliases against the published history and the static seed so an old
+    // slug's canonical points at the live page instead of endorsing itself.
+    const canonicalSlug = resolveCompanySlugAlias(properSlug, slugHistory.aliases);
     const canonicalUrl = `${base}/companies/${canonicalSlug}`;
 
     let companyName = (shard as any)?.company || shard?.opportunities?.[0]?.company || properSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -171,15 +175,24 @@ export async function generateMetadata(
     // hiring right now. A company with zero live jobs still renders a real
     // archive page at this URL, so noindexing it would trade a thin page for a
     // dead one. Only a slug that was never published is noindex.
-    const isKnownCompany = Boolean((shard as any)?.company || (shard?.opportunities?.length ?? 0) > 0);
+    // A company that has ever had a live job keeps an indexable archive page.
+    // Without this, a slug in the published history would be noindexed the
+    // moment its last role expires, which drops a URL Google already crawls.
+    const isKnownCompany = Boolean(
+        (shard as any)?.company ||
+        (shard?.opportunities?.length ?? 0) > 0 ||
+        slugHistory.everLive.has(properSlug) ||
+        slugHistory.everLive.has(canonicalSlug)
+    );
 
-    // SEO: keep the full <title> within 50-60 chars once the root layout
-    // template ("%s | FresherFlow", 13 chars) is applied — base stays ≤47.
+    // SEO: keep the full <title> within 60 chars once the root layout
+    // template is applied. The separator and brand add 14 chars, so the
+    // base must stay at 46 or less.
     // Long company names fall back to the shorter form, then truncate.
-    let title = `${companyName} Jobs & Openings for Freshers`;
-    if (title.length > 47) title = `${companyName} Fresher Jobs 2026`;
-    if (title.length > 47) title = `${companyName.slice(0, 33).trimEnd()} Fresher Jobs`;
-    const description = `Find current fresher jobs, internships and off-campus openings at ${companyName}, with direct official application links.`;
+    let title = `${companyName} Careers & Fresher Jobs`;
+    if (title.length > 46) title = `${companyName} Careers 2026`;
+    if (title.length > 46) title = `${companyName.slice(0, 33).trimEnd()} Careers`;
+    const description = `Explore ${companyName} careers for freshers: current jobs, internships and off-campus openings with direct official application links.`;
     const ogImageUrl = `${CDN_URL}/og/companies/${properSlug}.png`;
 
     return {
@@ -252,6 +265,22 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                     .filter(Boolean)
             );
             if (!knownSlugs.has(properSlug)) {
+                // The directory only carries employers with a live role, but the
+                // CDN history records every company that has ever had one. Keep
+                // those URLs alive as an archive instead of returning 404.
+                if (
+                    slugHistory.everLive.has(properSlug) ||
+                    slugHistory.everLive.has(aliasTarget)
+                ) {
+                    const aliasName = Object.entries(slugHistory.aliases)
+                        .find(([, to]) => to === properSlug)?.[0]
+                        ?.replace(/-/g, ' ')
+                        .replace(/\b\w/g, c => c.toUpperCase());
+                    const archiveName = aliasName ||
+                        properSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    logRouteResult('/companies/[slug]', '200');
+                    return <CompanyArchiveView companyName={archiveName} slug={properSlug} archivedRoles={[]} />;
+                }
                 logRouteResult('/companies/[slug]', '404');
                 // No unstable_noStore() on this miss path: the route is
                 // statically generated (revalidate = false, dynamicParams =
@@ -408,6 +437,34 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     // description or headquarters line when the feed has nothing to say.
     const headerMeta = companyIndustries.slice(0, 2).join(', ');
 
+    // Plain server-rendered overview. Every fact below comes from the same
+    // feed as the cards on this page, so the copy cannot disagree with them.
+    const introLocations = Array.from(new Set(
+        companyJobs.flatMap((j: any) => Array.isArray(j.locations) ? j.locations.filter(Boolean) : [])
+    )).slice(0, 3);
+    const introBatches = Array.from(new Set(
+        companyJobs.flatMap((j: any) => Array.isArray(j.allowedPassoutYears) ? j.allowedPassoutYears : [])
+    )).sort((a, b) => Number(b) - Number(a)).slice(0, 3);
+    const introRoleNames = typicalRoles.slice(0, 3).map(({ title }) => title).join(', ');
+    const introSkillNames = topSkills.slice(0, 4).join(', ');
+
+    const companyOverview = [
+        `FresherFlow tracks ${listedRoleCount} live ${listedRoleCount === 1 ? 'opening' : 'openings'} at ${companyName} for students and recent graduates.`,
+        introRoleNames ? `Recent roles include ${introRoleNames}.` : '',
+        introLocations.length ? `Openings are based in ${introLocations.join(', ')}.` : '',
+        introBatches.length ? `Eligible graduation batches include ${introBatches.join(', ')}.` : '',
+        headerMeta ? `The feed lists ${companyName} under ${headerMeta}.` : '',
+    ].filter(Boolean).join(' ');
+
+    const companyApplyCopy = [
+        introSkillNames
+            ? `Across these listings, ${introSkillNames} come up most often.`
+            : 'Each listing carries its own eligibility and skill requirements.',
+        'Check the posting date, location and eligibility on each role before you apply.',
+        `Every role links straight to ${companyName}'s official application page, so you can confirm the current opening and apply there.`,
+        'This profile updates as new roles are published and closed roles are removed.',
+    ].join(' ');
+
     logRouteResult('/companies/[slug]', '200');
 
     const safePortalUrl = toSafeOutboundUrl(portalUrl);
@@ -535,6 +592,17 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                             )}
                         </div>
                     )}
+
+                    <section aria-labelledby="company-overview-heading" className="mt-4 border-t border-border pt-4">
+                        <h2 id="company-overview-heading" className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                            <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                            Hiring overview
+                        </h2>
+                        <div className="mt-2 space-y-2 text-pretty text-sm text-muted-foreground">
+                            <p>{companyOverview}</p>
+                            <p>{companyApplyCopy}</p>
+                        </div>
+                    </section>
                 </div>
             </article>
 

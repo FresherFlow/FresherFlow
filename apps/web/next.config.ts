@@ -353,8 +353,15 @@ const nextConfig: NextConfig = {
       // legacy source that 301s into /jobs — so every old link crawled two redirects
       // through a namespace we no longer serve.
       {
+        source: "/location/remote",
+        destination: "/jobs/remote",
+        permanent: true,
+      },
+      // The old singular namespace must land on the suffixed board. Sending it
+      // to an unsuffixed `/jobs/:path*` produced 404s (e.g. /jobs/cochin).
+      {
         source: "/location/:path*",
-        destination: "/jobs/:path*",
+        destination: "/jobs/:path*-jobs",
         permanent: true,
       },
 
@@ -368,7 +375,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/skills/:name",
-        destination: "/jobs/:name",
+        destination: "/jobs/:name-jobs",
         permanent: true,
       },
       {
@@ -378,7 +385,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/roles/:slug",
-        destination: "/jobs/:slug",
+        destination: "/jobs/:slug-jobs",
         permanent: true,
       },
       {
@@ -393,7 +400,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/locations/:city",
-        destination: "/jobs/:city",
+        destination: "/jobs/:city-jobs",
         permanent: true,
       },
       {
@@ -403,6 +410,18 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/batch/:year",
+        destination: "/jobs/:year-batch",
+        permanent: true,
+      },
+      // The sitemap child file is called sitemap-batches.xml, so both the
+      // historic singular /batch/* and the plural /batches/* must resolve.
+      {
+        source: "/batches",
+        destination: "/jobs/browse",
+        permanent: true,
+      },
+      {
+        source: "/batches/:year",
         destination: "/jobs/:year-batch",
         permanent: true,
       },
@@ -419,12 +438,12 @@ const nextConfig: NextConfig = {
 
       {
         source: "/walk-ins/details/:slug",
-        destination: "/jobs/:slug",
+        destination: "/drives/walk-in/:slug",
         permanent: true,
       },
       {
         source: "/walk-ins/opportunity/:slug",
-        destination: "/jobs/:slug",
+        destination: "/drives/walk-in/:slug",
         permanent: true,
       },
       {

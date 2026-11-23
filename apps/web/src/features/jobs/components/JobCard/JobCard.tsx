@@ -1,17 +1,13 @@
 'use client';
 
-import { useMemo } from 'react';
 import { cn } from '@fresherflow/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CheckIcon from '@heroicons/react/24/solid/CheckIcon';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
-import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
-import { useCommentCount } from '@/features/jobs/hooks/useCommentCounts';
-import { AutoFitBadges } from './AutoFitBadges';
+import { JobCardBadges } from './JobCardBadges';
 import { JobCardMenu } from './JobCardMenu';
-import { buildMetaItems } from './JobCardMetaConfig';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
 import { APPLY_CARD_CLASS, ApplyActionContent } from '@/features/jobs/components/ApplyAction';
 import { getJobTypeLabel, isFreshlyPosted } from './jobCardUtils';
@@ -84,22 +80,12 @@ export default function JobCard({
         searchedSkill,
     });
 
-      // Memoized: this feeds AutoFitBadges, which measures rendered badge widths
-    // in a layout effect. An unmemoized call returned a fresh array on every
-    // render, so the effect body re-ran on every unrelated parent render and
-    // forced a synchronous layout pass per card.
-    const metaItems = useMemo(
-        () => buildMetaItems(job, { isGovernment, isDrive, isWalkin }),
-        [job, isGovernment, isDrive, isWalkin]
-    );
-    const typeLabel = getJobTypeLabel(job, isDrive, isGovernment);
-    const commentCount = useCommentCount(job.slug || job.id);
-    // V1 job-card requirement: the Discuss CTA must SSR even before counts
-    // hydrate client-side, so fall back to the zero-state (0 discussing).
-    const discussionCount = commentCount ?? 0;
-    // The job page hosts the thread in a dock; the query flag opens it on
-    // arrival instead of jumping to an anchor that no longer exists.
-    const discussionHref = `${jobPath}?discuss=1`;
+        const typeLabel = getJobTypeLabel(job, isDrive, isGovernment);
+    // Card data diet: education, source/ATS, salary and the long skill gallery
+    // belong on the detail page. Showing them here only added noise and made
+    // the row taller than the list and mobile variants. Keep two skills + "+N".
+    const cardSkills = orderedSkills.slice(0, 2);
+    const skillOverflow = Math.max(0, orderedSkills.length - cardSkills.length);
 
     return (
         <div
@@ -218,32 +204,13 @@ export default function JobCard({
                 </div>
             </div>
 
-            {/* Badges + single action row — badges shrink, actions stay on one row */}
+            {/* Skills + single action row. No meta strip and no Discuss CTA —
+                those duplicated the detail page and made tablet cards noisy. */}
             <div className="flex min-w-0 items-center gap-2 py-1.5 relative z-20 pointer-events-auto">
-                <AutoFitBadges
-                    metaItems={metaItems}
-                    skills={orderedSkills}
-                    maxRows={1}
-                    className="relative z-20 min-w-0 flex-1"
-                />
+                <div className="flex min-w-0 flex-1 items-center overflow-hidden">
+                    <JobCardBadges metaItems={[]} skills={cardSkills} overflow={skillOverflow} compact />
+                </div>
                 <div className="flex shrink-0 items-center gap-2">
-                    <a
-                        href={discussionHref}
-                        onClick={handleLinkClick(discussionHref)}
-                        className="inline-flex items-center gap-1 px-1 h-7 text-xs font-medium rounded-md text-muted-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary transition-colors shrink-0 whitespace-nowrap"
-                        title={discussionCount > 0 ? `${discussionCount} discussing — Discuss this job` : 'Discuss this job'}
-                        aria-label={discussionCount > 0 ? `Discuss this job (${discussionCount} discussing)` : 'Discuss this job'}
-                    >
-                        <ChatBubbleLeftRightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
-                        {discussionCount > 0 ? (
-                            <>
-                                <span className="hidden sm:inline">{discussionCount} discussing · Discuss</span>
-                                <span className="sm:hidden">{discussionCount} Discuss</span>
-                            </>
-                        ) : (
-                            <span className="hidden sm:inline">Discuss</span>
-                        )}
-                    </a>
                     {showApplied && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-success/10 text-success dark:text-success rounded text-xs font-bold uppercase tracking-wide border border-success/20 shrink-0">
                             <CheckIcon className="w-3 h-3" aria-hidden />

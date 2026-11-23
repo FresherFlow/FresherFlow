@@ -427,6 +427,22 @@ export function CategoryPageView({
         const stored = localStorage.getItem('ff:showDetail');
         if (stored === 'true') setShowDetail(true);
     }, []);
+
+    // Split is a desktop-only workspace. A coarse-pointer tablet that had
+    // saved `ff:showDetail=true` on a fine-pointer session otherwise kept the
+    // split pane while the feed rendered mobile cards — list and split bled
+    // into each other at exactly this width.
+    useEffect(() => {
+        if (isDesktop === false && showDetail) {
+            setShowDetail(false);
+            try {
+                localStorage.setItem('ff:showDetail', 'false');
+                document.documentElement.setAttribute('data-show-detail', 'false');
+            } catch {
+                // Storage unavailable — in-memory state is already corrected.
+            }
+        }
+    }, [isDesktop, showDetail]);
     /**
      * List ↔ Split.
      *
@@ -484,8 +500,9 @@ export function CategoryPageView({
     }, [handleCloseOpportunityPane, handleSelectOpportunity, selectedOpp, visibleOpps]);
 
     const toggleShowDetail = useCallback(() => {
+        if (isDesktop !== true) return;
         applyShowDetail(!showDetail);
-    }, [applyShowDetail, showDetail]);
+    }, [applyShowDetail, showDetail, isDesktop]);
 
     return (
         <div id="feed-scroll-container" ref={feedRef} className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
@@ -493,13 +510,15 @@ export function CategoryPageView({
 
             {/* Sticky header — transparent so it can never mismatch the page:
                 only blur + hairline remain, scrolled cards frost beneath.
-                relative z-20 is load-bearing: backdrop-blur traps the filter
-                panels' z-100 inside this header's stacking context, while the
-                detail pane paints at relative z-10 — without an explicit level
-                here, page content renders ABOVE open filter dropdowns. z-20
-                clears detail content but stays under map view (30), sticky
-                action bars (40) and modals (100+). */}
-            <div ref={headerRef} className="relative z-20 shrink-0 border-b border-border/50 bg-transparent px-3 backdrop-blur-md md:px-6 pt-2.5 pb-0 space-y-2">
+                `backdrop-blur` traps the filter panels' z-100 inside this
+                header's stacking context, so the header itself must sit above
+                the card action rows (relative z-20). At z-20 the rows were
+                painted after the header in DOM order and their Apply buttons
+                appeared on top of an open filter dropdown. z-30 clears the
+                detail pane (z-10) and the card rows, stays level with the map
+                view (later in DOM, so the map still wins), and remains under
+                sticky action bars (40) and modals (100+). */}
+            <div ref={headerRef} className="relative z-30 shrink-0 border-b border-border/50 bg-transparent px-3 backdrop-blur-md md:px-6 pt-2.5 pb-0 space-y-2">
 
             {type === 'GOVERNMENT' ? (
                 /* Govt Compact Top Row: Title/Count left, Filters right.
@@ -600,15 +619,23 @@ export function CategoryPageView({
                             <div className="hidden lg:flex items-center gap-2 flex-wrap">
                                 <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} profileOwnedDims={profileOwnedDims} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} driveRadiusKm={driveRadiusKm ?? null} onDriveRadiusChange={setDriveRadiusKm} hasUserLocation={!!userLocation} />
                                 
-                                {/* View mode switcher (List vs Split) — icons only;
-                                    each icon always visible, state shown via highlight */}
-                                <div className="inline-flex items-center bg-muted rounded-lg border border-border/70 shrink-0 p-0.5">
+                                {/* View mode switcher (List vs Split) — desktop
+                                    only. A coarse-pointer tablet has no split
+                                    workspace, so showing it offered a broken mode. */}
+                                <div className={cn(
+                                    'inline-flex items-center bg-muted rounded-lg border border-border shrink-0 p-0.5',
+                                    isDesktop !== true && 'hidden'
+                                )}>
                                     <button
                                         type="button"
                                         onClick={() => { if (showDetail) toggleShowDetail(); }}
                                         className={cn(
                                             'flex items-center justify-center h-7.5 w-8 rounded-md cursor-pointer select-none transition-colors',
-                                            !showDetail ? 'bg-card text-foreground shadow-xs border border-border/40' : 'text-muted-foreground hover:text-foreground'
+                                            // surface-active is the only selected fill: in dark mode
+                                            // bg-card is darker than the track and read as a hole.
+                                            !showDetail
+                                                ? 'bg-surface-active text-surface-active-foreground border border-border-strong'
+                                                : 'text-muted-foreground border border-transparent [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground'
                                         )}
                                         aria-label="List view"
                                         aria-pressed={!showDetail}
@@ -621,7 +648,9 @@ export function CategoryPageView({
                                         onClick={() => { if (!showDetail) toggleShowDetail(); }}
                                         className={cn(
                                             'flex items-center justify-center h-7.5 w-8 rounded-md cursor-pointer select-none transition-colors',
-                                            showDetail ? 'bg-card text-foreground shadow-xs border border-border/40' : 'text-muted-foreground hover:text-foreground'
+                                            showDetail
+                                                ? 'bg-surface-active text-surface-active-foreground border border-border-strong'
+                                                : 'text-muted-foreground border border-transparent [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground'
                                         )}
                                         aria-label="Split view"
                                         aria-pressed={showDetail}
@@ -668,7 +697,7 @@ export function CategoryPageView({
             )}
 
             {/* Active Chips */}
-            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.role && filters.role.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory) || profileChipTotal > 0 || profileChipCount > 0 || profileMismatchCount > 0 || !!user) ? (
+            {mounted && (search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.role && filters.role.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory) || profileChipTotal > 0 || profileChipCount > 0 || profileMismatchCount > 0 || !!user) ? (
                 <div className="flex flex-wrap items-center gap-1.5 pb-2">
                     {type === 'GOVERNMENT' && govtCategory ? (
                         <button onClick={() => setGovtCategory(null)} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
@@ -1063,6 +1092,7 @@ export function CategoryPageView({
                                 ) : (
                                 <JobCardResponsive
                                         key={opp.id}
+                                        isDesktop={isDesktop}
                                         job={{ ...opp, normalizedRole: opp.title, salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined } as any}
                                         jobId={opp.id}
                                         isSaved={isJobSaved(opp)}

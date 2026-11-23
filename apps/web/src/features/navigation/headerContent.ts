@@ -10,6 +10,7 @@ const LABEL_OVERRIDES: Record<string, string> = {
     'govt': 'Government Jobs',
     'walkins': 'Walk-ins',
     'walk-ins': 'Walk-ins',
+    'walk-in': 'Walk-in Drives',
 };
 
 export function formatSegment(segment: string): string {
@@ -47,8 +48,12 @@ export function isFeedHeaderRoute(segments: string[]): boolean {
     const first = segments[0];
     return (
         (first === 'jobs' && (segments.length === 1 || ['internships', 'walkins', 'walk-ins', 'remote', 'full-time', 'part-time'].includes(segments[1]))) ||
-        // Drives and its children render the feed header, not a breadcrumb.
-        (first === 'drives' && (segments.length === 1 || ['walk-in', 'off-campus'].includes(segments[1]))) ||
+        // Only the drives hubs render the feed header. A child such as
+        // /drives/walk-in/{slug-or-city} is a real page and gets a breadcrumb,
+        // so a walk-in detail is never presented under a generic feed header.
+        (first === 'drives' && (segments.length === 1 || (
+            segments.length === 2 && ['walk-in', 'off-campus'].includes(segments[1])
+        ))) ||
         (['govt', 'hackathons', 'resources'].includes(first) && segments.length === 1)
     );
 }

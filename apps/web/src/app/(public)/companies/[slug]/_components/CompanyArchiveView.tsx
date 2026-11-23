@@ -60,6 +60,21 @@ export default function CompanyArchiveView({ companyName, slug, archivedRoles }:
                 </div>
             </article>
 
+            <section className="mt-6 rounded-xl border border-border bg-card p-4 dark:border-transparent">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
+                    About this profile
+                </h2>
+                <div className="mt-2 space-y-2 text-pretty text-sm text-muted-foreground">
+                    <p>
+                        FresherFlow keeps a profile for {companyName} so candidates can find the employer between hiring rounds. This page stays here when a role closes and is updated again as soon as a new opening is published.
+                    </p>
+                    <p>
+                        Check the careers link above for the employer's own board, since not every opening is listed here. You can also browse the fresher jobs, internships and walk-in drives pages to find similar entry-level roles. Before you apply, confirm the role, location and eligibility on the official posting.
+                    </p>
+                </div>
+            </section>
+
             <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-3">
                 <div className="lg:col-span-2">
                     <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">

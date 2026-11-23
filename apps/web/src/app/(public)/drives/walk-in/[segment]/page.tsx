@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { Suspense } from 'react';
 import { Button } from '@/ui/Button';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { logRouteResult } from '@/lib/observability';
@@ -9,16 +10,21 @@ import { fetchFeedIndex, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api
 import { getNextWalkinDate, getWalkinDates } from '@/features/jobs/utils/walkinEventUtils';
 import { getDriveDetails, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import type { Opportunity } from '@fresherflow/types';
+import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
+import { generateOpportunityMetadata, generateOpportunityJsonLd, fetchOpportunityForPage } from '@/features/jobs/domain/opportunitySeo';
+import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
+import { OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 
 // No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
 // which marks the feed tags stale, and the next request regenerates this
-// page once. A worker sweep re-sends those tags if that call was lost.
-// A number here would make every visitor and crawler pay for a full render.
+// page once. A number here would make every visitor and crawler pay for a
+// full render.
 export const revalidate = false;
-// dynamicParams = false blocks newly published jobs to be dynamically generated on their first visit,
-// but prevents cache poisoning by bots.
-export const dynamicParams = false;
+// Newly published drives must resolve on their first visit. Unknown segments
+// are still rejected by the explicit city/slug resolution below, so opening
+// this to dynamic params does not let bots mint arbitrary city pages.
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
     try {
@@ -28,26 +34,23 @@ export async function generateStaticParams() {
             fetchExpiredFeed()
         ]);
 
-        const cities = new Set<string>();
-
-        const addWalkInCities = (opportunities: any[]) => {
-            if (!opportunities) return;
-            for (const opp of opportunities) {
-                if (!isWalkinOpportunity(opp)) continue;
-                for (const loc of opp.locations ?? []) {
-                    const city = loc.trim().toLowerCase().replace(/\s+/g, '-');
-                    if (city && city !== 'pan-india' && city !== 'remote' && city !== 'worldwide') {
-                        cities.add(city);
-                    }
+        const segments = new Set<string>();
+        const addDrive = (opp: Opportunity) => {
+            if (!isWalkinOpportunity(opp)) return;
+            if (opp.slug || opp.id) segments.add(String(opp.slug || opp.id));
+            for (const loc of opp.locations ?? []) {
+                const city = citySlugOf(loc);
+                if (city && city !== 'pan-india' && city !== 'remote' && city !== 'worldwide') {
+                    segments.add(city);
                 }
             }
         };
 
-        if (feed?.opportunities) addWalkInCities(feed.opportunities);
-        if (govtFeed?.opportunities) addWalkInCities(govtFeed.opportunities);
-        if (expiredFeed?.opportunities) addWalkInCities(expiredFeed.opportunities);
+        for (const opp of feed?.opportunities ?? []) addDrive(opp as Opportunity);
+        for (const opp of govtFeed?.opportunities ?? []) addDrive(opp as Opportunity);
+        for (const opp of expiredFeed?.opportunities ?? []) addDrive(opp as Opportunity);
 
-        return Array.from(cities).map((city) => ({ city }));
+        return Array.from(segments).map((segment) => ({ segment }));
     } catch {
         return [];
     }
@@ -58,11 +61,51 @@ const formatLabel = (value: string) =>
         .replace(/-/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase());
 
-export async function generateMetadata({ params }: { params: Promise<{ city: string }> }): Promise<Metadata> {
-    const { city } = await params;
-    const cityLabel = formatLabel(city);
+function citySlugOf(loc: string): string {
+    return loc.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
+/** Returns true for errors thrown by notFound() or redirect()/permanentRedirect() in Next.js 15+/16. */
+function isNextNavigationError(err: unknown): boolean {
+    const digest = (err as { digest?: string })?.digest ?? '';
+    return digest === 'NEXT_HTTP_ERROR_FALLBACK;404' || digest.startsWith('NEXT_REDIRECT');
+}
+
+/** Resolve a segment as a walk-in drive detail before treating it as a city. */
+async function resolveDrive(segment: string): Promise<Opportunity | null> {
+    try {
+        const opp = await fetchOpportunityForPage(segment);
+        if (!opp || !isWalkinOpportunity(opp)) return null;
+        // A city slug must never win over an actual drive slug; generateStaticParams
+        // asserts the two sets do not collide through the feed's slug contract.
+        return opp;
+    } catch (err) {
+        if (isNextNavigationError(err)) throw err;
+        return null;
+    }
+}
+
+async function isKnownCity(segment: string): Promise<boolean> {
+    try {
+        const [feed, govtFeed, expiredFeed] = await Promise.all([
+            fetchFeedIndex(),
+            fetchGovernmentFeed(),
+            fetchExpiredFeed(),
+        ]);
+        const feeds = [feed, govtFeed, expiredFeed];
+        return feeds.some((f) => f?.opportunities?.some((opp) =>
+            isWalkinOpportunity(opp as Opportunity) &&
+            (opp.locations ?? []).some((loc) => citySlugOf(loc) === segment)
+        ));
+    } catch {
+        return false;
+    }
+}
+
+function cityMetadata(segment: string): Metadata {
+    const cityLabel = formatLabel(segment);
     const title = `${cityLabel} Walk-in Interviews for Freshers — This Week's Drives`;
-    const description = `Walk-in interviews and direct hiring drives in ${cityLabel} for freshers — dates, venues, reporting times and eligibility, verified by the community. Updated daily.`;
+    const description = `Walk-in interviews and hiring drives in ${cityLabel} for freshers — dates, venues and eligibility where the employer shared them.`;
     const keywords = `${cityLabel} walk in interviews, ${cityLabel} walk in jobs, ${cityLabel} fresher jobs, ${cityLabel} hiring, ${cityLabel} off campus drives, this week walk in ${cityLabel}`;
 
     return {
@@ -70,7 +113,7 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
         description,
         keywords,
         alternates: {
-            canonical: `${SITE_URL}/drives/walk-in/${city}`,
+            canonical: `${SITE_URL}/drives/walk-in/${segment}`,
         },
         openGraph: {
             title,
@@ -94,40 +137,52 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
     };
 }
 
-/** Returns true for errors thrown by notFound() or redirect()/permanentRedirect() in Next.js 15+/16. */
-function isNextNavigationError(err: unknown): boolean {
-    const digest = (err as { digest?: string })?.digest ?? '';
-    return digest === 'NEXT_HTTP_ERROR_FALLBACK;404' || digest.startsWith('NEXT_REDIRECT');
+export async function generateMetadata({ params }: { params: Promise<{ segment: string }> }): Promise<Metadata> {
+    const { segment } = await params;
+    const drive = await resolveDrive(segment);
+    if (drive) return generateOpportunityMetadata(drive);
+    if (!(await isKnownCity(segment))) {
+        notFound();
+    }
+    return cityMetadata(segment);
 }
 
-function citySlugOf(loc: string): string {
-    return loc.trim().toLowerCase().replace(/\s+/g, '-');
-}
+export default async function WalkInSegmentPage({ params }: { params: Promise<{ segment: string }> }) {
+    const { segment } = await params;
+    const drive = await resolveDrive(segment);
 
-export default async function WalkInsCityLandingPage({ params }: { params: Promise<{ city: string }> }) {
-    const { city } = await params;
-
-    try {
-        // Validate city against feed to prevent cache poisoning by bots
-        const feed = await fetchFeedIndex();
-        const hasCity = feed?.opportunities?.some(opp =>
-            isWalkinOpportunity(opp) &&
-            opp.locations?.some(loc => citySlugOf(loc) === city)
+    if (drive) {
+        // Resolve ID URLs to the permanent slug URL in one hop.
+        if (segment === drive.id && drive.slug) {
+            permanentRedirect(getOpportunityPath('WALKIN', drive.slug));
+        }
+        logRouteResult('/drives/walk-in/[segment] (drive)', '200');
+        return (
+            <>
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(drive)) }}
+                />
+                <Suspense fallback={<OpportunityDetailSkeleton />}>
+                    <OpportunityDetailClient id={drive.id} initialData={drive} variant="drive" />
+                </Suspense>
+            </>
         );
+    }
 
-        if (!hasCity) {
-            logRouteResult('/drives/walk-in/[city]', '404');
+    const city = segment;
+    try {
+        if (!(await isKnownCity(city))) {
+            logRouteResult('/drives/walk-in/[segment]', '404');
             notFound();
         }
     } catch (err) {
         if (isNextNavigationError(err)) throw err;
-        // CDN is temporarily down — fall through and render the page optimistically.
-        // dynamicParams = false means this city was valid at build time.
+        // CDN is temporarily down — fall through and render optimistically.
     }
 
-    logRouteResult('/drives/walk-in/[city]', '200');
+    logRouteResult('/drives/walk-in/[segment] (city)', '200');
 
-    // Full drive list for this city (upcoming first, then by date)
     const feed = await fetchFeedIndex();
     const cityLabel = formatLabel(city);
     const cityDrives = ((feed?.opportunities ?? []) as Opportunity[])
@@ -142,11 +197,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
         });
 
     const upcoming = cityDrives.filter(opp => getNextWalkinDate(opp) !== null);
-    const upcomingCount = upcoming.length;
-
-    // Next 3 drives for the header strip
     const nextThree = upcoming.slice(0, 3);
-
     const pageUrl = `${SITE_URL}/drives/walk-in/${city}`;
     const jsonLd = {
         '@context': 'https://schema.org',
@@ -156,9 +207,9 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
         url: pageUrl,
         about: cityLabel,
     };
-
     const formatDay = (d: Date) =>
         d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+    const driveHref = (opp: Opportunity) => getOpportunityPath('WALKIN', opp.slug || opp.id);
 
     return (
         <main className="min-h-screen bg-background px-3 md:px-6 py-10 md:py-14">
@@ -173,21 +224,17 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                         Walk-in interviews in {cityLabel} for freshers.
                     </h1>
                     <p className="text-sm text-muted-foreground max-w-2xl">
-                        {upcomingCount > 0
-                            ? `${upcomingCount} upcoming drive${upcomingCount === 1 ? '' : 's'} with dates, venues and reporting times — verified by the community.`
-                            : `Dates and venues for walk-in drives in ${cityLabel}, verified by the community.`}
+                        {cityDrives.length === 0
+                            ? `No walk-in drives listed in ${cityLabel} right now.`
+                            : `${cityDrives.length} walk-in drive${cityDrives.length === 1 ? '' : 's'} listed in ${cityLabel}. Open a drive for the details the employer shared.`}
                     </p>
                     <div className="flex flex-wrap gap-2">
                         <Button variant="default" size="sm" asChild>
                             <Link href="/drives/walk-in">Browse all walk-ins</Link>
                         </Button>
-                        <Button variant="outline" size="sm" asChild>
-                            <Link href="/login">Get alerts for {cityLabel}</Link>
-                        </Button>
                     </div>
                 </div>
 
-                {/* Next drives strip */}
                 {nextThree.length > 0 && (
                     <section aria-label="Next drives" className="space-y-2">
                         <h2 className="text-sm font-bold text-foreground">Coming up next</h2>
@@ -197,7 +244,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                                 return (
                                     <Link
                                         key={opp.id}
-                                        href={`/jobs/${opp.slug}`}
+                                        href={driveHref(opp)}
                                         className="rounded-xl border border-border bg-card p-3 space-y-1.5 hover:border-primary/40 hover:shadow-sm transition-all group"
                                     >
                                         <CompanyLogo
@@ -221,7 +268,6 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                     </section>
                 )}
 
-                {/* Full drive list */}
                 {cityDrives.length > 0 ? (
                     <section aria-label={`All walk-ins in ${cityLabel}`} className="space-y-2">
                         <h2 className="text-sm font-bold text-foreground">
@@ -235,7 +281,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                                 return (
                                     <Link
                                         key={opp.id}
-                                        href={`/jobs/${opp.slug}`}
+                                        href={driveHref(opp)}
                                         className="flex items-center gap-3 p-3.5 hover:bg-muted/40 transition-colors group"
                                     >
                                         <CompanyLogo
@@ -259,7 +305,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                                             {next ? (
                                                 <p className="text-xs font-bold text-primary whitespace-nowrap">{formatDay(next)}</p>
                                             ) : (
-                                                <p className="text-xs font-medium text-muted-foreground whitespace-nowrap">Dates passed</p>
+                                                <p className="text-xs font-medium text-muted-foreground whitespace-nowrap">Dates not shared</p>
                                             )}
                                             {dates.length > 1 && (
                                                 <p className="text-xs text-muted-foreground whitespace-nowrap">{dates.length} days</p>
@@ -279,16 +325,6 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                     </div>
                 )}
 
-                {/* Community bridge — the trust layer for this city */}
-                <div className="rounded-xl border border-border bg-muted/30 p-4 flex items-center justify-between gap-3 flex-wrap">
-                    <div className="space-y-0.5">
-                        <p className="text-sm font-semibold text-foreground">Went to a drive in {cityLabel}?</p>
-                        <p className="text-xs text-muted-foreground">Share how it went — real reports help others decide.</p>
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                        <Link href="/community/areas">Join the {cityLabel} community</Link>
-                    </Button>
-                </div>
             </div>
         </main>
     );

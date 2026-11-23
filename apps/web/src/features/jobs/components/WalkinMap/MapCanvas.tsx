@@ -93,6 +93,7 @@ export function MapCanvas({
             maxZoom: MAP_TILE_CONFIG.maxZoom,
             minZoom: MAP_TILE_CONFIG.minZoom,
             subdomains: MAP_TILE_CONFIG.subdomains,
+            attribution: MAP_TILE_CONFIG.attribution,
             keepBuffer: MAP_TILE_CONFIG.keepBuffer,
             updateWhenZooming: MAP_TILE_CONFIG.updateWhenZooming,
         }).addTo(map);

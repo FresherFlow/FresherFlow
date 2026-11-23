@@ -23,10 +23,18 @@ interface JobCardResponsiveProps {
     onMouseEnter?: () => void;
     onMouseLeave?: () => void;
     matchBadge?: ReactNode;
+    /** Feed's desktop flag. Passed by CategoryPageView so the card follows the
+     *  same width + pointer rule as the list it lives in. */
+    isDesktop?: boolean | null;
 }
 
-/** Tailwind's `md` step. Kept in sync with the `md:hidden` / `md:block` below. */
-const MD_MIN_WIDTH = '(min-width: 48rem)';
+/**
+ * Matches `useCategoryPageState`'s desktop gate: the shell is desktop only at
+ * `lg` **and** with a fine pointer. Width alone handed a coarse-pointer tablet
+ * at 1131px the full desktop card (education, source, skill chips, Discuss)
+ * inside the mobile grid — the "extra data only at this ratio" bug.
+ */
+const DESKTOP_QUERY = '(min-width: 64rem) and (pointer: fine)';
 
 /**
  * The two cards are responsive *variants* of one row, not two halves of it.
@@ -37,10 +45,10 @@ const MD_MIN_WIDTH = '(min-width: 48rem)';
  * the List view crawl while Split view — which renders a single hook-less
  * `JobRow` per row — stayed smooth.
  *
- * The breakpoint is not known during SSR, so the first client render still emits
- * both (matching the server HTML); once mounted, the variant CSS would have
- * hidden is dropped. `md:hidden` / `md:block` stay on the wrappers so the
- * correct one is shown during that first paint.
+ * The pointer type is not known during SSR, so the first client render still
+ * emits both (matching the server HTML); once mounted, the variant CSS that
+ * would have hidden one is dropped. The `@media` variants on the wrappers keep
+ * the right one visible during that first paint on both fine and coarse pointers.
  */
 export function JobCardResponsive({
     job,
@@ -60,21 +68,25 @@ export function JobCardResponsive({
     onMouseEnter,
     onMouseLeave,
     matchBadge,
+    isDesktop,
 }: JobCardResponsiveProps) {
-    const [isMdUp, setIsMdUp] = useState<boolean | null>(null);
+    const [detectedDesktop, setDetectedDesktop] = useState<boolean | null>(null);
 
     useEffect(() => {
-        const query = window.matchMedia(MD_MIN_WIDTH);
-        const update = () => setIsMdUp(query.matches);
+        const query = window.matchMedia(DESKTOP_QUERY);
+        const update = () => setDetectedDesktop(query.matches);
         update();
         query.addEventListener('change', update);
         return () => query.removeEventListener('change', update);
     }, []);
 
+    // The feed's flag wins; other callers fall back to the pointer-aware query.
+    const desktop = isDesktop ?? detectedDesktop;
+
     return (
         <>
-            {isMdUp !== true && (
-            <div className="min-w-0 md:hidden">
+            {desktop !== true && (
+            <div className="min-w-0 [@media(min-width:64rem)_and_(pointer:fine)]:hidden">
                 <JobCardMobile
                     job={job}
                     jobId={jobId}
@@ -90,8 +102,8 @@ export function JobCardResponsive({
                 />
             </div>
             )}
-            {isMdUp !== false && (
-            <div className="hidden min-w-0 md:block">
+            {desktop !== false && (
+            <div className="hidden min-w-0 [@media(min-width:64rem)_and_(pointer:fine)]:block">
                 <JobCard
                     job={job}
                     jobId={jobId}

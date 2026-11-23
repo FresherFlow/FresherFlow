@@ -33,20 +33,29 @@ interface WalkinMapPaneProps {
     onHoverOpportunity?: (id: string | null) => void;
 }
 
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function createVenueIcon(opp: Opportunity, isSelected: boolean, isHovered: boolean): any {
     const L = (window as any).L;
     const salary = formatSalaryBadge(opp);
-    const company = formatShortCompany(opp.company);
+    const company = escapeHtml(formatShortCompany(opp.company));
     const stateClass = isSelected ? 'state-selected' : isHovered ? 'state-hovered' : 'state-default';
-    const logoUrl = opp.companyLogoUrl;
-    const initial = company ? company.charAt(0).toUpperCase() : 'C';
+    const initial = escapeHtml(company ? company.charAt(0).toUpperCase() : 'C');
     const drive = getDriveDetails(opp);
     const transit = parseTransitInfo(drive?.transitInfo);
     const transitWalkTime = getTransitWalkTimeLabel(drive?.transitInfo);
 
-    const logoHtml = logoUrl 
-        ? `<img src="${logoUrl}" alt="${company}" class="venue-pill-logo" loading="lazy" />`
-        : `<span class="venue-pill-initial">${initial}</span>`;
+    // Leaflet builds this marker from an HTML string, so the app's CompanyLogo
+    // fallbacks cannot run here. A logo URL that 404s used to leave a broken
+    // image on the map; an initial is always renderable and readable.
+    const logoHtml = `<span class="venue-pill-initial">${initial}</span>`;
     
     // 0x0 Leaflet marker, centered via absolute + translate(-50%, -50%).
     // 36px circle keeps spiderfy legs connecting at the true center.
@@ -57,8 +66,8 @@ function createVenueIcon(opp: Opportunity, isSelected: boolean, isHovered: boole
             </div>
             <div class="venue-pill-flyout">
                 <span class="venue-pill-company">${company}</span>
-                ${salary ? `<span class="venue-pill-salary">&bull; ${salary}</span>` : ''}
-                ${transit?.station ? `<span class="venue-pill-transit">${transit.station}${transitWalkTime ? ` · ${transitWalkTime.replace(' walk', '')}` : ''}</span>` : ''}
+                ${salary ? `<span class="venue-pill-salary">&bull; ${escapeHtml(salary)}</span>` : ''}
+                ${transit?.station ? `<span class="venue-pill-transit">${escapeHtml(transit.station)}${transitWalkTime ? ` · ${escapeHtml(transitWalkTime.replace(' walk', ''))}` : ''}</span>` : ''}
             </div>
         </div>
     `;
