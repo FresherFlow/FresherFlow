@@ -136,7 +136,13 @@ const OWN_SUBMISSION_SELECT = {
  */
 router.get(
     '/whoami',
-    identityLimiter,
+    // No identityLimiter here. Every stateless MCP request calls whoami to
+    // resolve the caller before it builds a tool list, so this route is
+    // connection bootstrap, not a user action. Throttling it at 180/min means a
+    // few reconnecting AI sessions exhaust the bucket and every subsequent
+    // connection fails with 429 — before any tool can run. The MCP Worker has
+    // its own per-IP guard and revalidates the token and account status here on
+    // every call, so the lookup stays bounded and fail-closed without a quota.
     requireIdentity(),
     asyncHandler(async (req: Request, res: Response) => {
         const userId = req.userId as string;

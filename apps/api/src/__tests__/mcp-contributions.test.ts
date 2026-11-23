@@ -116,6 +116,20 @@ describe('MCP contribution routes: authentication', () => {
         expect(res.body.capabilities.approveSubmissions).toBe(false);
     });
 
+    it('never rate-limits identity revalidation, which every MCP connection needs', async () => {
+        // whoami used to sit behind identityLimiter (180/min). A few reconnecting
+        // AI sessions sharing one account exhausted it, and every new connection
+        // then failed with 429 before any tool could run. Identity resolution is
+        // bootstrap: the token and account status are rechecked on every call.
+        for (let i = 0; i < 200; i += 1) {
+            const res = await request(app)
+                .get('/api/internal/mcp/whoami')
+                .set('Authorization', 'Bearer member-token');
+
+            expect(res.status).toBe(200);
+        }
+    });
+
     it('treats a bare access-role grant with no permissions as a normal user', async () => {
         // MCP has only two roles and ADMIN is deliberately not one of them:
         // moderation is handled by the moderator role in the admin panel.

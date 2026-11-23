@@ -830,7 +830,9 @@ export class StaticFeedService {
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
-                    const prefix = isGovernmentRow(opp) ? 'govt' : 'jobs';
+                    // Walk-in drives are recruitment events with their own detail
+                    // namespace, not job postings under /jobs.
+                    const prefix = isGovernmentRow(opp) ? 'govt' : isWalkinRow(opp) ? 'drives/walk-in' : 'jobs';
                     jobsXml += `  <url><loc>${xmlLoc(baseUrl)}/${prefix}/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
                 });
                 jobsXml += '</urlset>';
@@ -884,7 +886,7 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
-                    walkinsXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>daily</changefreq></url>\n`;
+                    walkinsXml += `  <url><loc>${xmlLoc(baseUrl)}/drives/walk-in/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>daily</changefreq></url>\n`;
                 });
                 walkinsXml += '</urlset>';
 
