@@ -249,13 +249,42 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
                         ? 'Internship'
                         : 'Job';
 
-    let rawTitle = `${role} at ${company} | ${type}`;
-    if (batch) rawTitle += ` | ${batch}`;
-    // Location is the least important segment: append it only when the title
-    // stays within ~65 chars, so common titles don't get pixel-truncated to
-    // "..." mid-word (audit: "Title too long" on /jobs pages).
-    if (rawTitle.length + location.length + 3 <= 65) {
-        rawTitle += ` | ${location}`;
+    // Root layout applies the `| FresherFlow` template (14 chars). Keep the
+    // page-level title at 46 chars or less so the rendered <title> stays
+    // inside the 60-char SERP limit. Segments are added by priority and only
+    // when they fit; a long role is cut on a word boundary, never mid-word.
+    const TITLE_BUDGET = 60 - ' | FresherFlow'.length;
+    const fitTitle = (text: string) => {
+        if (text.length <= TITLE_BUDGET) return text;
+        const cut = text.slice(0, TITLE_BUDGET - 3);
+        const lastSpace = cut.lastIndexOf(' ');
+        return (lastSpace > TITLE_BUDGET / 2 ? cut.slice(0, lastSpace) : cut).trimEnd() + '...';
+    };
+
+    // Short label for the title: "Walk-in" carries the recruitment intent
+    // without spending 18 chars on "Walk-in Internship". The hero still shows
+    // both labels.
+    const titleType = isCampusDrive
+        ? 'Drive'
+        : isGovernmentOpportunity(opportunity)
+            ? 'Govt Job'
+            : isWalkinSeo
+                ? 'Walk-in'
+                : isInternSeo
+                    ? 'Internship'
+                    : 'Job';
+
+    let rawTitle = fitTitle(`${role} at ${company}`);
+    const withType = `${rawTitle} | ${titleType}`;
+    if (withType.length <= TITLE_BUDGET) rawTitle = withType;
+    if (batch) {
+        const withBatch = `${rawTitle} | ${batch}`;
+        if (withBatch.length <= TITLE_BUDGET) rawTitle = withBatch;
+    }
+    // Location is the least important segment: append it only when it fits.
+    if (location) {
+        const withLocation = `${rawTitle} | ${location}`;
+        if (withLocation.length <= TITLE_BUDGET) rawTitle = withLocation;
     }
     const seoTitle = truncateTitleByPixels(rawTitle);
 
