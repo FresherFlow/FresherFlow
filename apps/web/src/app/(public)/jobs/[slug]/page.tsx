@@ -133,16 +133,13 @@ type Props = {
     params: Promise<{ slug: string }>;
 };
 
-// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
-// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
-// which marks the feed tags stale, and the next request regenerates this
-// page once. A worker sweep re-sends those tags if that call was lost.
-// A number here would make every visitor and crawler pay for a full render.
-export const revalidate = false;
+// No ISR timer, no ISR writes on bogus slugs. Route is dynamically rendered
+// on every request (force-dynamic), so crawler-invented slugs never hit the
+// ISR cache. Trade-off: compute on every request instead of edge cache.
+export const dynamic = 'force-dynamic';
 
 // dynamicParams = true: allows newly published jobs to be dynamically generated on their first visit,
-// rather than 404ing. This will result in 1 ISR write per new job. If we notice an ISR write burst,
-// we may need to revisit this approach or check our cache tags.
+// rather than 404ing.
 export const dynamicParams = true;
 
 
@@ -264,14 +261,8 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // injects the noindex tag, so Google keeps the page out of results
         // instead of soft-404ing a 200 that looks like a listing.
         //
-        // Opt out of the ISR cache before 404-ing: with `revalidate = false`
-        // and `dynamicParams = true`, every bot-invented slug would otherwise
-        // get an ISR write cached under that bogus URL — unbounded cache
-        // entries. `unstable_noStore()` keeps bogus slugs out of the write path.
         if (!opportunityData) {
             logRouteResult('/[slug]', '404');
-            const { unstable_noStore } = await import('next/cache');
-            unstable_noStore();
             notFound();
         }
 

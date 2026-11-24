@@ -17,12 +17,10 @@ import {
     ExtendedOpportunity
 } from '@/features/jobs/domain/opportunitySeo';
 
-// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
-// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
-// which marks the feed tags stale, and the next request regenerates this
-// page once. A worker sweep re-sends those tags if that call was lost.
-// A number here would make every visitor and crawler pay for a full render.
-export const revalidate = false;
+// No ISR timer, no ISR writes on bogus slugs. Route is dynamically rendered
+// on every request (force-dynamic), so crawler-invented slugs never hit the
+// ISR cache. Trade-off: compute on every request instead of edge cache.
+export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
 
@@ -154,8 +152,6 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
 
         if (!opp) {
             logRouteResult('/govt/[slug]', '404');
-            const { unstable_noStore } = await import('next/cache');
-            unstable_noStore();
             notFound();
         }
 

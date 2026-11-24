@@ -30,12 +30,10 @@ import {
 // wrapped in React cache() inside lib/api/feedServer.ts, so generateMetadata and
 // the page component share one set of CDN round-trips per request.
 
-// No timer, by design — see `lib/api/feedCache.ts` for the full policy.
-// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
-// which marks the feed tags stale, and the next request regenerates this
-// page once. A worker sweep re-sends those tags if that call was lost.
-// A number here would make every visitor and crawler pay for a full render.
-export const revalidate = false;
+// No ISR timer, no ISR writes on bogus slugs. Route is dynamically rendered
+// on every request (force-dynamic), so crawler-invented slugs never hit the
+// ISR cache. Trade-off: compute on every request instead of edge cache.
+export const dynamic = 'force-dynamic';
 // dynamicParams = true: companies published after the last build (or slugs the
 // build-time feed snapshot missed) must render on demand instead of 404ing.
 // The page body itself is inventory-gated and calls notFound() when a company
@@ -285,8 +283,6 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                 // Never cache a miss: with dynamicParams = true, any slug a
                 // crawler invents renders here. Without this call the 404 is
                 // written to the ISR cache under that invented URL.
-                const { unstable_noStore: noStoreMiss } = await import('next/cache');
-                noStoreMiss();
                 notFound();
             }
         }
@@ -332,8 +328,6 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
         if (!everPublished) {
             logRouteResult('/companies/[slug]', '404');
-            const { unstable_noStore: noStoreMiss } = await import('next/cache');
-            noStoreMiss();
             notFound();
         }
 
