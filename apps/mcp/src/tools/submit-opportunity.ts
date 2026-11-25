@@ -21,7 +21,8 @@ const OUTPUT_SCHEMA = z.object(OUTPUT_SHAPE);
 
 // WRITE tool:
 // - readOnlyHint: false (it changes FresherFlow state)
-// - destructiveHint: false (nothing is destroyed)
+// - destructiveHint: true: Claude asks before running a destructive tool, and
+//   submitting creates (or publishes) a real listing rather than reading data.
 // - openWorldHint: false (writes to our own bounded database; the server
 //   never fetches the supplied URL)
 //
@@ -92,7 +93,9 @@ export function registerSubmitOpportunity(server: McpServer): void {
       annotations: {
         readOnlyHint: false,
         openWorldHint: false,
-        destructiveHint: false,
+        // Claude's literal rule: false means "safe to call without asking";
+        // this creates data and can publish it immediately.
+        destructiveHint: true,
       },
     },
     async (input: SubmitOpportunityInput) => {

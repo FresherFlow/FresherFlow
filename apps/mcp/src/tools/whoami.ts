@@ -28,7 +28,11 @@ export function registerWhoami(server: McpServer): void {
                 + 'distinguish two connected accounts.',
             inputSchema: z.object({}),
             outputSchema: z.object({
-                            id: z.string().min(1).describe(
+                            // Emits `pattern: "\\S"` in the JSON Schema published through
+                            // tools/list, which ChatGPT expects for string ids. This tightens
+                            // the schema only; the output shape is unchanged. MCP clients cache
+                            // the tool list, so reconnect or refresh discovery after this change.
+                            id: z.string().min(1).regex(/\S/).describe(
                                 'Opaque FresherFlow profile identifier, unchanged across token refresh and reconnection.',
                             ),
                             name: z.string().optional().describe('Display name for the connected profile.'),

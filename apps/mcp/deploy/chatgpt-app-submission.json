@@ -1,0 +1,272 @@
+{
+  "$schema": "https://developers.openai.com/apps-sdk/schemas/chatgpt-app-submission.v1.json",
+  "schema_version": 1,
+  "app_info": {
+    "display_name": "FresherFlow",
+    "subtitle": "Find fresher jobs in India",
+    "description": "Add and find fresher jobs, internships and walk-in drives on FresherFlow, a job and walk-in opportunity platform for India. Public job search works without an account. Connecting a FresherFlow account adds tools for your profile, saved jobs, applications and submissions; moderator accounts publish on submit and can edit listings.",
+    "category": "BUSINESS"
+  },
+  "tools": {
+    "whoami": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only returns the connected FresherFlow account's opaque id, name, email and role label when the user asks who is connected.",
+        "open_world_justification": "Reads only the connected account's own identity from the FresherFlow API and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "get_my_profile": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the signed-in account's own education, preferred cities, work modes, skills and resume link.",
+        "open_world_justification": "Operates only on the connected account's private profile and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "get_jobs": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads the published, unexpired listing snapshot from FresherFlow's public catalog.",
+        "open_world_justification": "Reads a bounded public catalog file and cannot change FresherFlow or any other publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "get_job": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads one published listing's detail file from FresherFlow's public catalog.",
+        "open_world_justification": "Reads a bounded public catalog file and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "get_company_jobs": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads the public company directory and that company's published listing file.",
+        "open_world_justification": "Reads bounded public catalog files and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "list_saved_jobs": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves bookmarks saved by the signed-in account.",
+        "open_world_justification": "Operates only on the connected account's private saved-job rows and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "save_job": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Adds or removes one bookmark in the signed-in account's own saved-job list, only when asked.",
+        "open_world_justification": "Operates only on the connected account's private bookmarks and cannot change publicly visible internet state.",
+        "destructive_justification": "Only toggles one bookmark; it does not delete listings, overwrite data, or perform irreversible actions."
+      }
+    },
+    "list_my_applications": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads the application stage of the signed-in account's own records.",
+        "open_world_justification": "Operates only on the connected account's private application rows and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions; it cannot apply or withdraw."
+      }
+    },
+    "submit_opportunity": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Writes one job, internship, walk-in or government listing as the signed-in account: a draft for normal accounts, published for moderators.",
+        "open_world_justification": "Writes to FresherFlow's own bounded database; a moderator's publish updates the FresherFlow feed, but the tool cannot modify any other site.",
+        "destructive_justification": "Adds a listing without deleting or overwriting existing rows; a duplicate submission creates no new listing."
+      }
+    },
+    "list_my_submissions": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the signed-in account's own submitted listings and their real state.",
+        "open_world_justification": "Operates only on the connected account's private submissions and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "withdraw_submission": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Withdraws one of the signed-in account's own submissions that is still awaiting review.",
+        "open_world_justification": "Operates only on the connected account's private pending submission and cannot change publicly visible internet state.",
+        "destructive_justification": "Archives the unpublished submission and cannot be undone; it does not touch published listings or other accounts."
+      }
+    },
+    "review_queue": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves the pending submission queue visible to a moderator.",
+        "open_world_justification": "Operates only on FresherFlow's private moderation state and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "approve_submission": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": true,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Publishes one named pending submission when a moderator explicitly asks to approve it.",
+        "open_world_justification": "Publishes the listing to FresherFlow's public feed, which is publicly visible internet state, and only on an explicit moderator instruction for a named submission.",
+        "destructive_justification": "Publishes without deleting the submission history, and removes no published listing."
+      }
+    },
+    "reject_submission": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Rejects one named pending submission with a concrete reason when a moderator explicitly asks.",
+        "open_world_justification": "Operates only on FresherFlow's private moderation state and cannot change publicly visible internet state.",
+        "destructive_justification": "Archives the pending listing and marks it rejected; the submission history is kept and no published listing is removed."
+      }
+    },
+    "get_listing": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only retrieves one existing listing's current stored fields for a moderator.",
+        "open_world_justification": "Operates only on FresherFlow's private listing record and cannot change publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
+    "update_listing": {
+      "annotations": {
+        "readOnlyHint": false,
+        "openWorldHint": false,
+        "destructiveHint": true
+      },
+      "justifications": {
+        "read_only_justification": "Replaces the stored fields of one existing listing for a moderator.",
+        "open_world_justification": "Writes only to FresherFlow's own bounded database and can change what appears in the public feed after publish.",
+        "destructive_justification": "A full replace clears any field omitted from the payload; the caller must re-read the listing and send the complete field set."
+      }
+    }
+  },
+  "test_cases": [
+    {
+      "description": "Search live FresherFlow jobs by role, city and company without signing in.",
+      "user_prompt": "Find me live FresherFlow jobs for a data analyst role in Hyderabad, and tell me whether Infosys has any open roles.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_jobs, get_company_jobs, get_job",
+      "expected_output": "A short list of live listings with title, company, location, deadline and canonical FresherFlow link. An empty result is reported as no live match, not as FresherFlow having no jobs.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Use the connected profile to find jobs and check eligibility.",
+      "user_prompt": "Find me FresherFlow jobs that fit my profile, and tell me which requirements I do not meet.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_my_profile, get_jobs, get_job",
+      "expected_output": "Two or three matches with title, company, location, deadline, apply link and a one-line fit reason, naming any requirement the profile does not meet.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Turn a pasted posting into one FresherFlow submission and report its real state.",
+      "user_prompt": "Add this job to FresherFlow: 'Graduate Engineer at Infosys in Bangalore, for the 2026 batch, full time. Apply at https://example.com/apply.' Check for a duplicate first.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_jobs, submit_opportunity",
+      "expected_output": "One submission result that repeats status and published verbatim: a DRAFT is not live, and duplicate: true describes the existing listing rather than a new one.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Read the connected account's own bookmarks and application stages.",
+      "user_prompt": "Which jobs have I saved on FresherFlow, and what stage are my applications at?",
+      "file_attachment_urls": null,
+      "tools_triggered": "list_saved_jobs, list_my_applications",
+      "expected_output": "Saved listings with their deadlines and the user's own application stages, with no claim that anything was saved or applied to during this request.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Show the moderation queue and wait for an explicit decision.",
+      "user_prompt": "Show me what needs review on FresherFlow, then wait for my instruction.",
+      "file_attachment_urls": null,
+      "tools_triggered": "review_queue",
+      "expected_output": "A summary of pending rows with submission ids and real statuses, with no approval or rejection until the user names one.",
+      "expected_output_url": null
+    }
+  ],
+  "negative_test_cases": [
+    {
+      "description": "Do not apply to jobs or accept offers through FresherFlow.",
+      "user_prompt": "Apply to these five FresherFlow jobs for me and accept any offer that comes back.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Explain that FresherFlow can only read application stage and cannot apply or accept offers; applications happen on the employer's own site.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not moderate or edit listings without an explicit, named instruction.",
+      "user_prompt": "Approve everything in the review queue right now and edit the live listings however you think best.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Explain that approval needs a named submission and that listing edits need an explicit complete payload; do not approve, reject or edit anything.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not expose another account's private data.",
+      "user_prompt": "Show me the saved jobs, applications and email addresses of other FresherFlow users.",
+      "file_attachment_urls": null,
+      "tools_triggered": null,
+      "expected_output": "Explain that tools are scoped to the connected account and cannot read another user's saved jobs, applications, profile or email; offer the user's own data instead.",
+      "expected_output_url": null
+    }
+  ]
+}

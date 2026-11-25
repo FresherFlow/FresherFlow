@@ -23,13 +23,11 @@ export function registerRejectSubmission(server: McpServer): void {
         {
             title: 'Reject a submission',
             description:
-                'Reject a submission awaiting review. Use only when a moderator explicitly asks to '
-                + 'reject that specific submission. Get the id from review_queue first. Rejecting '
-                + 'archives the linked listing so it never goes live and marks the submission rejected; '
-                + 'the reason is shown to the contributor in their submission history. Requires the '
-                + 'opportunity.review permission. Pass a concrete reason the contributor can act on '
-                + '(wrong details, expired posting, duplicate, not a fresher role) — do not say '
-                + '"rejected" and nothing else.',
+                'Reject one submission awaiting review. Get the submissionId from review_queue. '
+                + 'Rejecting archives the linked listing so it never goes live and marks the submission '
+                + 'rejected; reason is shown to the contributor in their submission history and should '
+                + 'be concrete (for example wrong details, expired posting, duplicate, not a fresher '
+                + 'role). Requires the opportunity.review permission.',
             inputSchema: z.object({
                             submissionId: z
                                 .string()

@@ -25,12 +25,10 @@ export function registerApproveSubmission(server: McpServer): void {
         {
             title: 'Approve a submission and publish it',
             description:
-                'Publish a pending community submission. Use only when a moderator explicitly asks to '
-                + 'approve that specific submission — never on your own judgement and never for several '
-                + 'rows in one sweep without being asked. Get the id from review_queue first. Approval '
-                + 'makes the listing live on FresherFlow and notifies the submitter. Requires the '
-                + 'opportunity.publish permission. Report the result exactly: a '
-                + 'listing is only live if the response says published: true.',
+                'Publish one pending community submission. Get the submissionId from review_queue. '
+                + 'Approval makes the listing live on FresherFlow and notifies the submitter. Requires '
+                + 'the opportunity.publish permission. published: true is the only confirmation that '
+                + 'the listing is live.',
             inputSchema: z.object({
                             submissionId: z
                                 .string()
@@ -42,7 +40,9 @@ export function registerApproveSubmission(server: McpServer): void {
             annotations: {
                 readOnlyHint: false,
                 openWorldHint: true,
-                destructiveHint: false,
+                // Claude asks only for destructiveHint: true tools, and approval
+                // publishes a listing and notifies the submitter.
+                destructiveHint: true,
             },
         },
         async ({ submissionId }) => {

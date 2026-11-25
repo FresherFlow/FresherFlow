@@ -22,13 +22,11 @@ export function registerSaveJob(server: McpServer): void {
         {
             title: 'Save or remove a FresherFlow job',
             description:
-                'Bookmark a job for THIS signed-in FresherFlow account, or remove an existing bookmark. '
+                'Save or remove a bookmark for this signed-in FresherFlow account. '
                 + 'Set saved: true to save, saved: false to remove. Accepts the listing id or slug from get_jobs, '
                 + 'get_job, get_company_jobs or list_saved_jobs. '
-                + 'Use it only when the user asks to save, bookmark or remove a job — never on your own initiative. '
-                + 'Read the response: saved is the state actually stored, and corrected: true means the listing was '
-                + 'already in the requested state so FresherFlow had to correct the toggle. Do not claim a save '
-                + 'unless saved matches what the user asked for.',
+                + 'The response reports the state actually stored: saved is that state, and corrected: true means '
+                + 'the listing was already in the requested state so FresherFlow corrected the toggle.',
             inputSchema: z.object({
                 identifier: z
                     .string()
@@ -43,7 +41,9 @@ export function registerSaveJob(server: McpServer): void {
             outputSchema: OUTPUT_SCHEMA,
             annotations: {
                 readOnlyHint: false,
-                destructiveHint: false,
+                // Claude only asks before a write when destructiveHint is true;
+                // a bookmark change still modifies account state.
+                destructiveHint: true,
                 idempotentHint: true,
                 openWorldHint: false,
             },

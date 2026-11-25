@@ -4,6 +4,8 @@ import { resolveConnectionIdentity } from './identity.js';
 import { bearerFromHeaders, runWithAccessToken } from './http/token.js';
 import { ApiHttpError, setApiBaseUrl } from './http/client.js';
 import { logger } from './logger.js';
+import { insufficientScopeChallenge } from './oauthMetadata.js';
+import { supportsMcpApps } from './ui-capabilities.js';
 
 /**
  * Cloudflare Workers entry point for the FresherFlow MCP server.
@@ -22,6 +24,8 @@ interface Env {
   PUBLIC_SITE_URL: string;
   MCP_PUBLIC_URL: string;
   PUBLIC_FEED_BASE_URL?: string;
+  // OpenAI Apps domain-verification token, issued per submission in the portal.
+  OPENAI_APPS_CHALLENGE_TOKEN?: string;
 }
 
 const MCP_CORS_HEADERS = {
@@ -129,6 +133,25 @@ function getUrls(env: Env) {
 function configurationError(): Response {
   logger.error('MCP public origins are missing or invalid');
   return jsonResponse({ error: 'MCP is not configured' }, 500);
+}
+
+/**
+ * OpenAI Apps domain verification. ChatGPT fetches this exact token from the
+ * MCP host during submission. The portal issues a new token per submission, so
+ * it is deploy-configurable rather than hardcoded. 404 when unset so the route
+ * is simply absent until the secret is added.
+ */
+function openaiAppsChallenge(env: Env): Response {
+  const token = (env.OPENAI_APPS_CHALLENGE_TOKEN ?? '').trim();
+  if (!token) return new Response(null, { status: 404 });
+  return new Response(token, {
+    status: 200,
+    headers: {
+      ...MCP_CORS_HEADERS,
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
+  });
 }
 
 function escapeHtml(value: string): string {
@@ -314,6 +337,9 @@ const handler: ExportedHandler<Env> = {
         || url.pathname.startsWith('/mcp/.well-known/openid-configuration')) {
       return oauthAsDiscoveryRedirect(env, url.pathname);
     }
+    if (url.pathname === '/.well-known/openai-apps-challenge' && request.method === 'GET') {
+      return openaiAppsChallenge(env);
+    }
     if (url.pathname === '/health') {
       return jsonResponse({ ok: true, service: 'fresherflow-mcp' });
     }
@@ -361,6 +387,9 @@ const handler: ExportedHandler<Env> = {
         // send a valid account token to it.
         const identity = isPublicMcpPath ? null : verifiedIdentity;
         const feedBaseUrl = originOf(env.PUBLIC_FEED_BASE_URL) || '';
+        // Per-request, not per-connection: this stateless Worker sees no later
+        // initialize request, so only this call can advertise MCP Apps support.
+        const supportsApps = await supportsMcpApps(request);
         // v2 owns the Streamable HTTP transport: the handler runs this factory
         // once per request, which is what keeps the surface role-filtered with
         // no session state and no Durable Object.
@@ -371,7 +400,14 @@ const handler: ExportedHandler<Env> = {
           // Same document `unauthorized()` advertises below, so a tool-level
           // challenge and the transport challenge point at one URL.
           `${mcpPublicUrl}/.well-known/oauth-protected-resource/mcp`,
-        ), { responseMode: 'json' });
+          supportsApps,
+        ), {
+          responseMode: 'json',
+          // Stateless like OpenSEO: no subscriptions to pin an isolate, no
+          // legacy SSE lane that would hold the per-request server open.
+          maxSubscriptions: 0,
+          legacy: 'reject',
+        });
         return withCors(await handler.fetch(request));
       };
       // A supplied but invalid credential must never silently downgrade to anonymous.
@@ -388,6 +424,11 @@ const handler: ExportedHandler<Env> = {
         return jsonResponse(
           { jsonrpc: '2.0', error: { code: -32003, message: error.message }, id: null },
           403,
+          {
+            'WWW-Authenticate': insufficientScopeChallenge(
+              `${mcpPublicUrl}/.well-known/oauth-protected-resource/mcp`,
+            ),
+          },
         );
       }
       if (error instanceof ApiHttpError && error.status === 429) {

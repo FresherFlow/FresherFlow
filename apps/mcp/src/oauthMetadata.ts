@@ -47,6 +47,26 @@ function authChallenge(resourceMetadataUrl: string): string {
 }
 
 /**
+ * RFC 6750 §3.1 challenge for an already-authenticated caller whose grant lacks
+ * the scope a write needs. Claude's connector only offers the scope prompt when
+ * a 403 carries this header; a bare JSON-RPC 403 leaves the user stuck with no
+ * way to grant access. Unlike `authChallenge` above this is an HTTP response
+ * header, not a tool-level `mcp/www_authenticate` entry.
+ *
+ * Wire into `apps/mcp/src/worker.ts`'s `error.status === 403` branch:
+ *   jsonResponse(body, 403, {
+ *     'WWW-Authenticate': insufficientScopeChallenge(
+ *       `${mcpPublicUrl}/.well-known/oauth-protected-resource/mcp`,
+ *     ),
+ *   })
+ * The URL must be the same document `unauthorized()` advertises, so the client
+ * can resolve the authorization server without a second discovery hop.
+ */
+export function insufficientScopeChallenge(resourceMetadataUrl: string): string {
+    return `Bearer error="insufficient_scope", scope="${MCP_SCOPE}", resource_metadata="${resourceMetadataUrl}"`;
+}
+
+/**
  * Add the OAuth metadata to a server's tools and turn an in-call 401 into a
  * re-link challenge.
  *

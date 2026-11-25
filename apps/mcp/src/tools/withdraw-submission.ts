@@ -23,11 +23,10 @@ export function registerWithdrawSubmission(server: McpServer): void {
             title: 'Withdraw one of my submissions',
             description:
                 'Withdraw a submission this account made that is still awaiting moderator review. '
-                + 'Use only when the user explicitly asks to remove or cancel something they submitted '
-                + '— never on your own initiative. Get the submissionId from list_my_submissions first. '
-                + 'The unpublished listing is removed and the submission is closed. A listing that is '
-                + 'already live CANNOT be withdrawn here: tell the user a moderator must remove it. '
-                + 'Never claim it was removed unless the response says success.',
+                + 'Get the submissionId from list_my_submissions. The unpublished listing is removed '
+                + 'and the submission is closed; success: true confirms it. A submission whose listing '
+                + 'is already live cannot be withdrawn here and returns an error — a moderator must '
+                + 'remove it.',
             inputSchema: z.object({
                             submissionId: z
                                 .string()
