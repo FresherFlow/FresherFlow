@@ -45,7 +45,7 @@ const SECTIONS: readonly LegalSection[] = [
     {
         n: '05',
         title: 'AI assistants',
-        body: 'FresherFlow can be read through AI assistants such as ChatGPT. Your search terms are sent to FresherFlow to return public listings, and published listings are returned through the integration. It is read-only: it cannot reach your account, and no FresherFlow account is needed to use it. We do not receive your assistant account identity. Requests through an assistant can log the same limited technical data as a normal request — IP address and request identifier — for rate limiting and security.',
+        body: 'FresherFlow can be used through AI assistants such as ChatGPT. Public job search needs no account and returns published listings. Account tools require you to sign in to FresherFlow through OAuth; the assistant then acts as that account. The whoami tool returns an opaque account id, your display name, email address and a label showing your FresherFlow role. The get_my_profile tool returns the education, preferred cities, skills and resume link stored in your profile. We use this information only to carry out the tool requests you make. Requests through an assistant can log the same limited technical data as a normal request — IP address and request identifier — for rate limiting and security.',
     },
     {
         n: '06',

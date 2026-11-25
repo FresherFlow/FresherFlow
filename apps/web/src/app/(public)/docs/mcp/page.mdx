@@ -1,0 +1,70 @@
+# FresherFlow MCP server
+
+FresherFlow exposes an MCP server so an AI client can search jobs and, once signed in, use your own account. It speaks Streamable HTTP. Public job search needs no account.
+
+## Endpoints
+
+| Endpoint | What it is |
+| --- | --- |
+| `https://mcp.fresherflow.in/mcp` | Full server. Public read tools plus account, submission and moderator tools when signed in. |
+| `https://mcp.fresherflow.in/mcp/public` | Read-only. Three public job-discovery tools, no sign-in, no account data. |
+
+Use the full URL including `/mcp`. The server is stateless: each request builds a fresh tool list for the caller, so a moderator sees moderation tools and a normal account does not.
+
+## Connecting
+
+**ChatGPT:** Plugins → plus button → **Add custom MCP server** → enter `https://mcp.fresherflow.in/mcp` → choose **OAuth** → Create as a plugin.
+
+**Claude:** add a custom connector with the same URL. Claude opens the sign-in flow on first use of a protected tool.
+
+**Other clients (OpenCode, Claude Code, Cursor):** configure a remote HTTP MCP server with the same URL. A client that does not sign in can still use the public tools at `/mcp/public`.
+
+## Authentication
+
+FresherFlow is an OAuth 2.1 resource server. There are no API keys and no service accounts.
+
+- The resource is `https://mcp.fresherflow.in/mcp`; the authorization server is `https://api.fresherflow.in`.
+- Dynamic client registration is supported; PKCE with `S256` is required.
+- Access tokens last 24 hours and are bound to the MCP resource. Refresh tokens last 90 days.
+- The scope is `mcp`. Signing in does not change your website session.
+- Protected tools return a real HTTP 401 with a `WWW-Authenticate` challenge so the client starts sign-in. A 403 means your account lacks that permission.
+
+A connection reads and writes only the signed-in account's own data. Revoking the connection in your account settings signs it out immediately.
+
+## Tools
+
+Public, no account needed (also on `/mcp/public`):
+
+- `get_jobs` — search live jobs by text, city, company, type, degree, skill, work mode, posting age or deadline.
+- `get_job` — full public detail for one listing by id or slug.
+- `get_company_jobs` — live listings and company page for one named employer.
+
+With a FresherFlow account:
+
+- `whoami` — the connected account (also the OpenAI profile tool).
+- `get_my_profile`, `list_saved_jobs`, `save_job`, `list_my_applications` — your own profile, bookmarks and application stages.
+- `submit_opportunity`, `list_my_submissions`, `withdraw_submission` — submit a posting and track it. A normal account's submission is a **draft**; it is live only when a moderator publishes it.
+
+With a moderator account:
+
+- `review_queue`, `approve_submission`, `reject_submission` — review community submissions.
+- `get_listing`, `update_listing` — read and fix an existing listing. `update_listing` is a full replace, so read first.
+
+Adding a job is always `submit_opportunity`. There is no second creation tool.
+
+Clients that support MCP Apps also get `show_job_cards`, which renders the results of `get_jobs` as a card list. Clients without that capability keep the same tool list as before.
+
+## Limits
+
+- Public discovery reads the versioned public feed; it refreshes about every 30 seconds.
+- Submissions are limited to 60 per hour for a normal account. Moderator submissions are not limited by that quota.
+- Listing writes 60/minute, listing reads 120/minute, moderation actions 30/minute, and the worker has a 600/minute per-IP guard.
+- Limits are returned as standard rate-limit headers and a 429 with `Retry-After`.
+
+## Tool lists are cached
+
+MCP clients cache the tool list and connection instructions. After we add, rename or change a tool, **refresh tools or reconnect** the connection before trusting a result. ChatGPT: open the connection at chatgpt.com/plugins and select Refresh, then start a new conversation. Claude Code: `/mcp reconnect`.
+
+## Privacy
+
+Public tools need no account and return only published listings. When you sign in, the connector receives your opaque account id, display name, email and role label through `whoami`, and the fields each tool needs to answer your request (for example education and preferred cities for `get_my_profile`). Those values are used only to fulfill the tool call. The connector cannot read another account's data, apply to jobs, or accept offers. See the [privacy policy](/privacy) for the full statement.

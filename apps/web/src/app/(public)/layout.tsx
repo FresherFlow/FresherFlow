@@ -19,11 +19,28 @@ function SiteFooterGate() {
     return <SiteFooter />;
 }
 
-export default function PublicLayout({ children }: { children: React.ReactNode }) {
+/**
+ * /u/<handle> is a self-contained personal page — the design's own nav and footer
+ * live in the profile component. The site shell's header/mobile nav would sit on
+ * top of it as a second, unrelated navbar, so profile routes skip the shell.
+ * Every other public route keeps the normal navigation wrapper and footer gate.
+ */
+function ProfileShellGate({ children }: { children: React.ReactNode }) {
+    const pathname = usePathname() || '/';
+    const isProfilePage = pathname.replace(/\/+$/, '').startsWith('/u/');
+    if (isProfilePage) return <>{children}</>;
     return (
         <NavigationWrapper>
             {children}
             <SiteFooterGate />
         </NavigationWrapper>
+    );
+}
+
+export default function PublicLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <ProfileShellGate>
+            {children}
+        </ProfileShellGate>
     );
 }
