@@ -228,6 +228,10 @@ router.get('/.well-known/oauth-authorization-server', (_req: Request, res: Respo
         // Required for the RFC 9207 `iss` parameter we return on every
         // authorization response.
         authorization_response_iss_parameter_supported: true,
+        // CIMD is deliberately NOT advertised. /authorize resolves client_id
+        // only from registered clients, so an HTTPS CIMD client_id would fail
+        // with invalid_client. DCR is implemented and advertised below.
+        client_id_metadata_document_supported: false,
     });
 });
 
@@ -255,6 +259,8 @@ router.get('/.well-known/openid-configuration', (_req: Request, res: Response) =
         code_challenge_methods_supported: ['S256'],
         // Required for the RFC 9207 `iss` parameter.
         authorization_response_iss_parameter_supported: true,
+        // Same answer as the authorization-server document: no CIMD, DCR only.
+        client_id_metadata_document_supported: false,
     });
 });
 

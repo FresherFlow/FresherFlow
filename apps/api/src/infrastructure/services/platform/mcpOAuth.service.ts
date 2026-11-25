@@ -16,7 +16,10 @@ import { logger } from '@fresherflow/utils';
  *   could not be withdrawn before its expiry, and "revoke this connection now"
  *   is a product requirement.
  * - Authorization codes are single-use (`usedAt`) and PKCE-bound (S256 only).
- * - Redirect URIs are matched exactly, never by prefix or wildcard.
+ * - Redirect URIs are matched exactly, never by prefix or wildcard. The one
+ *   exception is the port on an http loopback URI: Claude Code binds its
+ *   callback to an arbitrary free port, so localhost/127.0.0.1 callbacks match
+ *   without it. Scheme, host, path, query and fragment still match exactly.
  * - MCP tokens live in their own tables. Revoking a connection must not sign the
  *   user out of the website, which shares the same cookie-based session.
  */
@@ -112,12 +115,53 @@ export async function getClient(clientId: string) {
 }
 
 /**
- * A redirect URI is only accepted if it is registered **exactly**. An attacker
- * holding a stolen code cannot redirect it anywhere else, and no wildcard or
- * prefix match exists to widen the target.
+ * Parse a redirect URI for comparison. Absolute http(s) URLs only: a relative
+ * value, a custom scheme or a userinfo-bearing URL must never reach the
+ * loopback relaxation below.
+ */
+function parseRedirectUri(value: string): URL | null {
+    try {
+        const url = new URL(value);
+        if ((url.protocol !== 'http:' && url.protocol !== 'https:') || url.username || url.password) return null;
+        return url;
+    } catch {
+        return null;
+    }
+}
+
+function isHttpLoopback(url: URL): boolean {
+    return url.protocol === 'http:'
+        && (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]');
+}
+
+/**
+ * Exact match, except that the port is ignored when **both** URIs are http
+ * loopback URLs. Claude Code starts its callback listener on a random free
+ * port, so a registered `http://localhost/callback` must accept
+ * `http://localhost:54321/callback`. Everything else — scheme, host, path,
+ * query, fragment — is compared literally, so no prefix or wildcard widening
+ * is possible: `http://localhost/callback/extra`, an https callback and a
+ * non-loopback host with a different port are all rejected.
+ */
+export function verifyRedirectUri(registeredUri: string, presentedUri: string): boolean {
+    if (registeredUri === presentedUri) return true;
+    const registered = parseRedirectUri(registeredUri);
+    const presented = parseRedirectUri(presentedUri);
+    if (!registered || !presented) return false;
+    if (!isHttpLoopback(registered) || !isHttpLoopback(presented)) return false;
+    return registered.hostname === presented.hostname
+        && registered.pathname === presented.pathname
+        && registered.search === presented.search
+        && registered.hash === presented.hash;
+}
+
+/**
+ * A redirect URI is only accepted if it is registered, with the narrow http
+ * loopback port exception above. An attacker holding a stolen code cannot
+ * redirect it anywhere else; no wildcard or prefix match widens the target.
  */
 export function assertRedirectUriAllowed(client: { redirectUris: string[] }, redirectUri: string): void {
-    if (!client.redirectUris.includes(redirectUri)) {
+    if (!client.redirectUris.some((registered) => verifyRedirectUri(registered, redirectUri))) {
         throw new OAuthError(400, 'invalid_request', 'redirect_uri is not registered for this client');
     }
 }

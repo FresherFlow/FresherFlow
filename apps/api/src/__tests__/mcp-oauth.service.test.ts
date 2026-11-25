@@ -47,6 +47,7 @@ const {
     revokeConnection,
     verifyAccessToken,
     verifyPkceChallenge,
+    verifyRedirectUri,
 } = await import('../infrastructure/services/platform/mcpOAuth.service');
 
 function sha256(value: string): string {
@@ -129,6 +130,35 @@ describe('assertRedirectUriAllowed', () => {
         expect(() => assertRedirectUriAllowed(client, 'http://127.0.0.1:9000/callback')).not.toThrow();
         expect(() => assertRedirectUriAllowed(client, 'http://127.0.0.1:9000/callback/extra')).toThrow(OAuthError);
         expect(() => assertRedirectUriAllowed(client, 'https://evil.test/callback')).toThrow(OAuthError);
+    });
+
+    it('ignores the port on http loopback callbacks (Claude Code)', () => {
+        // Claude Code binds its callback to a random free port. A registered
+        // portless localhost URI must accept whatever port it picked.
+        expect(() => assertRedirectUriAllowed(
+            { redirectUris: ['http://localhost/callback'] },
+            'http://localhost:54321/callback',
+        )).not.toThrow();
+        expect(() => assertRedirectUriAllowed(
+            { redirectUris: ['http://127.0.0.1/callback'] },
+            'http://127.0.0.1:54321/callback',
+        )).not.toThrow();
+        // The registered URI may itself carry a port; that is not a reason to
+        // reject a different loopback port.
+        expect(verifyRedirectUri('http://localhost:9000/callback', 'http://localhost:54321/callback')).toBe(true);
+    });
+
+    it('keeps exact matching for non-loopback URIs and loopback near-misses', () => {
+        expect(verifyRedirectUri('https://app.example.com/callback', 'https://app.example.com:54321/callback')).toBe(false);
+        expect(verifyRedirectUri('https://app.example.com/callback', 'https://app.example.com.evil.test/callback')).toBe(false);
+        expect(verifyRedirectUri('http://localhost/callback', 'http://localhost:54321/callback/extra')).toBe(false);
+        expect(verifyRedirectUri('http://localhost/callback', 'https://localhost/callback')).toBe(false);
+        expect(verifyRedirectUri('http://localhost/callback', 'http://127.0.0.1/callback')).toBe(false);
+        expect(verifyRedirectUri('http://localhost/callback', 'not a url')).toBe(false);
+        expect(() => assertRedirectUriAllowed(
+            { redirectUris: ['https://app.example.com/callback'] },
+            'https://app.example.com:54321/callback',
+        )).toThrow(OAuthError);
     });
 });
 

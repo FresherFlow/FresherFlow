@@ -104,6 +104,9 @@ describe('OAuth authorization-server discovery', () => {
         expect(res.body.token_endpoint_auth_methods_supported).toEqual(['none']);
         expect(res.body.code_challenge_methods_supported).toEqual(['S256']);
         expect(res.body.authorization_response_iss_parameter_supported).toBe(true);
+        // We implement DCR only. Advertising CIMD would make a client send an
+        // HTTPS client_id that /authorize cannot resolve -> invalid_client.
+        expect(res.body.client_id_metadata_document_supported).toBe(false);
     });
 
     it('has no relative URLs and no empty issuer', async () => {
@@ -132,6 +135,8 @@ describe('OpenID Connect discovery', () => {
         expect(oidcRes.body.revocation_endpoint).toBe(asRes.body.revocation_endpoint);
         expect(oidcRes.body.scopes_supported).toEqual(['mcp', 'offline_access']);
         expect(oidcRes.body.code_challenge_methods_supported).toEqual(['S256']);
+        expect(oidcRes.body.client_id_metadata_document_supported).toBe(false);
+        expect(oidcRes.body.client_id_metadata_document_supported).toBe(asRes.body.client_id_metadata_document_supported);
         // Tokens are opaque, so there is no key set. Advertising one that does
         // not exist makes an OIDC client fail discovery and retry the flow.
         expect(oidcRes.body.jwks_uri).toBeUndefined();

@@ -4,7 +4,7 @@ import { AppError } from './errorHandler';
 import prisma from '../infrastructure/database/prisma';
 import { logger } from '@fresherflow/utils';
 import crypto from 'crypto';
-import { getCookieDomain } from '../utils/runtimeConfig';
+import { getCookieDomain, getMcpPublicUrl } from '../utils/runtimeConfig';
 
 const COOKIE_DOMAIN = getCookieDomain();
 
@@ -101,6 +101,29 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
             // client can still refresh. Clearing here kills valid 90-day sessions
             // every time the 15-minute access token expires.
             return next(new AppError('Invalid or expired token', 401));
+        }
+
+        // MCP clients hold an opaque OAuth bearer, not a JWT. The account tools
+        // (get_my_profile, saved jobs, applications) call requireAuth routes, so
+        // verify that bearer against the same resource-bound token table the
+        // /api/internal/mcp routes use. A cookie always wins; this only runs
+        // when the credential came from the Authorization header and the JWT
+        // check found nothing.
+        if (!userId && bearerToken && token === bearerToken) {
+            const mcpPublicUrl = getMcpPublicUrl();
+            if (mcpPublicUrl) {
+                try {
+                    // Loaded only for MCP bearers: pulling the OAuth service
+                    // into every import of auth.ts makes unrelated suites time
+                    // out on Prisma initialization.
+                    const { verifyAccessToken: verifyMcpAccessToken } =
+                        await import('../infrastructure/services/platform/mcpOAuth.service');
+                    const mcpIdentity = await verifyMcpAccessToken(token, `${mcpPublicUrl}/mcp`);
+                    if (mcpIdentity) userId = mcpIdentity.userId;
+                } catch {
+                    // Fall through to the existing 401 / anonymous path.
+                }
+            }
         }
 
         if (userId) {

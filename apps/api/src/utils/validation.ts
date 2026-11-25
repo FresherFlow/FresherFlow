@@ -586,7 +586,7 @@ export const mcpSubmitOpportunitySchema = z.object({
     title: z.string().trim().min(1, 'title is required').max(200),
     companyName: z.string().trim().min(1, 'companyName is required').max(200),
     jobUrl: z.string().trim().url('jobUrl must be a valid https URL').max(2000)
-        .refine((u) => u.startsWith('https://'), 'jobUrl must use https'),
+        .refine((u) => /^https:\/\//i.test(u), 'jobUrl must use https'),
     location: z.string().trim().max(120).optional(),
     // Several cities belong in `locations`, one entry each. `location` stays as
     // the single-value alias; the route splits it, so "Hyderabad and Bangalore"
@@ -641,7 +641,7 @@ export const mcpSubmitOpportunitySchema = z.object({
     applicationDetails: applicationDetailsSchema.nullable().optional(),
     expiresAt: z.string().trim().max(40).optional(),
 }).superRefine((data, ctx) => {
-    if (data.sourceUrl && !data.sourceUrl.startsWith('https://')) {
+    if (data.sourceUrl && !/^https:\/\//i.test(data.sourceUrl)) {
         ctx.addIssue({ code: 'custom', path: ['sourceUrl'], message: 'sourceUrl must use https' });
     }
     // Never trust the URL as a server-side fetch target — it is stored only.
