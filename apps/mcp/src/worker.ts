@@ -308,15 +308,30 @@ const handler: ExportedHandler<Env> = {
       return landingPage(env);
     }
 
-    if (isMcpPath && request.method !== 'POST') {
-      // OpenAI hosts open /mcp with GET during discovery. Without a bearer
-      // they need the OAuth challenge, not a bare 405 with no way forward.
+    if (isMcpPath && request.method === 'GET') {
+      // ChatGPT probes the endpoint with GET + Accept: text/event-stream before
+      // deciding which transport to use. A 405 here made the connector fail
+      // ("MCP SSE probe returned 405"). Answer with a valid, immediately closed
+      // SSE stream. This server is stateless and publishes no server-initiated
+      // messages, so there is nothing to keep the stream open for. POST still
+      // carries every MCP request; see the guard below.
       if (!isPublicMcpPath && !bearerFromHeaders(request.headers)) {
         return unauthorized(
           env,
           'Sign in to FresherFlow to access account tools. Connect the server again and approve access.',
         );
       }
+      return new Response(': fresherflow stateless stream\n\n', {
+        status: 200,
+        headers: {
+          ...MCP_CORS_HEADERS,
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache, no-transform',
+        },
+      });
+    }
+
+    if (isMcpPath && request.method !== 'POST') {
       return new Response(null, {
         status: 405,
         headers: { ...MCP_CORS_HEADERS, Allow: 'POST, OPTIONS' },
