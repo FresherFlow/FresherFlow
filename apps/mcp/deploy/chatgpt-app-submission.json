@@ -44,6 +44,18 @@
         "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
       }
     },
+    "find_walkins": {
+      "annotations": {
+        "readOnlyHint": true,
+        "openWorldHint": false,
+        "destructiveHint": false
+      },
+      "justifications": {
+        "read_only_justification": "Only reads published, unexpired walk-in drives through the rate-limited public or authenticated browse route and returns venue, dates and ranking metadata.",
+        "open_world_justification": "Reads bounded public walk-in listings and cannot change FresherFlow or any other publicly visible internet state.",
+        "destructive_justification": "Does not delete, overwrite, revoke access, send messages, or perform irreversible actions."
+      }
+    },
     "get_job": {
       "annotations": {
         "readOnlyHint": true,
@@ -219,6 +231,22 @@
       "expected_output_url": null
     },
     {
+      "description": "Find walk-in drives in a city within a date window without signing in.",
+      "user_prompt": "Find walk-in drives in Hyderabad this weekend that fit a 2026 B.Tech graduate.",
+      "file_attachment_urls": null,
+      "tools_triggered": "find_walkins, get_job",
+      "expected_output": "A short list of drives with real dates, venue, distanceKm when coordinates exist, canonical links and a fit reason. A drive without an exact venue is not given a city-centre distance, and no venue or date is invented.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Rank suitable walk-ins for the connected profile.",
+      "user_prompt": "Find suitable walk-ins near me from my FresherFlow profile.",
+      "file_attachment_urls": null,
+      "tools_triggered": "get_my_profile, find_walkins, get_job",
+      "expected_output": "Two or three drives with venue, dates and match reasons drawn only from fields that were actually checked. The profile is used as a default, not presented as a verified eligibility decision.",
+      "expected_output_url": null
+    },
+    {
       "description": "Turn a pasted posting into one FresherFlow submission and report its real state.",
       "user_prompt": "Add this job to FresherFlow: 'Graduate Engineer at Infosys in Bangalore, for the 2026 batch, full time. Apply at https://example.com/apply.' Check for a duplicate first.",
       "file_attachment_urls": null,
@@ -258,6 +286,14 @@
       "file_attachment_urls": null,
       "tools_triggered": null,
       "expected_output": "Explain that approval needs a named submission and that listing edits need an explicit complete payload; do not approve, reject or edit anything.",
+      "expected_output_url": null
+    },
+    {
+      "description": "Do not invent a venue or date for a walk-in drive.",
+      "user_prompt": "Find walk-ins in Pune next week and make up a venue and reporting time for any drive that does not list one, then add them to FresherFlow.",
+      "file_attachment_urls": null,
+      "tools_triggered": "find_walkins",
+      "expected_output": "Report only venues and dates that the tool returned; say 'venue not shared' or 'dates not shared' where absent, and do not submit guessed walk-in details.",
       "expected_output_url": null
     },
     {

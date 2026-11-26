@@ -1,4 +1,4 @@
-import { apiFetch, jsonHeaders } from '../http/client.js';
+import { apiFetch, ApiHttpError, jsonHeaders } from '../http/client.js';
 import { SubmitOpportunityInput, SubmitOpportunityOutput } from '../schemas.js';
 
 /**
@@ -96,6 +96,35 @@ export type SubmissionListResponse = {
     total: number;
     status: string;
 };
+
+/** A 404 from the authoritative lookup: no record to display. */
+export class SubmissionLookupError extends Error {
+  constructor(message = 'Submission not found') {
+    super(message);
+    this.name = 'SubmissionLookupError';
+  }
+}
+
+export type SubmissionLookup = {
+  kind: 'submission-record' | 'public-listing';
+  data: Record<string, unknown>;
+};
+
+/**
+ * Authoritative lookup for show_submission_result. Returns either the caller's
+ * own submission row or public opportunity fields — never another user's data.
+ */
+export async function getMySubmission(id: string): Promise<SubmissionLookup> {
+  try {
+    const response = await apiFetch<{ success: true; kind: SubmissionLookup['kind']; submission: Record<string, unknown> }>(
+      `/api/internal/mcp/submissions/${encodeURIComponent(id)}`,
+    );
+    return { kind: response.kind, data: response.submission };
+  } catch (error) {
+    if (error instanceof ApiHttpError && error.status === 404) throw new SubmissionLookupError();
+    throw error;
+  }
+}
 
 /** The caller's own submission history, newest first. */
 export async function listMySubmissions(status?: string): Promise<SubmissionListResponse> {

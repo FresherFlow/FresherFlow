@@ -14,6 +14,7 @@ export type JobSummary = {
     category: string; recruitmentMethod: string; salaryRange: string | null;
     salaryPeriod: string | null; experienceMin: number | null; experienceMax: number | null;
     postedAt: string | null; expiresAt: string | null; applyLink: string | null;
+    companyLogoUrl: string | null;
     requiredSkills: string[]; allowedDegrees: string[]; url: string | null;
 };
 
@@ -95,6 +96,7 @@ export function toJobSummary(item: FeedOpportunity, siteUrl: string): JobSummary
         // The apply link is the point of a job search. Returning it in the list
         // means "find me jobs and where to apply" is one call, not one per job.
         applyLink: asNullableText(item.applyLink),
+        companyLogoUrl: asNullableText(item.companyLogoUrl),
         requiredSkills: asTextList(item.requiredSkills),
         allowedDegrees: asTextList(item.allowedDegrees),
         url: slug ? `${siteUrl}/jobs/${encodeURIComponent(slug)}` : null,
@@ -176,6 +178,7 @@ export async function getJobs(query: JobsQuery = {}, baseUrl?: string, siteUrl =
 
 export type PublicJobDetail = {
     id: string; slug: string | null; title: string; company: string; companyWebsite: string | null;
+    companyLogoUrl: string | null;
     description: string; descriptionTruncated: boolean; category: string; sector: string | null;
     employmentTypes: string[]; recruitmentMethod: string | null;
     driveDetails: Record<string, unknown> | null; governmentJobDetails: Record<string, unknown> | null;
@@ -212,6 +215,7 @@ export async function getJob(identifier: string, baseUrl?: string, siteUrl = '')
     return {
         id, slug, title: asText(detail.title), company: asText(detail.company),
         companyWebsite: asNullableText(detail.companyWebsite),
+        companyLogoUrl: asNullableText(detail.companyLogoUrl),
         description: description.slice(0, descriptionLimit), descriptionTruncated: description.length > descriptionLimit,
         category: asText(detail.category) || asText(detail.type), sector: asNullableText(detail.sector),
         employmentTypes: asTextList(detail.employmentTypes),

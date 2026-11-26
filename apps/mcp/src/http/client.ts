@@ -154,6 +154,10 @@ export class ApiHttpError extends Error {
 
 let apiBaseUrl: string;
 
+export function getApiBaseUrl(): string {
+  return apiBaseUrl;
+}
+
 export function setApiBaseUrl(url: string): void {
     const parsed = new URL(url);
     if ((parsed.protocol !== 'http:' && parsed.protocol !== 'https:')

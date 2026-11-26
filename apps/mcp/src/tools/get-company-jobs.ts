@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getCompanyJobs } from '../cdn/companies.js';
 import { JOB_SUMMARY_SHAPE } from './get-jobs.js';
 
-const OUTPUT_SCHEMA = z.object({
+export const OUTPUT_SCHEMA = z.object({
     found: z.boolean().describe('true when FresherFlow knows this company'),
     company: z
         .object({

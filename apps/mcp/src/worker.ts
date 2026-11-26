@@ -6,6 +6,8 @@ import { ApiHttpError, setApiBaseUrl } from './http/client.js';
 import { logger } from './logger.js';
 import { insufficientScopeChallenge } from './oauthMetadata.js';
 import { supportsMcpApps } from './ui-capabilities.js';
+// Local demo data only; bundled but never used unless FF_DEMO_WALKINS=true.
+import { DEMO_WALKINS } from '../../../fixtures/walkins.demo.js';
 
 /**
  * Cloudflare Workers entry point for the FresherFlow MCP server.
@@ -24,6 +26,8 @@ interface Env {
   PUBLIC_SITE_URL: string;
   MCP_PUBLIC_URL: string;
   PUBLIC_FEED_BASE_URL?: string;
+  // Local-only demo switch. Never set in a deployed Worker.
+  FF_DEMO_WALKINS?: string;
   // OpenAI Apps domain-verification token, issued per submission in the portal.
   OPENAI_APPS_CHALLENGE_TOKEN?: string;
 }
@@ -416,6 +420,7 @@ const handler: ExportedHandler<Env> = {
           // challenge and the transport challenge point at one URL.
           `${mcpPublicUrl}/.well-known/oauth-protected-resource/mcp`,
           supportsApps,
+          env.FF_DEMO_WALKINS === 'true' ? DEMO_WALKINS : undefined,
         ), {
           responseMode: 'json',
           // Stateless like OpenSEO: no subscriptions to pin an isolate, no

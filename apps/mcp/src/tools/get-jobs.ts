@@ -20,6 +20,7 @@ export const JOB_SUMMARY_SHAPE = {
     postedAt: z.string().nullable(),
     expiresAt: z.string().nullable(),
     applyLink: z.string().nullable(),
+    companyLogoUrl: z.string().nullable(),
     requiredSkills: z.array(z.string()),
     allowedDegrees: z.array(z.string()),
     url: z.string().nullable(),

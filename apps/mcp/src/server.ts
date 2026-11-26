@@ -8,6 +8,8 @@ import { registerWhoami } from './tools/whoami.js';
 import { registerGetJobs } from './tools/get-jobs.js';
 import { registerGetJob } from './tools/get-job.js';
 import { registerGetCompanyJobs } from './tools/get-company-jobs.js';
+import { registerFindWalkins, FIND_WALKINS_TOOL_NAME } from './tools/find-walkins.js';
+import { setDemoWalkins } from './api/walkins.js';
 import { registerGetMyProfile } from './tools/get-my-profile.js';
 import { registerListSavedJobs } from './tools/list-saved-jobs.js';
 import { registerSaveJob } from './tools/save-job.js';
@@ -18,6 +20,9 @@ import { registerReviewQueue } from './tools/review-queue.js';
 import { registerApproveSubmission } from './tools/approve-submission.js';
 import { registerRejectSubmission } from './tools/reject-submission.js';
 import { registerShowJobCards } from './tools/show-job-cards.js';
+import { registerShowJobDetail } from './tools/show-job-detail.js';
+import { registerShowCompany } from './tools/show-company.js';
+import { registerShowSubmissionResult } from './tools/show-submission-result.js';
 import { registerJobCardsResource } from './widget/job-cards-resource.js';
 import { withOAuthToolMetadata } from './oauthMetadata.js';
 
@@ -25,7 +30,14 @@ const SERVER_NAME = 'fresherflow';
 const SERVER_VERSION = '1.3.0';
 
 /** Added only for clients that advertised MCP Apps support on this request. */
-const JOB_CARDS_INSTRUCTION = 'When a visual list of jobs helps, call get_jobs first and pass its jobs to show_job_cards; skip it when plain text is enough.';
+const PUBLIC_APP_INSTRUCTION =
+  'When a visual list of jobs helps, call get_jobs first and pass its jobs to show_job_cards; skip it when plain text is enough.';
+const JOB_CARDS_INSTRUCTION = [
+  PUBLIC_APP_INSTRUCTION,
+  'After get_job, pass its job object to show_job_detail for the full view. After get_company_jobs, pass its complete result to show_company.',
+  'After submit_opportunity or list_my_submissions, pass only the id to show_submission_result — the server reads the real status; never supply a status yourself.',
+  'Never restate the widget contents in text; the widget is the answer. Ask for more results instead of pasting the widget data.',
+].join('\n');
 
 /**
  * The instructions a client caches with this connection.
@@ -37,8 +49,8 @@ const JOB_CARDS_INSTRUCTION = 'When a visual list of jobs helps, call get_jobs f
  */
 function buildInstructions(identity: ConnectionIdentity | null, supportsApps: boolean): string {
   if (!identity) {
-    const base = 'FresherFlow provides public, read-only job discovery without sign-in. Connect a FresherFlow account to submit opportunities or access account and moderator tools.';
-    return supportsApps ? `${base}\n\n${JOB_CARDS_INSTRUCTION}` : base;
+    const base = 'FresherFlow provides public, read-only job discovery without sign-in. Connect a FresherFlow account to submit opportunities or access account and moderator tools. Walk-in drives are dated events at a physical venue, not static jobs: use find_walkins for "near me", a city, a date window or a suitable drive, and get_jobs(type: "walk-in") only for a flat browse. A just-published drive may take about 30 seconds to appear in the public feed.';
+    return supportsApps ? `${base}\n\n${PUBLIC_APP_INSTRUCTION}` : base;
   }
   const moderator = identity.role === 'moderator';
   const who = identity.username ? `@${identity.username}` : identity.displayName;
@@ -102,6 +114,7 @@ function buildInstructions(identity: ConnectionIdentity | null, supportsApps: bo
     '  get_jobs — search live listings by text, city, company, type, degree, skill, work mode, posting age or deadline window; sort by newest or closing-soon. Each result carries the apply link.',
     '  get_job — retrieve a listing by its exact id or slug for its full public details. Use a result from get_jobs first.',
     '  get_company_jobs — exact answer for one named company. Prefer it over get_jobs(company) when the user names an employer.',
+    '  find_walkins — dated walk-in drives at a physical venue. Use this for "near me", "in <city>", "this weekend" or "a suitable walk-in": it accepts a city/area, an optional latitude+longitude with radius, a drive-date window and skills, and returns venue, dates, distanceKm, score and matchReasons. Use get_jobs(type: "walk-in") only for a flat browse.',
     '',
     'The user’s own FresherFlow account:',
     '  get_my_profile — their education, graduation year, skills, preferred cities and work modes. Call it before a personalised search or an eligibility question; do not ask the user to repeat what the profile already says.',
@@ -155,6 +168,9 @@ function buildInstructions(identity: ConnectionIdentity | null, supportsApps: bo
 const TOOL_GROUPS = {
   // CDN: public files, anonymous, zero API cost.
   cdn: ['get_jobs', 'get_job', 'get_company_jobs'],
+  // Read-only, but calls the typed walk-in API (not a CDN file), so it is a
+  // group of its own. Registered on both endpoints, anonymous included.
+  walkins: [FIND_WALKINS_TOOL_NAME],
   // API: authenticated, authoritative, billed per call.
   account: [
     'whoami',
@@ -257,6 +273,40 @@ function registerPrompts(server: McpServer, identity: ConnectionIdentity | null)
             '4. Give me a short list with title, company, location, deadline, apply link and a one-line',
             '   reason each is a fit — and name any requirement I do not meet.',
             '5. Do not call save_job or apply anything unless I ask.',
+          ].join('\n'),
+        },
+      }],
+    }),
+  );
+
+  server.registerPrompt(
+    'find_walkins_for_me',
+    {
+      title: 'Find walk-in drives for me',
+      description: 'Personalised walk-in drive search from the connected FresherFlow profile.',
+      argsSchema: z.object({
+        city: z.string().optional().describe('City or area, e.g. Hyderabad'),
+        withinDays: z.number().int().min(1).max(90).optional().describe('Only drives within this many days'),
+      }),
+    },
+    async ({ city, withinDays }) => ({
+      messages: [{
+        role: 'user',
+        content: {
+          type: 'text',
+          text: [
+            'Find me FresherFlow walk-in drives that fit my profile.',
+            '',
+            'Steps:',
+            '1. Call get_my_profile. If there is no profile, ask me to complete it instead of guessing my batch or degree.',
+            `2. Call find_walkins with the city/area ${city ? `${city}` : 'I gave (or a preferred city from my profile)'},`,
+            withinDays ? `   withinDays: ${withinDays},` : '   and a date window if I asked for one,',
+            '   and my skills. Keep coordinates out unless I give them.',
+            '3. For the best 2-3 drives call get_job and check allowedDegrees, allowedPassoutYears,',
+            '   requiredSkills and the real drive dates and venue.',
+            '4. Give me a short list with role, company, date, venue, canonical link and one line on why',
+            '   it fits. Name any requirement I do not meet. Say "dates not shared" rather than guessing.',
+            '5. Do not save or apply to anything unless I ask.',
           ].join('\n'),
         },
       }],
@@ -387,7 +437,9 @@ function registerListingTools(server: McpServer): void {
  * never knows the Worker's own origin, and it goes into the tool-level re-link
  * challenge ChatGPT needs before it will offer to link at all.
  */
-export function createFresherFlowMcpServer(identity: ConnectionIdentity | null, publicSiteUrl: string, catalogBaseUrl?: string, resourceMetadataUrl?: string, supportsApps = false): McpServer {
+export function createFresherFlowMcpServer(identity: ConnectionIdentity | null, publicSiteUrl: string, catalogBaseUrl?: string, resourceMetadataUrl?: string, supportsApps = false, demoWalkins?: readonly unknown[]): McpServer {
+  // Local demo fixture, set only by the worker when FF_DEMO_WALKINS=true.
+  setDemoWalkins(demoWalkins ?? null);
   const server = new McpServer(
     {
       name: SERVER_NAME,
@@ -432,12 +484,16 @@ export function createFresherFlowMcpServer(identity: ConnectionIdentity | null, 
   // Catalog tools are public: they read the published-listing snapshot and
   // never carry account state, on either endpoint.
   registerCdnTools(server, catalogBaseUrl ?? '', publicSiteUrl);
+  registerFindWalkins(server, identity, publicSiteUrl);
 
   // Only clients that advertised MCP Apps support on this request see the
   // widget resource and its display tool; everyone else gets the old surface.
   if (supportsApps) {
     registerJobCardsResource(server);
     registerShowJobCards(server);
+    registerShowJobDetail(server);
+    registerShowCompany(server);
+    if (identity?.capabilities.viewOwnSubmissions) registerShowSubmissionResult(server);
   }
 
   if (identity) {

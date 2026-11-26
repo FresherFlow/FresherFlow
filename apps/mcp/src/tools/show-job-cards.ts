@@ -44,7 +44,10 @@ export function registerShowJobCards(server: McpServer): void {
           text: `Showing ${jobs.length} FresherFlow job card${jobs.length === 1 ? '' : 's'}.`,
         },
       ],
-      _meta: { fresherflowJobCards: { jobs } },
+      _meta: {
+        fresherflowJobCards: { jobs },
+        fresherflowWidget: { view: 'cards', kind: 'tool-result', data: { jobs, total: jobs.length } },
+      },
     }),
   );
 }

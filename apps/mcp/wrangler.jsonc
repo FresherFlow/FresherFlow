@@ -12,6 +12,8 @@
     "PUBLIC_SITE_URL": "https://fresherflow.in",
     "MCP_PUBLIC_URL": "https://mcp.fresherflow.in",
     "PUBLIC_FEED_BASE_URL": "https://cdn.fresherflow.in",
+    // Local-only demo fixture switch. The deployed Worker keeps this false.
+    "FF_DEMO_WALKINS": "false",
   },
   "routes": [{ "pattern": "mcp.fresherflow.in", "custom_domain": true }],
   "observability": {

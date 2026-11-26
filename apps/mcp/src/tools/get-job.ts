@@ -3,12 +3,31 @@ import { z } from 'zod';
 import { getJob } from '../cdn/jobs.js';
 import { logger } from '../logger.js';
 
-const jobSchema = z.object({
+export const jobSchema = z.object({
     id: z.string(), slug: z.string().nullable(), title: z.string(), company: z.string(),
-    companyWebsite: z.string().nullable(), description: z.string(), descriptionTruncated: z.boolean(),
+    companyWebsite: z.string().nullable(), companyLogoUrl: z.string().nullable(), description: z.string(), descriptionTruncated: z.boolean(),
     category: z.string(), sector: z.string().nullable(), employmentTypes: z.array(z.string()),
     recruitmentMethod: z.string().nullable(),
-    driveDetails: z.record(z.string(), z.unknown()).nullable(),
+    driveDetails: z.object({
+        dates: z.array(z.string()).optional(),
+        dateRange: z.string().nullable().optional(),
+        timeRange: z.string().nullable().optional(),
+        reportingTime: z.string().nullable().optional(),
+        venueAddress: z.string().nullable().optional(),
+        venueLink: z.string().nullable().optional(),
+        city: z.string().nullable().optional(),
+        latitude: z.number().nullable().optional(),
+        longitude: z.number().nullable().optional(),
+        landmark: z.string().nullable().optional(),
+        clusterName: z.string().nullable().optional(),
+        techCluster: z.string().nullable().optional(),
+        transitInfo: z.string().nullable().optional(),
+        requiredDocuments: z.array(z.string()).optional(),
+        contactPerson: z.string().nullable().optional(),
+        contactPhone: z.string().nullable().optional(),
+        expiryDate: z.string().nullable().optional(),
+        selectionProcess: z.string().nullable().optional(),
+    }).passthrough().nullable(),
     governmentJobDetails: z.record(z.string(), z.unknown()).nullable(),
     locations: z.array(z.string()), workMode: z.string().nullable(), experienceMin: z.number().nullable(),
     experienceMax: z.number().nullable(), salaryRange: z.string().nullable(), salaryPeriod: z.string().nullable(),
