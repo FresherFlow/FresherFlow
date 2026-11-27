@@ -1172,7 +1172,75 @@ export interface EventDetails {
     organizerName?: string | null;
 }
 
+/** One location signal for walk-in ranking. City first; coordinates are an optional refinement. */
+export interface WalkinLocationSignal {
+    city?: string;
+    latitude?: number;
+    longitude?: number;
+    radiusKm?: number;
+}
+
+/** The result of ranking one walk-in against a location signal and an optional profile. */
+export interface WalkinRankingResult {
+    distanceKm: number | null;
+    score: number;
+    matchReasons: string[];
+}
+
+/** Typed public shape for a walk-in drive, shared by web, API and MCP. */
+export interface WalkinDriveSummary {
+    id: string;
+    slug: string;
+    title: string;
+    company: string;
+    locations: string[];
+    recruitmentMethod: string | null;
+    dates: string[];
+    dateRange: string | null;
+    timeRange: string | null;
+    reportingTime: string | null;
+    venueAddress: string | null;
+    venueLink: string | null;
+    city: string | null;
+    landmark: string | null;
+    clusterName: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    transitInfo: string | null;
+    requiredDocuments: string[];
+    contactPerson: string | null;
+    contactPhone: string | null;
+    selectionProcess: string | null;
+    distanceKm: number | null;
+    score: number;
+    matchReasons: string[];
+    url: string;
+}
+
 export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
+    // Older payloads use `walkInDetails`; current listings carry `driveDetails`.
+    // The DTO wire key stays `walkInDetails` for existing consumers.
+    interface WalkinDriveLike {
+        dates?: string[];
+        dateRange?: string | null;
+        timeRange?: string | null;
+        venueAddress?: string;
+        venueLink?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+        clusterName?: string | null;
+        techCluster?: string | null;
+        city?: string | null;
+        reportingTime?: string;
+        requiredDocuments?: string[];
+        contactPerson?: string | null;
+        contactPhone?: string | null;
+        expiryDate?: Date | string | null;
+        landmark?: string | null;
+        transitInfo?: string | null;
+        selectionProcess?: string | null;
+    }
+    const drive = (opp.walkInDetails ?? opp.driveDetails) as WalkinDriveLike | undefined;
     return {
         id: opp.id,
         slug: opp.slug,
@@ -1212,24 +1280,24 @@ export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
         postedAt: opp.postedAt,
         expiresAt: opp.expiresAt,
         shareCount: opp.shareCount,
-        walkInDetails: opp.walkInDetails ? {
-            dates: opp.walkInDetails.dates || [],
-            dateRange: opp.walkInDetails.dateRange,
-            timeRange: opp.walkInDetails.timeRange,
-            venueAddress: opp.walkInDetails.venueAddress,
-            venueLink: opp.walkInDetails.venueLink,
-            latitude: opp.walkInDetails.latitude,
-            longitude: opp.walkInDetails.longitude,
-            clusterName: opp.walkInDetails.techCluster,
-            city: undefined,
-            reportingTime: opp.walkInDetails.reportingTime,
-            requiredDocuments: opp.walkInDetails.requiredDocuments || [],
-            contactPerson: opp.walkInDetails.contactPerson,
-            contactPhone: opp.walkInDetails.contactPhone,
-            expiryDate: opp.walkInDetails.expiryDate ? String(opp.walkInDetails.expiryDate) : undefined,
-            landmark: opp.walkInDetails.landmark,
-            transitInfo: opp.walkInDetails.transitInfo,
-            selectionProcess: opp.walkInDetails.selectionProcess,
+        walkInDetails: drive ? {
+            dates: drive.dates || [],
+            dateRange: drive.dateRange ?? undefined,
+            timeRange: drive.timeRange ?? undefined,
+            venueAddress: drive.venueAddress ?? undefined,
+            venueLink: drive.venueLink ?? undefined,
+            latitude: drive.latitude ?? undefined,
+            longitude: drive.longitude ?? undefined,
+            clusterName: drive.techCluster ?? drive.clusterName ?? undefined,
+            city: drive.city ?? undefined,
+            reportingTime: drive.reportingTime,
+            requiredDocuments: drive.requiredDocuments || [],
+            contactPerson: drive.contactPerson ?? undefined,
+            contactPhone: drive.contactPhone ?? undefined,
+            expiryDate: drive.expiryDate ? String(drive.expiryDate) : undefined,
+            landmark: drive.landmark ?? undefined,
+            transitInfo: drive.transitInfo ?? undefined,
+            selectionProcess: drive.selectionProcess ?? undefined,
         } : undefined,
         governmentJobDetails: opp.governmentJobDetails ? {
             jobCategory: opp.governmentJobDetails.jobCategory,

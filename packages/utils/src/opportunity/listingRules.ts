@@ -1,4 +1,5 @@
 import { EmploymentType } from '@fresherflow/types';
+import { isBareCityVenue } from './venue-gate.js';
 
 /**
  * The content rules for a listing, in one place.
@@ -35,6 +36,13 @@ export interface ListingContentInput {
     expiresAt?: string | null;
     workMode?: string | null;
     companyWebsite?: string | null;
+    recruitmentMethod?: string | null;
+    status?: string | null;
+    driveDetails?: {
+        dates?: string[] | null;
+        date?: string | null;
+        venueAddress?: string | null;
+    } | null;
 }
 
 export interface ListingContentIssue {
@@ -345,6 +353,32 @@ export function validateListingContent(input: ListingContentInput): ListingConte
     // ── Website ──────────────────────────────────────────────────────────────
     if (input.companyWebsite && input.companyWebsite.trim() && !/^https:\/\//i.test(input.companyWebsite.trim())) {
         issues.push({ field: 'companyWebsite', message: 'companyWebsite must use https' });
+    }
+
+    // ── Published walk-in drives ─────────────────────────────────────────────
+    // A walk-in is a promise of a place and a date. Drafts may be incomplete;
+    // publication is the gate. Venue gate deliberately stops at "not a bare
+    // city" — `isPlausibleVenueAddress` would reject a real cluster-name venue.
+    const drive = input.driveDetails;
+    const method = norm(input.recruitmentMethod ?? '');
+    const isWalkin = method === 'walk_in' || method === 'walk-in' || method === 'walkin';
+    if (isWalkin && norm(input.status ?? 'PUBLISHED') !== 'draft') {
+        const driveDates = drive?.dates?.filter((value) => typeof value === 'string' && value.trim()) ?? [];
+        if (drive?.date?.trim()) driveDates.push(drive.date);
+        if (driveDates.length === 0) {
+            issues.push({
+                field: 'driveDetails.dates',
+                message: 'a published walk-in needs at least one real drive date',
+            });
+        }
+
+        const venue = (drive?.venueAddress ?? '').trim();
+        if (venue.length < 5 || norm(venue) === 'venue shared after apply' || isBareCityVenue(venue)) {
+            issues.push({
+                field: 'driveDetails.venueAddress',
+                message: 'a published walk-in needs a real venue address, not a city or a placeholder',
+            });
+        }
     }
 
     return issues;

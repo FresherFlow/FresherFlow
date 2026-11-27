@@ -56,6 +56,7 @@ export * from './opportunity/routing.js';
 export * from './opportunity/events.js';
 export * from './opportunity/rules.js';
 export * from './opportunity/walkin-clusters.js';
+export * from './opportunity/walkinRanking.js';
 export * from './opportunity/walkin-extractor.js';
 export * from './opportunity/trusted-hosts.js';
 export * from './opportunity/venue-gate.js';

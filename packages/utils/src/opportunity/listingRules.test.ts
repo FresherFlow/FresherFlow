@@ -15,6 +15,44 @@ const VALID = {
     companyWebsite: 'https://acme.test',
 };
 
+const WALKIN = {
+    ...VALID,
+    recruitmentMethod: 'WALK_IN',
+    status: 'PUBLISHED',
+    driveDetails: { dates: ['2026-12-10'], venueAddress: 'HITEC City, Hyderabad' },
+};
+
+describe('published walk-in completeness', () => {
+    it('rejects a published walk-in without a date', () => {
+        const issues = validateListingContent({
+            ...WALKIN,
+            driveDetails: { venueAddress: 'HITEC City, Hyderabad' },
+        });
+        expect(issues.some((issue) => issue.field === 'driveDetails.dates')).toBe(true);
+    });
+
+    it('rejects a bare city as the venue', () => {
+        const issues = validateListingContent({
+            ...WALKIN,
+            driveDetails: { dates: ['2026-12-10'], venueAddress: 'Hyderabad' },
+        });
+        expect(issues.some((issue) => issue.field === 'driveDetails.venueAddress')).toBe(true);
+    });
+
+    it('rejects the venue placeholder', () => {
+        const issues = validateListingContent({
+            ...WALKIN,
+            driveDetails: { dates: ['2026-12-10'], venueAddress: 'Venue shared after apply' },
+        });
+        expect(issues.some((issue) => issue.field === 'driveDetails.venueAddress')).toBe(true);
+    });
+
+    it('allows an incomplete draft walk-in', () => {
+        const issues = validateListingContent({ ...WALKIN, status: 'DRAFT', driveDetails: undefined });
+        expect(issues.some((issue) => issue.field.startsWith('driveDetails'))).toBe(false);
+    });
+});
+
 describe('validateListingContent', () => {
     it('accepts a complete listing', () => {
         expect(validateListingContent(VALID)).toEqual([]);
