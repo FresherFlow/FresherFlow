@@ -271,6 +271,7 @@ describe('walk-in drives', () => {
         applyLink: undefined,
         sourceLink: undefined,
         driveDetails: {
+            dates: ['2027-02-09'],
             dateRange: '9 Feb - 13 Feb',
             timeRange: '9:30 AM - 12:30 PM',
             reportingTime: '9:30 AM',

@@ -245,6 +245,9 @@ function assertPublishableContent(
         expiresAt: data.expiresAt,
         workMode: data.workMode,
         companyWebsite: data.companyWebsite,
+        recruitmentMethod: resolveOpportunityDimensions(data).recruitmentMethod,
+        status,
+        driveDetails: data.driveDetails,
     });
     if (issues.length > 0) {
         throw new ListingWriteError(

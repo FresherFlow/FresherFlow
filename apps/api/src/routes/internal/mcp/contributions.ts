@@ -123,7 +123,7 @@ const OWN_SUBMISSION_SELECT = {
     opportunityId: true,
     extractedData: true,
     opportunity: {
-        select: { id: true, slug: true, status: true, deletedAt: true, deletionReason: true },
+        select: { id: true, slug: true, status: true, deletedAt: true, deletionReason: true, expiresAt: true },
     },
 } as const;
 
@@ -211,6 +211,63 @@ router.get(
         });
 
         return res.json({ submissions, total: submissions.length, status: status ?? 'ALL' });
+    }),
+);
+
+/**
+ * GET /api/internal/mcp/submissions/:id
+ *
+ * The authoritative record behind show_submission_result. The submit tool
+ * returns the Opportunity.id, while list_my_submissions returns the
+ * JobSubmission.id, so both keys are accepted — scoped to the caller in both
+ * cases. If the caller has no submission row (a duplicate that points at
+ * someone else's listing), only public opportunity fields are returned.
+ */
+router.get(
+    '/submissions/:id',
+    identityLimiter,
+    requireIdentity(),
+    asyncHandler(async (req: Request, res: Response) => {
+        const userId = req.userId as string;
+        const id = String(req.params.id ?? '').trim();
+        if (!id || id.length > 128) throw new AppError('Invalid submission id.', 400);
+
+        const own = await prisma.jobSubmission.findFirst({
+            where: { id, submittedById: userId },
+            select: OWN_SUBMISSION_SELECT,
+        });
+        const byOpportunity = own
+            ? null
+            : await prisma.jobSubmission.findFirst({
+                where: { opportunityId: id, submittedById: userId },
+                select: OWN_SUBMISSION_SELECT,
+            });
+        const submission = own ?? byOpportunity;
+        if (submission) {
+            return res.json({ success: true, kind: 'submission-record', submission });
+        }
+
+        // A duplicate can point at a draft as well as a live listing (submitJob
+        // dedupes on any non-deleted opportunity). Return only fields that are
+        // already public; an archived or deleted listing stays indistinguishable
+        // from an unknown id.
+        const publicListing = await prisma.opportunity.findFirst({
+            where: {
+                id,
+                deletedAt: null,
+                status: { in: ['PUBLISHED', 'DRAFT'] },
+            },
+            select: {
+                id: true,
+                slug: true,
+                status: true,
+                title: true,
+                company: true,
+                expiresAt: true,
+            },
+        });
+        if (!publicListing) throw new AppError('Submission not found.', 404);
+        return res.json({ success: true, kind: 'public-listing', submission: publicListing });
     }),
 );
 

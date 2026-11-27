@@ -42,6 +42,8 @@ import adminAuthRoutes from './routes/admin/auth';
 import adminOpportunitiesRoutes from './routes/admin/opportunities';
 import internalMcpListingRoutes from './routes/internal/mcp/listings';
 import internalMcpContributionRoutes from './routes/internal/mcp/contributions';
+import internalMcpWalkinsRoutes from './routes/internal/mcp/walkins';
+import internalRouteMetricsRoutes from './routes/internal/routeMetrics';
 import oauthRoutes from './routes/oauth';
 import { mcpSurfaceAuth } from './middleware/mcpAccessToken';
 import adminFeedbackRoutes from './routes/admin/feedback';
@@ -85,6 +87,7 @@ import { installShutdownHandlers, markReady } from './utils/readiness';
 import adminGovernmentJobsRoutes from './routes/admin/governmentJobs';
 import adminResourcesRoutes from './routes/admin/resources';
 import publicGovernmentJobsRoutes from './routes/public/governmentJobs';
+import publicWalkinsRoutes from './routes/public/walkins';
 import publicProfilesRoutes from './routes/public/profiles';
 import expireJobsRoute from './routes/pipeline/expireJobs';
 import pipelineRoutes from './routes/pipeline/index';
@@ -743,6 +746,11 @@ app.get(/^\/(sitemaps\/)?sitemap.*\.xml$/, async (req, res) => {
     }
 });
 
+// Per-route cost metrics from the web app. Fire-and-forget ingest after the
+// response is sent, aggregated in Redis so burn can be attributed to routes
+// beyond Vercel's 12-hour Hobby retention. Service key only.
+app.use('/api/internal/route-metrics', internalRouteMetricsRoutes);
+
 // Full-payload listing API for the FresherFlow MCP server, gated on the
 // internal service key rather than an admin session: `opportunity.create` and
 // `opportunity.edit` are SUPER_ADMIN-only, so routing MCP writes through the
@@ -758,6 +766,8 @@ app.use(
     internalMcpListingRoutes,
     // Contributor + moderator tools (whoami, own submissions, review queue).
     internalMcpContributionRoutes,
+    // Typed walk-in discovery for find_walkins.
+    internalMcpWalkinsRoutes,
 );
 
 // OAuth 2.1 authorization server for AI clients: discovery documents, dynamic
@@ -796,6 +806,7 @@ if (isUserMode) {
     app.use('/api/saved', savedRoutes);
     app.use('/api/dashboard', dashboardRoutes);
     app.use('/api/alerts', alertsRoutes);
+    app.use('/api/public/walkins', publicWalkinsRoutes);
     app.use('/api/public/companies', companyRoutes);
     app.use('/api/public/sitemap', sitemapRoutes);
     app.use('/api/public', joblinksRoutes);

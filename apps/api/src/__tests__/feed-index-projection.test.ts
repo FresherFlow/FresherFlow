@@ -1,7 +1,38 @@
 import { describe, expect, it } from 'vitest';
+import { toOpportunityCardDTO, type Opportunity } from '@fresherflow/types';
 import { FeedGeneratorService } from '../infrastructure/services/opportunity/feedGenerator.service';
 
 describe('public feed-index projection', () => {
+    it('maps driveDetails into the card DTO when walkInDetails is absent', () => {
+        const opp = {
+            id: 'drive-1',
+            slug: 'drive-1',
+            status: 'PUBLISHED',
+            recruitmentMethod: 'WALK_IN',
+            title: 'Graduate Engineer',
+            company: 'Acme',
+            driveDetails: {
+                dates: ['2026-12-01'],
+                dateRange: '1 Dec 2026',
+                venueAddress: 'HITEC City, Hyderabad',
+                latitude: 17.4474,
+                longitude: 78.3762,
+                city: 'Hyderabad',
+            },
+        } as unknown as Opportunity;
+
+        const dto = toOpportunityCardDTO(opp);
+
+        expect(dto.walkInDetails).toMatchObject({
+            dates: ['2026-12-01'],
+            dateRange: '1 Dec 2026',
+            venueAddress: 'HITEC City, Hyderabad',
+            latitude: 17.4474,
+            longitude: 78.3762,
+            city: 'Hyderabad',
+        });
+    });
+
     it('retains recruitmentMethod for clients that read the CDN index', () => {
         const [projected] = FeedGeneratorService.projectFeedIndex([
             { id: 'job-1', category: 'WALKIN', status: 'PUBLISHED', recruitmentMethod: 'WALK_IN' },

@@ -12,11 +12,13 @@ const prismaMock = {
     jobSubmission: {
         findMany: vi.fn(),
         findUnique: vi.fn(),
+        findFirst: vi.fn(),
         update: vi.fn(),
         count: vi.fn(),
     },
     opportunity: {
         findUnique: vi.fn(),
+        findFirst: vi.fn(),
         update: vi.fn(),
     },
 };
@@ -67,6 +69,8 @@ beforeEach(() => {
     });
     prismaMock.userAccessRole.findFirst.mockResolvedValue(null);
     prismaMock.jobSubmission.findMany.mockResolvedValue([]);
+    prismaMock.jobSubmission.findFirst.mockResolvedValue(null);
+    prismaMock.opportunity.findFirst.mockResolvedValue(null);
     prismaMock.jobSubmission.count.mockResolvedValue(0);
 });
 
@@ -159,6 +163,107 @@ describe('MCP contribution routes: own submissions', () => {
         expect(prismaMock.jobSubmission.findMany).toHaveBeenCalledWith(
             expect.objectContaining({ where: expect.objectContaining({ submittedById: 'user-1' }) }),
         );
+    });
+
+    it('returns the caller\'s own submission by JobSubmission id', async () => {
+        prismaMock.jobSubmission.findFirst.mockResolvedValueOnce({
+            ...pendingOwnSubmission(),
+            title: 'Intern',
+            company: 'Example',
+            opportunity: { id: 'opp-1', slug: 'intern', status: 'DRAFT', deletedAt: null, deletionReason: null, expiresAt: null },
+        });
+
+        const res = await request(app)
+            .get('/api/internal/mcp/submissions/sub-1')
+            .set('Authorization', 'Bearer member-token');
+
+        expect(res.status).toBe(200);
+        expect(res.body.kind).toBe('submission-record');
+        expect(res.body.submission.id).toBe('sub-1');
+        expect(prismaMock.jobSubmission.findFirst).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { id: 'sub-1', submittedById: 'user-1' } }),
+        );
+    });
+
+    it('returns the caller\'s own submission by opportunity id', async () => {
+        prismaMock.jobSubmission.findFirst
+            .mockResolvedValueOnce(null)
+            .mockResolvedValueOnce({ ...pendingOwnSubmission(), id: 'sub-2' });
+
+        const res = await request(app)
+            .get('/api/internal/mcp/submissions/opp-1')
+            .set('Authorization', 'Bearer member-token');
+
+        expect(res.status).toBe(200);
+        expect(res.body.submission.id).toBe('sub-2');
+        expect(prismaMock.jobSubmission.findFirst).toHaveBeenCalledWith(
+            expect.objectContaining({ where: { opportunityId: 'opp-1', submittedById: 'user-1' } }),
+        );
+    });
+
+    it('returns only public fields for a published listing the caller did not submit', async () => {
+        prismaMock.opportunity.findFirst.mockResolvedValueOnce({
+            id: 'opp-x', slug: 'live-job', status: 'PUBLISHED', title: 'Live job',
+            company: 'Example', expiresAt: null,
+        });
+
+        const res = await request(app)
+            .get('/api/internal/mcp/submissions/opp-x')
+            .set('Authorization', 'Bearer member-token');
+
+        expect(res.status).toBe(200);
+        expect(res.body.kind).toBe('public-listing');
+        expect(res.body.submission).toMatchObject({ slug: 'live-job', status: 'PUBLISHED' });
+        expect(res.body.submission).not.toHaveProperty('submittedById');
+        expect(res.body.submission).not.toHaveProperty('extractedData');
+        expect(res.body.submission).not.toHaveProperty('applyUrl');
+    });
+
+    it('describes a duplicate draft without exposing private fields or a live link', async () => {
+        prismaMock.opportunity.findFirst.mockResolvedValueOnce({
+            id: 'opp-y', slug: 'draft-job', status: 'DRAFT', title: 'Draft job',
+            company: 'Example', expiresAt: null,
+        });
+
+        const res = await request(app)
+            .get('/api/internal/mcp/submissions/opp-y')
+            .set('Authorization', 'Bearer member-token');
+
+        expect(res.status).toBe(200);
+        expect(res.body.kind).toBe('public-listing');
+        expect(res.body.submission.status).toBe('DRAFT');
+        expect(res.body.submission).not.toHaveProperty('extractedData');
+    });
+
+    it('does not expose another user\'s JobSubmission id', async () => {
+        const res = await request(app)
+            .get('/api/internal/mcp/submissions/someone-elses-sub')
+            .set('Authorization', 'Bearer member-token');
+
+        expect(res.status).toBe(404);
+        expect(res.body.submission).toBeUndefined();
+        expect(prismaMock.opportunity.findFirst).toHaveBeenCalledWith(
+            expect.objectContaining({ where: expect.objectContaining({ id: 'someone-elses-sub' }) }),
+        );
+    });
+
+    it('returns 404 for an archived, deleted or unknown listing id', async () => {
+        const archived = await request(app)
+            .get('/api/internal/mcp/submissions/archived-1')
+            .set('Authorization', 'Bearer member-token');
+        expect(archived.status).toBe(404);
+
+        prismaMock.opportunity.findFirst.mockResolvedValueOnce(null);
+        const unknown = await request(app)
+            .get('/api/internal/mcp/submissions/does-not-exist')
+            .set('Authorization', 'Bearer member-token');
+        expect(unknown.status).toBe(404);
+        expect(unknown.body.submission).toBeUndefined();
+    });
+
+    it('refuses an anonymous lookup', async () => {
+        const res = await request(app).get('/api/internal/mcp/submissions/sub-1');
+        expect(res.status).toBe(401);
     });
 
     it('will not withdraw a submission owned by someone else', async () => {

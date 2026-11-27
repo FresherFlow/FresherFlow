@@ -29,13 +29,14 @@ import { logger } from '@fresherflow/utils';
 /**
  * The tags the web app caches the discovery feeds under.
  *
- * Source of truth: `FEED_REVALIDATE_TAGS` in `routes/admin/system.ts` — the
- * admin "Regenerate all" button sends exactly this list. The web route
- * (`apps/web/src/app/api/revalidate/route.ts`) turns every tag into a
- * `revalidateTag(tag, 'max')`.
+ * This is the ONLY definition. The publish announcement, both admin buttons
+ * and the worker sweep all send this list through `deliverFeedRevalidation`.
+ * The web route (`apps/web/src/app/api/revalidate/route.ts`) turns every tag
+ * into a `revalidateTag(tag, 'max')`.
  *
- * Keep the two lists identical: a tag missing here means the page that reads
- * that feed keeps serving the version it cached first.
+ * Do not copy it into `routes/admin/system.ts` again: the two copies drifted
+ * before, and a tag missing from either means the page reading that feed keeps
+ * serving the version it cached first.
  */
 export const FEED_REVALIDATE_TAGS = [
     'feed-version',
@@ -53,6 +54,9 @@ export const FEED_REVALIDATE_TAGS = [
     'skills-metadata',
     'education-metadata',
     'sitemap-data',
+    // Nav badge counts read `meta/stats.json`, which carries no `?v=` version
+    // suffix — this tag is the only thing that can move it.
+    'feed-stats',
 ] as const;
 
 const REVALIDATE_PATH = '/api/revalidate';
@@ -88,8 +92,8 @@ const PATHS_FALLBACK_DELAY_MS = 30_000;
  * origins so a malformed PUBLIC_WEB_URL entry can never turn the
  * revalidation fan-out into a server-side request forgery vector.
  *
- * Copied from the helper in `routes/admin/system.ts` on purpose: the admin
- * button and this service must agree on what a valid web origin is.
+ * The admin buttons import `resolveWebOrigins` from here, so every path that
+ * tells the web agrees on what a valid origin is.
  */
 function parseRevalidateBaseUrl(raw: string): string | null {
     try {
@@ -108,8 +112,14 @@ function parseRevalidateBaseUrl(raw: string): string | null {
  * The value may list several origins, comma separated: each Vercel project has
  * its own Next data cache, so an origin that is not listed keeps serving the
  * feed version it cached first even though the CDN files are current.
+ *
+ * This is the single home for origin resolution. The admin handlers in
+ * `routes/admin/system.ts` import it rather than reading `PUBLIC_WEB_URL`
+ * themselves — reading only that variable is why both admin buttons silently
+ * did nothing in production, which sets `PUBLIC_FRONTEND_URL`/
+ * `FRONTEND_URL` instead.
  */
-function resolveWebOrigins(): string[] {
+export function resolveWebOrigins(): string[] {
     const configured =
         process.env.PUBLIC_WEB_URL ||
         process.env.PUBLIC_FRONTEND_URL ||

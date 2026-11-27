@@ -30,7 +30,7 @@ describe('listing cache invalidation', () => {
         vi.clearAllMocks();
     });
 
-    it('announces the detail slug and the affected hub instead of only writing Redis', async () => {
+    it('announces only the detail slug instead of writing Redis and every hub', async () => {
         const { invalidatePublicOpportunityCache } = await import(
             '../infrastructure/services/opportunity/publicOpportunityCache.service'
         );
@@ -44,9 +44,32 @@ describe('listing cache invalidation', () => {
         // The purge still clears the guest cache...
         expect(scan).toHaveBeenCalled();
 
-        // ...and the paths now go to the web app, coalesced with the tag bust.
+        // ...and exactly one eager path reaches the web: the listing itself.
+        // A hub path must never be sent — revalidatePath() on it is an
+        // immediate ISR write, and the hub is refreshed by the tag bust that
+        // travels with this same announcement.
         expect(notifyWebPathsChanged).toHaveBeenCalledWith(
-            expect.arrayContaining(['/jobs/engineer-at-acme-1a2b3c', '/jobs']),
+            ['/jobs/engineer-at-acme-1a2b3c'],
+            'cache-invalidation',
+        );
+    });
+
+    it('does not turn company, batch or location tags into eager paths', async () => {
+        const { invalidatePublicOpportunityCache } = await import(
+            '../infrastructure/services/opportunity/publicOpportunityCache.service'
+        );
+
+        await invalidatePublicOpportunityCache({
+            idsOrSlugs: ['engineer-at-acme-1a2b3c'],
+            purgeFeed: true,
+            tags: ['company-acme', 'batch-2026', 'location-pune'],
+        });
+
+        // Those tags are invalidated lazily by FEED_REVALIDATE_TAGS. Mapping
+        // them to /companies/*, /batch/* and /locations/* paths is what fanned
+        // a bulk publish out into thousands of ISR writes.
+        expect(notifyWebPathsChanged).toHaveBeenCalledWith(
+            ['/jobs/engineer-at-acme-1a2b3c'],
             'cache-invalidation',
         );
     });

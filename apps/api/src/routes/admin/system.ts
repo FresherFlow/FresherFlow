@@ -11,7 +11,7 @@ import { StaticFeedService } from '../../infrastructure/services/opportunity/sta
 import { redis } from '@fresherflow/database';
 import { enqueueCacheRevalidation } from '@fresherflow/queue';
 import { logger } from '@fresherflow/utils';
-import { deliverFeedRevalidation } from '../../infrastructure/services/opportunity/webRevalidation.service';
+import { deliverFeedRevalidation, resolveWebOrigins } from '../../infrastructure/services/opportunity/webRevalidation.service';
 import { z } from 'zod';
 import { validate } from '../../middleware/validate';
 import { adminRateLimit } from '../../middleware/adminRateLimit';
@@ -44,26 +44,10 @@ const PUBLIC_WEB_CACHE_TAGS = [
 // revalidatePath() — and only from publicOpportunityCache.service.ts.
 //
 // Rule: feed revalidation = tags only. Slug revalidation = revalidatePath (one-off per job).
-// Must cover every tag the web readers cache under (see cdnFeed.ts): the
-// feed-index tag powers /jobs list pages, so omitting it left the pre-regen
-// index served from Next's data cache after every regeneration.
-const FEED_REVALIDATE_TAGS = [
-    'feed-version',
-    'homepage-feed',
-    'feed-index',
-    'government-feed',
-    'expired-feed',
-    'companies-metadata',
-    // Redirect/ever-published map for /companies/{slug}. Without this the web
-    // keeps serving a stale alias map and a renamed company's old URL 404s
-    // until the data cache entry is evicted some other way.
-    'company-slug-history',
-    'category-shards',
-    'company-shards',
-    'skills-metadata',
-    'education-metadata',
-    'sitemap-data',
-] as const;
+// The web tag list lives in exactly one place: FEED_REVALIDATE_TAGS in
+// infrastructure/services/opportunity/webRevalidation.service.ts, which every
+// announcement sends. A second copy here could drift and silently leave a page
+// serving its first cached snapshot after a regeneration.
 
 // Targets handled by StaticFeedService.refresh(). Anything else silently
 // regenerates nothing (every feed block is `target === 'all' || ...`) while
@@ -74,21 +58,6 @@ const regenerateFeedsSchema = z.object({
         .optional()
         .default('all'),
 });
-
-/**
- * Parse a configured web base URL before fetching it. Rejects non-http(s)
- * origins so a malformed PUBLIC_WEB_URL entry can never turn the
- * revalidation fan-out into a server-side request forgery vector.
- */
-function parseRevalidateBaseUrl(raw: string): string | null {
-    try {
-        const parsed = new URL(raw.trim());
-        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
-        return parsed.origin;
-    } catch {
-        return null;
-    }
-}
 
 function parseMetricsWindow(raw: unknown, defaultWindow: MetricsWindow = '30d'): MetricsWindow {
     const val = String(raw || '').toLowerCase();
@@ -162,7 +131,11 @@ router.post('/regenerate-feeds', requireAdmin, adminRateLimit, validate(regenera
         // Bust Next.js feed caches via tags only (stale-while-revalidate, zero ISR writes).
         // DO NOT add paths here — see ⚠️ ISR WRITE SAFETY note at the top of this file.
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
-        const webUrl = process.env.PUBLIC_WEB_URL;
+        // Resolve every configured web origin (PUBLIC_WEB_URL, then
+        // PUBLIC_FRONTEND_URL, then FRONTEND_URL) instead of reading only
+        // PUBLIC_WEB_URL: production sets the other two, so this button used to
+        // rebuild R2 and report webRevalidated: false on every press.
+        const webOrigins = resolveWebOrigins();
 
         // The result is reported, not assumed. This endpoint used to answer
         // `success: true` with "web cache revalidated" even when the webhook was
@@ -172,22 +145,15 @@ router.post('/regenerate-feeds', requireAdmin, adminRateLimit, validate(regenera
         let webTargets = 0;
         let webFailures = 0;
 
-        if (secret && webUrl) {
-            const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
+        if (secret && webOrigins.length > 0) {
             await Promise.all(
-                urls.map(async (url) => {
-                    const base = parseRevalidateBaseUrl(url);
-                    if (!base) {
-                        logger.error(`[Regenerate Feeds Revalidate] Skipping invalid PUBLIC_WEB_URL entry: ${url}`);
-                        webFailures += 1;
-                        return;
-                    }
+                webOrigins.map(async (origin) => {
                     webTargets += 1;
                     // Retried delivery: a single blip here is the difference between
                     // "the button worked" and "the site is stale until someone notices".
-                    const delivery = await deliverFeedRevalidation(base, secret);
+                    const delivery = await deliverFeedRevalidation(origin, secret);
                     if (!delivery.ok) {
-                        logger.error(`[Regenerate Feeds Revalidate] Failed for ${url}/api/revalidate - ${delivery.reason ?? 'unknown error'}`);
+                        logger.error(`[Regenerate Feeds Revalidate] Failed for ${origin}/api/revalidate - ${delivery.reason ?? 'unknown error'}`);
                         webFailures += 1;
                     }
                 })
@@ -216,11 +182,12 @@ router.post('/regenerate-feeds', requireAdmin, adminRateLimit, validate(regenera
 
         const webRevalidated = webTargets > 0 && webFailures === 0;
         const warnings: string[] = [];
-        if (!secret || !webUrl) {
+        if (!secret || webOrigins.length === 0) {
             warnings.push(
-                'REVALIDATE_SECRET_TOKEN and/or PUBLIC_WEB_URL are not configured on this API, so the '
-                + 'web app was never told about this rebuild. The R2 feeds are current, but pages keep '
-                + "serving the previous feed version until those env vars are set and this button is run again.",
+                'REVALIDATE_SECRET_TOKEN and/or a web origin (PUBLIC_WEB_URL, PUBLIC_FRONTEND_URL, FRONTEND_URL) '
+                + 'are not configured on this API, so the web app was never told about this rebuild. The R2 feeds '
+                + 'are current, but pages keep serving the previous feed version until those env vars are set and '
+                + 'this button is run again.',
             );
         }
         if (webFailures > 0) {
@@ -254,28 +221,25 @@ router.post('/regenerate-feeds', requireAdmin, adminRateLimit, validate(regenera
 router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
-        const webUrl = process.env.PUBLIC_WEB_URL;
+        // Same origin resolution as the publish path and "Regenerate feeds".
+        const webOrigins = resolveWebOrigins();
 
-        if (!secret || !webUrl) {
-            return res.status(500).json({ success: false, message: 'REVALIDATE_SECRET_TOKEN or PUBLIC_WEB_URL not configured' });
+        if (!secret || webOrigins.length === 0) {
+            return res.status(500).json({
+                success: false,
+                message: 'REVALIDATE_SECRET_TOKEN or a web origin (PUBLIC_WEB_URL, PUBLIC_FRONTEND_URL, FRONTEND_URL) not configured',
+            });
         }
 
-        const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
         const failures: string[] = [];
 
         await Promise.all(
-            urls.map(async (url) => {
-                const base = parseRevalidateBaseUrl(url);
-                if (!base) {
-                    logger.error(`[Revalidate] Skipping invalid PUBLIC_WEB_URL entry: ${url}`);
-                    failures.push(`${url} (invalid origin)`);
-                    return;
-                }
+            webOrigins.map(async (origin) => {
                 // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
-                const delivery = await deliverFeedRevalidation(base, secret);
+                const delivery = await deliverFeedRevalidation(origin, secret);
                 if (!delivery.ok) {
-                    logger.error(`[Revalidate] Failed for ${url}/api/revalidate - ${delivery.reason ?? 'unknown error'}`);
-                    failures.push(`${url} (${delivery.reason ?? 'unknown error'})`);
+                    logger.error(`[Revalidate] Failed for ${origin}/api/revalidate - ${delivery.reason ?? 'unknown error'}`);
+                    failures.push(`${origin} (${delivery.reason ?? 'unknown error'})`);
                 }
             })
         );

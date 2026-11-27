@@ -137,21 +137,21 @@ export async function invalidatePublicOpportunityCache(options?: {
             pathsToRevalidate.push(getCanonicalPath(slug, options?.type));
         }
 
-        // Convert tags to paths for background revalidation
-        const tagPaths = tags.map(tag => {
-            if (tag === 'hub-jobs') return '/jobs';
-            if (tag === 'hub-internships') return '/jobs/internships';
-            if (tag === 'hub-walkins') return '/jobs/walkins';
-            if (tag === 'hub-government') return '/govt';
-            if (tag.startsWith('company-')) return `/companies/${tag.replace('company-', '')}`;
-            if (tag.startsWith('location-')) return `/locations/${tag.replace('location-', '')}`;
-            if (tag.startsWith('skill-')) return `/skills/${tag.replace('skill-', '')}`;
-            if (tag.startsWith('batch-')) return `/batch/${tag.replace('batch-', '')}`;
-            if (tag.startsWith('role-')) return `/roles/${tag.replace('role-', '')}`;
-            return null;
-        }).filter(Boolean) as string[];
-
-        pathsToRevalidate.push(...tagPaths);
+        // Tags are NOT converted into paths.
+        //
+        // This block used to map every `company-*` / `location-*` / `skill-*` /
+        // `batch-*` / `role-*` tag onto its hub path and send it to the web,
+        // where each path costs one IMMEDIATE ISR write. A bulk publish fans
+        // that out into thousands of writes (the Nov 21 spike: ~11k writes for
+        // 156 publishes). Those pages are already invalidated LAZILY by the
+        // tag bust that travels with this same announcement, so the eager
+        // write bought no freshness — only cost.
+        //
+        // Only the individual detail slug is sent, and it is the one path that
+        // genuinely must be written eagerly.
+        if (tags.length > 0) {
+            logger.debug('Revalidation tags are resolved lazily by the web tag bust', { tags });
+        }
 
         // Deliver the paths to the web app now.
         //
