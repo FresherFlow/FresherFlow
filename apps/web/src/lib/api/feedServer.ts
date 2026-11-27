@@ -24,6 +24,36 @@ import { readFeedCache } from '@/lib/cache/opportunitiesFeedCache';
 
 const MAX_FEED_RESPONSE_BYTES = 32 * 1024 * 1024;
 
+/**
+ * Server-side memo of parsed feed payloads, keyed by the fully signed CDN URL.
+ *
+ * Every feed URL carries `?v=<feed-version>` (see signUrlWithVersion), so its
+ * bytes are immutable until the next publish changes the version. Parsing a
+ * 422 KB index or 1.1 MB bootstrap on every request is the dominant Vercel
+ * Fluid Active CPU cost — React cache() only dedups within one request, not
+ * across them. Reuse the parsed object for the life of the isolate instead.
+ *
+ * The version manifest itself has no `?v=` and is never memoised, so a publish
+ * always derives fresh signed URLs and a cache miss on the new version.
+ * `forceLive` (no-store) reads bypass the memo entirely.
+ */
+const MAX_PARSED_FEED_ENTRIES = 24;
+const parsedFeedMemo = new Map<string, unknown>();
+
+function memoKeyForFeed(url: string, options: CDNFetchOptions): string | null {
+    if (typeof window !== 'undefined') return null; // client has its own caches
+    if (options.cache === 'no-store') return null; // admin live reads must bypass
+    let parsed: URL;
+    try {
+        parsed = new URL(url);
+    } catch {
+        return null;
+    }
+    // Only version-pinned CDN artifacts are immutable. This excludes the
+    // version manifest and unversioned dev/API URLs.
+    return parsed.searchParams.has('v') ? url : null;
+}
+
 /** Parse a feed response with a hard byte ceiling before materialising JSON. */
 async function parseBoundedJson<T>(response: Response): Promise<T> {
     const contentLength = Number(response.headers.get('content-length'));
@@ -62,12 +92,32 @@ async function fetchFeedJson<T>(
     options: CDNFetchOptions,
     timeoutMs = getCDNTimeout(),
 ): Promise<{ response: Response; data: T | null }> {
+    const memoKey = memoKeyForFeed(url, options);
+    if (memoKey) {
+        const cached = parsedFeedMemo.get(memoKey);
+        if (cached !== undefined) {
+            // A synthetic OK response keeps the existing callers' `res.ok`
+            // checks working without re-fetching or re-parsing a body.
+            return { response: new Response(null, { status: 200 }), data: cached as T };
+        }
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
         const response = await fetch(url, { ...options, signal: controller.signal });
         if (!response.ok) return { response, data: null };
-        return { response, data: await parseBoundedJson<T>(response) };
+        const data = await parseBoundedJson<T>(response);
+        if (memoKey) {
+            // Bounded FIFO: evict the oldest entry when full. A publish changes
+            // the version and produces new keys, so old entries are harmless.
+            if (parsedFeedMemo.size >= MAX_PARSED_FEED_ENTRIES) {
+                const oldest = parsedFeedMemo.keys().next().value;
+                if (oldest !== undefined) parsedFeedMemo.delete(oldest);
+            }
+            parsedFeedMemo.set(memoKey, data);
+        }
+        return { response, data };
     } finally {
         clearTimeout(timeoutId);
     }
@@ -376,9 +426,13 @@ const _fetchExpiredFeed = async (customTags?: string[]): Promise<BootstrapFeedRe
             ? await signUrlWithVersion(EXPIRED_FEED_URL, feedVersion.version)
             : `${EXPIRED_FEED_URL}?v=${feedVersion.version}`;
 
+        // Always cached and tagged. A transient version-manifest blip used to
+        // flip this to `no-store`, turning a high-traffic public page into a
+        // per-request render — the failure mode that exhausts Fluid CPU. The
+        // URL is version-addressed and the tag is what invalidates it.
         const { response: res, data } = await fetchFeedJson<BootstrapFeedResponse>(signedUrl, getCDNFetchOptions({
-            cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['expired-feed'] } } : {}),
+            cache: 'force-cache',
+            next: { revalidate: feedRevalidate(), tags: customTags ?? ['expired-feed'] },
         }), 10_000);
 
         if (!res.ok) {
@@ -420,8 +474,8 @@ const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[]): 
             : `${GOVERNMENT_FEED_URL}?v=${feedVersion.version}`;
 
         let { response: res, data } = await fetchFeedJson<BootstrapFeedResponse>(signedUrl, getCDNFetchOptions({
-            cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['government-feed'] } } : {}),
+            cache: 'force-cache',
+            next: { revalidate: feedRevalidate(), tags: customTags ?? ['government-feed'] },
         }), 10_000);
 
         // Fallback if CDN fetch fails in development mode (e.g. 403 due to missing local signature secret)
@@ -554,8 +608,8 @@ const _fetchCategoryShard = async (id: string, customTags?: string[]): Promise<B
             : `${rawUrl}?v=${feedVersion.version}`;
 
         const { response: res, data } = await fetchFeedJson<BootstrapFeedResponse>(url, getCDNFetchOptions({
-            cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? [`category-${id}`, 'category-shards'] } } : {}),
+            cache: 'force-cache',
+            next: { revalidate: false, tags: customTags ?? [`category-${id}`, 'category-shards'] },
         }), 3_500);
         if (!res.ok) {
             cancelResponseBody(res);
@@ -589,8 +643,8 @@ const _fetchCompanyShard = async (slug: string, customTags?: string[]): Promise<
             : `${rawUrl}?v=${feedVersion.version}`;
 
         const { response: res, data } = await fetchFeedJson<BootstrapFeedResponse>(url, getCDNFetchOptions({
-            cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? [`company-${slug}`, 'company-shards'] } } : {}),
+            cache: 'force-cache',
+            next: { revalidate: false, tags: customTags ?? [`company-${slug}`, 'company-shards'] },
         }));
         if (!res.ok) {
             cancelResponseBody(res);

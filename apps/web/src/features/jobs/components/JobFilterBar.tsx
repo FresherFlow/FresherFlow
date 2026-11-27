@@ -75,7 +75,7 @@ interface JobFilterBarProps {
     onTypeChange?: (type: string | null) => void;
     pageType?: string;
     driveDate?: WalkinDrivePeriod;
-    onDriveDateChange?: (v: 'all' | 'today' | 'thisWeek') => void;
+    onDriveDateChange?: (v: 'all' | 'today' | 'thisWeek' | 'next30Days') => void;
     aggregates?: {
         locations: Record<string, number>;
         skills: Record<string, number>;
@@ -813,7 +813,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                             className={cn(pillBase, driveDate && driveDate !== 'all' ? 'text-foreground' : pillDefault, open === 'driveDate' && pillOpen)}
                         >
                         <CalendarIcon className="w-4 h-4 shrink-0" />
-                        {driveDate === 'today' ? 'Today' : driveDate === 'thisWeek' ? 'This Week' : 'When'}
+                        {driveDate === 'today' ? 'Today' : driveDate === 'thisWeek' ? 'This Week' : driveDate === 'next30Days' ? 'Next 30 Days' : 'When'}
                         <ChevronDownIcon className={cn('h-3.5 w-3.5 shrink-0 opacity-50 transition-transform', open === 'driveDate' && 'rotate-180')} />
                     </button>
                         {open === 'driveDate' && anchorRect && createPortal(
@@ -822,6 +822,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                                 { value: 'all' as const, label: 'All Dates' },
                                 { value: 'today' as const, label: 'Today' },
                                 { value: 'thisWeek' as const, label: 'This Week' },
+                                { value: 'next30Days' as const, label: 'Next 30 Days' },
                             ]).map((opt, idx) => (
                                 <button
                                     key={opt.value}

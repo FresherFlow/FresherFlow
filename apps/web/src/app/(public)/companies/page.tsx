@@ -5,6 +5,7 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import CompaniesDirectoryClient from '@/features/companies/components/CompaniesDirectoryClient';
 import CompaniesTabsClient from '@/features/companies/components/CompaniesTabsClient';
 import { buildCompanyDirectory } from '@/features/companies/utils/companyDirectory';
+import { startRouteTrace } from '@/lib/routeMetrics';
 
 // No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
@@ -21,6 +22,9 @@ export const metadata: Metadata = {
 };
 
 export default async function CompaniesIndexPage() {
+    // Prerendered route: the sample measures generation, not a cached hit.
+    const trace = startRouteTrace('/companies');
+
     const [companyList, feed] = await Promise.all([
         fetchCompaniesMetadata(),
         fetchFeedIndex(),
@@ -33,6 +37,8 @@ export default async function CompaniesIndexPage() {
     // same thing on /companies and in a user's Following tab.
     const companies = buildCompanyDirectory(opportunities, companyList || []);
     const totalJobs = opportunities.length;
+
+    trace.end('200');
 
     return (
         <div className="bg-background font-sans">

@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
-import { logRouteResult } from '@/lib/observability';
+import { connection } from 'next/server';
+import { startRouteTrace } from '@/lib/routeMetrics';
 import { Suspense } from 'react';
 import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
 import { Skeleton } from '@/ui/Skeleton';
@@ -17,10 +18,10 @@ import {
     ExtendedOpportunity
 } from '@/features/jobs/domain/opportunitySeo';
 
-// No ISR timer, no ISR writes on bogus slugs. Route is dynamically rendered
-// on every request (force-dynamic), so crawler-invented slugs never hit the
-// ISR cache. Trade-off: compute on every request instead of edge cache.
-export const dynamic = 'force-dynamic';
+// No ISR timer: freshness is the `government-feed`/`opportunity-*` tag bust
+// from /api/revalidate. The page is cached and regenerated once per publish;
+// miss paths call connection() so bogus slugs still never enter the ISR cache.
+export const revalidate = false;
 export const dynamicParams = true;
 
 
@@ -134,8 +135,10 @@ function GovernmentDetailSkeleton() {
 
 export default async function GovernmentJobDetailPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
+    const trace = startRouteTrace('/govt/[slug]');
     if (isInvalidSlug(slug)) {
-        logRouteResult('/govt/[slug] (crawler)', '404');
+        trace.end('404');
+        await connection();
         notFound();
     }
 
@@ -151,17 +154,21 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
         opp = oppResult;
 
         if (!opp) {
-            logRouteResult('/govt/[slug]', '404');
+            trace.end('404');
+            // Never cache a miss: dynamicParams = true means any invented slug
+            // reaches this branch, and an ISR write per invented URL is the
+            // amplification this route must not add.
+            await connection();
             notFound();
         }
 
         if (slug === opp.id && opp.slug) {
-            logRouteResult('/govt/[slug]', '308');
+            trace.end('308');
             permanentRedirect(getOpportunityPath(getFeedBadgeLabel(opp), opp.slug));
         }
 
         if (getExpiryState(opp).pastGrace) {
-            logRouteResult('/govt/[slug]', '308');
+            trace.end('308');
             permanentRedirect('/govt');
         }
 
@@ -183,7 +190,7 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
         // CDN is temporarily down — fall through with null opp so the client can show retry UI.
     }
 
-    logRouteResult('/govt/[slug]', opp ? '200' : '500');
+    trace.end(opp ? '200' : '500');
 
     return (
         <>

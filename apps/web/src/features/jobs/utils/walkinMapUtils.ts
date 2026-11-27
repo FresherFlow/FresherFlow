@@ -1,4 +1,9 @@
 import { EmploymentType, Opportunity, OpportunityCategory, RecruitmentMethod, Sector } from '@fresherflow/types';
+import { CITY_FALLBACK_COORDS, INDIA_FALLBACK_CENTER, matchTechCluster } from '@fresherflow/utils';
+
+// One home for the city/country fallback table is packages/utils. Re-export so
+// existing map callers keep working without a second copy of the constants.
+export { CITY_FALLBACK_COORDS, INDIA_FALLBACK_CENTER };
 
 /**
  * Page-level feed kinds. These are the legacy `OpportunityType` values
@@ -331,46 +336,6 @@ export function getOpportunityDistanceKm(
  * falls back to Pune, and an unknown city falls back to India rather than to
  * Hyderabad.
  */
-export const CITY_FALLBACK_COORDS: Record<string, [number, number]> = {
-    hyderabad: [17.385, 78.4867],
-    secunderabad: [17.4399, 78.4983],
-    bengaluru: [12.9716, 77.5946],
-    bangalore: [12.9716, 77.5946],
-    mumbai: [19.076, 72.8777],
-    pune: [18.5204, 73.8567],
-    delhi: [28.6139, 77.209],
-    'new delhi': [28.6139, 77.209],
-    'noida': [28.5355, 77.391],
-    gurugram: [28.4595, 77.0266],
-    gurgaon: [28.4595, 77.0266],
-    faridabad: [28.4089, 77.3178],
-    chennai: [13.0827, 80.2707],
-    kolkata: [22.5726, 88.3639],
-    ahmedabad: [23.0225, 72.5714],
-    surat: [21.1702, 72.8311],
-    jaipur: [26.9124, 75.7873],
-    lucknow: [26.8467, 80.9462],
-    nagpur: [21.1458, 79.0882],
-    indore: [22.7196, 75.8577],
-    bhopal: [23.2599, 77.4126],
-    patna: [25.5941, 85.1376],
-    kochi: [9.9312, 76.2673],
-    coimbatore: [11.0168, 76.9558],
-    madurai: [9.9252, 78.1198],
-    visakhapatnam: [17.6868, 83.2185],
-    mysuru: [12.2958, 76.6394],
-    mysore: [12.2958, 76.6394],
-    chandigarh: [30.7333, 76.7794],
-    ludhiana: [30.901, 75.8573],
-    bhubaneswar: [20.2961, 85.8245],
-    guwahati: [26.1445, 91.7362],
-    trivandrum: [8.5241, 76.9366],
-    goa: [15.2993, 74.124],
-    chandigarh_punjab: [30.7333, 76.7794],
-};
-
-export const INDIA_FALLBACK_CENTER: [number, number] = [22.5937, 78.9629];
-
 function findCityCoords(text: string): [number, number] | null {
     const lower = text.toLowerCase();
     for (const [city, coords] of Object.entries(CITY_FALLBACK_COORDS)) {
@@ -458,14 +423,9 @@ function getBaseCoords(opp: Opportunity): [number, number] {
         return [d.latitude, d.longitude];
     }
     if (d?.techCluster || d?.clusterName) {
-        const label = (d.techCluster || d.clusterName || '').toLowerCase();
-        // Hyderabad neighbourhood table, still useful for drives that did land
-        // there. Other cities fall through to the city table below.
-        for (const [key, coords] of Object.entries(CLUSTER_COORDS)) {
-            if (label.includes(key.toLowerCase())) {
-                return coords;
-            }
-        }
+        const label = (d.techCluster || d.clusterName || '') as string;
+        const match = matchTechCluster(label);
+        if (match) return [match.latitude, match.longitude];
     }
 
     const locStr = [

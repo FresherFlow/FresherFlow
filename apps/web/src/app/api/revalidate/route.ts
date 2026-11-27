@@ -44,6 +44,26 @@ function isHubPath(path: string): boolean {
 }
 
 /**
+ * Only an individual listing detail page may be revalidated eagerly.
+ *
+ * /companies/<slug>, /batch/<year>, /locations/<city>, /skills/<skill> and
+ * /roles/<role> are derived from tags; the tag bust in this same request marks
+ * them stale and the next visitor regenerates each one ONCE. Passing them to
+ * revalidatePath() instead forced an immediate ISR write for every derived
+ * page of every publish — the amplification behind the Nov 21 write spike, and
+ * the same shape as the 20k regression commit 8b1cc2d fixed.
+ */
+function isEagerDetailPath(path: string): boolean {
+    if (!path.startsWith('/') || isHubPath(path)) return false;
+    const parts = path.split('/').filter(Boolean);
+    // /jobs/<slug> and /govt/<slug>
+    if (parts[0] === 'jobs' || parts[0] === 'govt') return parts.length === 2;
+    // /drives/<type>/<slug>
+    if (parts[0] === 'drives') return parts.length === 3;
+    return false;
+}
+
+/**
  * Derives which feed tags need busting based on slug paths.
  * Only called when no explicit body.tags are provided (slug-based revalidation).
  *
@@ -120,7 +140,7 @@ async function handleRevalidate(request: NextRequest) {
         if (Array.isArray(paths)) {
             for (const path of paths) {
                 if (typeof path === 'string') {
-                    if (isHubPath(path)) {
+                    if (!isEagerDetailPath(path)) {
                         skippedPaths.push(path);
                         continue;
                     }

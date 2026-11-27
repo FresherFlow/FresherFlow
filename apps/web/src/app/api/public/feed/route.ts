@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Sector } from '@fresherflow/types';
 import { fetchFeedIndex, fetchGovernmentFeed, fetchBootstrapFeed, type BootstrapFeedResponse } from '@/lib/api/feedServer';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { startRouteTrace } from '@/lib/routeMetrics';
 
 // The route itself is always rendered per request (force-dynamic) and its own
 // response is edge-cacheable below. The INNER read is the part that used to be
@@ -26,6 +27,7 @@ export const dynamic = 'force-dynamic';
  * everything else serves the main employment feed.
  */
 async function servePublicFeed(request: NextRequest) {
+    const trace = startRouteTrace('/api/public/feed');
     const { searchParams } = new URL(request.url);
     const requested = (searchParams.get('type') || 'ALL').toUpperCase();
     const isGovernment = requested === Sector.GOVERNMENT;
@@ -45,8 +47,11 @@ async function servePublicFeed(request: NextRequest) {
         }
 
         if (!feed) {
+            trace.end('503');
             return NextResponse.json({ error: 'Feed unavailable' }, { status: 503 });
         }
+
+        trace.end('200');
 
         return NextResponse.json(
             {
@@ -66,6 +71,7 @@ async function servePublicFeed(request: NextRequest) {
             }
         );
     } catch (error) {
+        trace.end('503');
         console.error('[api/public/feed] Feed serving failed:', error);
         return NextResponse.json({ error: 'Feed unavailable' }, { status: 503 });
     }

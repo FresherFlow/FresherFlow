@@ -3,8 +3,13 @@ import { FEED_STATS_URL } from '@/lib/utils/runtimeConfig';
 import { withRateLimit } from '@/lib/api/rateLimit';
 
 // On-demand revalidation via /api/revalidate — same policy as the feed routes.
+//
+// There is deliberately NO `dynamic = 'force-dynamic'` here. It cancelled this
+// `revalidate = false` and made every badge read a Node function invocation:
+// 55 invocations cost 9s of Fluid Active CPU in one 12-hour window, ~164ms
+// each, against a payload of six integers. As a cached GET it is served from
+// the edge, and the `feed-stats` tag bust from a publish is what refreshes it.
 export const revalidate = false;
-export const dynamic = 'force-dynamic';
 
 const CACHE_HEADERS = {
     'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600',
@@ -37,8 +42,10 @@ function pickCounts(data: Record<string, unknown>): Record<string, unknown> {
  */
 async function serveNavCounts(_request: NextRequest) {
     try {
+        // Tagged, never timed: a numeric revalidate here becomes the route's ISR
+        // period and re-renders it on a clock (see feedCache.ts).
         const res = await fetch(FEED_STATS_URL, {
-            next: { revalidate: 300, tags: ['feed-stats'] },
+            next: { revalidate: false, tags: ['feed-stats'] },
         });
         if (!res.ok) {
             return NextResponse.json(pickCounts({}), { headers: CACHE_HEADERS });

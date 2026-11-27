@@ -1,143 +1,82 @@
 <DocBackLink />
 
-# MCP Server
+# FresherFlow MCP server
 
-Connect an AI client to FresherFlow. Search live jobs, save listings, submit opportunities and — with moderator permissions — review the queue. The server is a thin Cloudflare Worker over the FresherFlow API: no database connection, no service key, and every account action uses your own OAuth token.
+FresherFlow exposes an MCP server so an AI client can search jobs and, once signed in, use your own account. It speaks Streamable HTTP. Public job search needs no account.
 
-## Endpoint
+## Endpoints
 
-<DocEndpoint value="https://mcp.fresherflow.in/mcp" />
+| Endpoint | What it is |
+| --- | --- |
+| `https://mcp.fresherflow.in/mcp` | Full server. Public read tools plus account, submission and moderator tools when signed in. |
+| `https://mcp.fresherflow.in/mcp/public` | Read-only. Three public job-discovery tools, no sign-in, no account data. |
 
-Public, read-only discovery works without an account:
+Use the full URL including `/mcp`. The server is stateless: each request builds a fresh tool list for the caller, so a moderator sees moderation tools and a normal account does not.
 
-<DocEndpoint value="https://mcp.fresherflow.in/mcp/public" />
+## Connecting
 
-<DocCallout variant="note" title="Public endpoint">
-  `/mcp/public` exposes only `get_jobs`, `get_job` and `get_company_jobs`. It never returns account data.
-</DocCallout>
+**ChatGPT:** Plugins → plus button → **Add custom MCP server** → enter `https://mcp.fresherflow.in/mcp` → choose **OAuth** → Create as a plugin.
 
-## Connect a client
+**Claude:** add a custom connector with the same URL. Claude opens the sign-in flow on first use of a protected tool.
 
-Add FresherFlow as an HTTP MCP server in your client.
-
-### Claude Code
-
-```bash
-claude mcp add --transport http --scope user fresherflow https://mcp.fresherflow.in/mcp
-```
-
-### Cursor
-
-Add `https://mcp.fresherflow.in/mcp` as a remote MCP server in Settings → MCP, then sign in when prompted.
-
-### ChatGPT and Codex
-
-Use the **Add connector** or **Add MCP server** flow in your client settings and paste the endpoint above. Sign in with your FresherFlow account to finish.
-
-The first connection takes you through OAuth. After you approve access, the client can call tools with your own permissions.
-
-## What you can do
-
-Ask in plain English — the client picks the tool.
-
-- **Find work.** "Find fresher jobs in Hyderabad" or "Show me remote internships that need React."
-- **Check a match.** "I graduate in 2027 with a B.Tech in CSE — what fits me?" Your profile supplies the filters, and each result is checked against its eligibility fields.
-- **Track applications.** "Where did I apply, and what stage am I at?"
-- **Save jobs.** "Save this job for later."
-- **Submit an opportunity.** "Add this job to FresherFlow" — a draft for a normal account, published immediately for a moderator.
-
-## Tools
-
-The tool list a connection sees already reflects its role. A normal account never sees moderation tools.
-
-### Discovery
-
-Available to everyone.
-
-`get_jobs` — Search by keyword, city, company, type, degree, skill, work mode, age or deadline.
-
-`get_job` — Full detail for one listing by slug or id.
-
-`get_company_jobs` — Whether one company has live jobs, its listings and company page.
-
-### Your account
-
-Sign-in required.
-
-`whoami` — Connection identity, role and capabilities.
-
-`get_my_profile` — Your education, pass-out year, skills and preferred cities or work modes.
-
-`list_saved_jobs` — Bookmarked jobs with deadlines and apply links.
-
-`save_job` — Bookmark or unbookmark one listing.
-
-`list_my_applications` — Application records and their stages.
-
-`submit_opportunity` — Submit a job. A draft for users, published for moderators.
-
-`list_my_submissions` — Your submissions and their status.
-
-`withdraw_submission` — Withdraw a submission waiting for review.
-
-### Moderation
-
-Review and publish permissions required.
-
-`get_listing` — Read a full existing listing.
-
-`update_listing` — Fully replace an existing listing.
-
-`review_queue` — Submissions awaiting review.
-
-`approve_submission` — Publish a submission.
-
-`reject_submission` — Reject a submission with a reason.
-
-<DocCallout variant="note" title="Write tools carry their own contract">
-  Each write tool describes its own fields. There is no separate schema or template tool.
-</DocCallout>
-
-## Agent skills
-
-Tools expose capability; [skills](/docs/skills) carry the sequence and the rules.
-
-- **submit-opportunity** — go from a link or pasted posting to one complete submission.
-- **job-search** — search the live feed with accurate filters and return canonical links.
-- **review-submissions** — one decision per submission: approve, reject with a reason, or fix and publish.
-- **fresherflow-coach** — turn a profile into a focused search and application plan.
+**Other clients (OpenCode, Claude Code, Cursor):** configure a remote HTTP MCP server with the same URL. A client that does not sign in can still use the public tools at `/mcp/public`.
 
 ## Authentication
 
-The MCP server is an OAuth 2.1 resource server. The FresherFlow API is the authorization server.
+FresherFlow is an OAuth 2.1 resource server. There are no API keys and no service accounts.
 
-1. The client fetches protected-resource metadata.
-2. It registers through dynamic client registration.
-3. It redirects you to the FresherFlow consent screen.
-4. After approval, it exchanges the code for tokens.
-5. Every tool call sends `Authorization: Bearer <access_token>`.
+- The resource is `https://mcp.fresherflow.in/mcp`; the authorization server is `https://api.fresherflow.in`.
+- Dynamic client registration is supported; PKCE with `S256` is required.
+- Access tokens last 24 hours and are bound to the MCP resource. Refresh tokens last 90 days.
+- The scope is `mcp`. Signing in does not change your website session.
+- Protected tools return a real HTTP 401 with a `WWW-Authenticate` challenge so the client starts sign-in. A 403 means your account lacks that permission.
 
-PKCE S256 and the RFC 8707 `resource` parameter are required. Access tokens last 24 hours; refresh tokens rotate.
+A connection reads and writes only the signed-in account's own data. Revoking the connection in your account settings signs it out immediately.
 
-<DocCallout variant="tip" title="Tool list changed after a permission grant?">
-  Clients cache the tool list. Use **Refresh tools** in your client or reconnect. `whoami` can show `moderator` while the visible tools are still the old set.
-</DocCallout>
+## Tools
 
-Manage or revoke connections under **Settings → Connected apps** in the web app.
+Public, no account needed (also on `/mcp/public`):
 
-## Rate limits
+- `get_jobs` — search live jobs by text, city, company, type, degree, skill, work mode, posting age or deadline.
+- `get_job` — full public detail for one listing by id or slug.
+- `get_company_jobs` — live listings and company page for one named employer.
+- `find_walkins` — walk-in drives (dated events at a venue), searchable by city/area, optional coordinates with a radius, a drive-date window and skills. Returns venue, dates, `distanceKm` and match reasons. Use `get_jobs(type: "walk-in")` only for a flat browse.
 
-The MCP worker allows 600 requests per minute per client IP. Per-account limits apply to `submit_opportunity` (60/hour), listing writes (60/minute), listing reads (120/minute) and moderation actions (30/minute). A 429 response includes `Retry-After` and the original request id so the client can retry just that call.
+With a FresherFlow account:
 
-## Troubleshooting
+- `whoami` — the connected account (also the OpenAI profile tool).
+- `get_my_profile`, `list_saved_jobs`, `save_job`, `list_my_applications` — your own profile, bookmarks and application stages.
+- `submit_opportunity`, `list_my_submissions`, `withdraw_submission` — submit a posting and track it. A normal account's submission is a **draft**; it is live only when a moderator publishes it.
 
-- **401 on the first call** — expected. The client follows the resource metadata URL and completes OAuth.
-- **Tools missing** — check `whoami`. A normal account cannot see moderator tools.
-- **Connection keeps asking to reconnect** — refresh tools, then check **Settings → Connected apps**.
-- **429** — wait for `Retry-After` and retry. Do not reconnect.
+With a moderator account:
 
-## Related
+- `review_queue`, `approve_submission`, `reject_submission` — review community submissions.
+- `get_listing`, `update_listing` — read and fix an existing listing. `update_listing` is a full replace, so read first.
 
-- [Overview](/docs/overview) — how the platform fits together.
-- [API reference](/docs/api) — the REST surface behind these tools.
-- [Agent skills](/docs/skills) — the shipped workflow playbooks.
+Adding a job is always `submit_opportunity`. There is no second creation tool.
+
+Clients that support MCP Apps also get `show_job_cards`, which renders the results of `get_jobs` as a card list. Clients without that capability keep the same tool list as before.
+
+## Limits
+
+- Public discovery reads the versioned public feed; it refreshes about every 30 seconds.
+- Submissions are limited to 60 per hour for a normal account. Moderator submissions are not limited by that quota.
+- Listing writes 60/minute, listing reads 120/minute, moderation actions 30/minute, and the worker has a 600/minute per-IP guard.
+- Limits are returned as standard rate-limit headers and a 429 with `Retry-After`.
+
+## Local development
+
+The repo includes a `.mcp.json` entry named `fresherflow-local` pointing at `http://127.0.0.1:8787/mcp`. It is for contributors testing tools before production; it is not a hosted endpoint.
+
+- Run the API on port 5001 and the web app on 3000, then start the MCP worker with `pnpm --filter fresherflow-mcp dev` from the repository root. The worker allows loopback HTTP origins, so a local client can connect.
+- Add the local entry to a client's MCP config (the repo's `.mcp.json` uses the `mcpServers` shape) and connect to `http://127.0.0.1:8787/mcp`.
+- The development command does **not** enable an unauthenticated mode. Protected tools still need a FresherFlow account and the same OAuth 2.1 flow as production; public tools work without one.
+- After changing a tool's input or output schema, refresh tools or reconnect the local client before re-running a call — clients cache the tool list.
+
+## Tool lists are cached
+
+MCP clients cache the tool list and connection instructions. After we add, rename or change a tool, **refresh tools or reconnect** the connection before trusting a result. ChatGPT: open the connection at chatgpt.com/plugins and select Refresh, then start a new conversation. Claude Code: `/mcp reconnect`.
+
+## Privacy
+
+Public tools need no account and return only published listings. When you sign in, the connector receives your opaque account id, display name, email and role label through `whoami`, and the fields each tool needs to answer your request (for example education and preferred cities for `get_my_profile`). Those values are used only to fulfill the tool call. The connector cannot read another account's data, apply to jobs, or accept offers. See the [privacy policy](/privacy) for the full statement.

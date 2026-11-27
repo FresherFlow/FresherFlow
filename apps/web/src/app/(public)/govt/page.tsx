@@ -4,6 +4,7 @@ import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/feedServer';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { toOpportunityCardDTO } from '@fresherflow/types';
 import { isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
+import { startRouteTrace } from '@/lib/routeMetrics';
 
 // No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
@@ -40,6 +41,9 @@ export const metadata: Metadata = {
 };
 
 export default async function GovernmentJobsPage() {
+    // Prerendered route: the sample measures generation, not a cached hit.
+    const trace = startRouteTrace('/govt');
+
     let govtData = await fetchGovernmentFeed();
     if (!govtData || !govtData.opportunities || govtData.opportunities.length === 0) {
         // Lightweight feed-index fallback (governmentJobDetails included in index fields)
@@ -59,6 +63,8 @@ export default async function GovernmentJobsPage() {
         total: govtData.opportunities.length,
         cachedAt: new Date(govtData.generatedAt || Date.now()).getTime(),
     } : null;
+
+    trace.end('200');
 
     return <CategoryPage type="GOVERNMENT" initialData={initialData} />;
 }

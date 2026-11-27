@@ -1,7 +1,8 @@
 ﻿import type { Metadata } from 'next';
 import Link from 'next/link';
 import { permanentRedirect, notFound } from 'next/navigation';
-import { logRouteResult } from '@/lib/observability';
+import { connection } from 'next/server';
+import { startRouteTrace } from '@/lib/routeMetrics';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
@@ -30,10 +31,14 @@ import {
 // wrapped in React cache() inside lib/api/feedServer.ts, so generateMetadata and
 // the page component share one set of CDN round-trips per request.
 
-// No ISR timer, no ISR writes on bogus slugs. Route is dynamically rendered
-// on every request (force-dynamic), so crawler-invented slugs never hit the
-// ISR cache. Trade-off: compute on every request instead of edge cache.
-export const dynamic = 'force-dynamic';
+// No ISR timer: freshness is the `companies-metadata`/`company-<slug>` tag
+// bust from /api/revalidate, so the page is cached and regenerated once per
+// publish instead of fully re-rendered per visit. `force-dynamic` made every
+// crawler hit pay for a full SSR (directory, slug history, company shard,
+// feed index fallback), which is what drove the Vercel Fluid CPU burn. Miss
+// paths call connection() below so a bogus slug is never written to the ISR
+// cache.
+export const revalidate = false;
 // dynamicParams = true: companies published after the last build (or slugs the
 // build-time feed snapshot missed) must render on demand instead of 404ing.
 // The page body itself is inventory-gated and calls notFound() when a company
@@ -218,9 +223,10 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     const { slug: rawSlugParam } = await params;
     const rawSlug = decodeURIComponent(rawSlugParam);
     const properSlug = slugify(rawSlug);
+    const trace = startRouteTrace('/companies/[slug]');
 
     if (rawSlug !== properSlug) {
-        logRouteResult('/companies/[slug]', '308');
+        trace.end('308');
         permanentRedirect(`/companies/${properSlug}`);
     }
 
@@ -238,7 +244,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     // the static seed in companySlugAliases.ts is the fallback beneath it.
     const aliasTarget = resolveCompanySlugAlias(properSlug, slugHistory.aliases);
     if (aliasTarget !== properSlug) {
-        logRouteResult('/companies/[slug]', '308');
+        trace.end('308');
         permanentRedirect(`/companies/${aliasTarget}`);
     }
 
@@ -252,7 +258,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         if (matched) {
             const canonicalSlug = matched.slug || slugify(matched.name || '');
             if (canonicalSlug && canonicalSlug !== properSlug) {
-                logRouteResult('/companies/[slug]', '308');
+                trace.end('308');
                 shouldRedirectTo = canonicalSlug;
             }
             targetSlug = canonicalSlug;
@@ -276,13 +282,14 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                         .replace(/\b\w/g, c => c.toUpperCase());
                     const archiveName = aliasName ||
                         properSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                    logRouteResult('/companies/[slug]', '200');
+                    trace.end('200');
                     return <CompanyArchiveView companyName={archiveName} slug={properSlug} archivedRoles={[]} />;
                 }
-                logRouteResult('/companies/[slug]', '404');
+                trace.end('404');
                 // Never cache a miss: with dynamicParams = true, any slug a
                 // crawler invents renders here. Without this call the 404 is
                 // written to the ISR cache under that invented URL.
+                await connection();
                 notFound();
             }
         }
@@ -327,7 +334,10 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         const everPublished = Boolean(matched) || slugHistory.everLive.has(properSlug) || slugHistory.everLive.has(targetSlug);
 
         if (!everPublished) {
-            logRouteResult('/companies/[slug]', '404');
+            trace.end('404');
+            // Same rule as above: a slug that was never published is a miss,
+            // not a cacheable page.
+            await connection();
             notFound();
         }
 
@@ -351,7 +361,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
             || (dirForArchive || []).find(c => c && (c.slug === targetSlug || slugify(c.name || '') === targetSlug))?.name
             || targetSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-        logRouteResult('/companies/[slug]', '200');
+        trace.end('200');
         return <CompanyArchiveView companyName={archiveName} slug={targetSlug} archivedRoles={archivedRoles} />;
     }
 
@@ -460,7 +470,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         'This profile updates as new roles are published and closed roles are removed.',
     ].join(' ');
 
-    logRouteResult('/companies/[slug]', '200');
+    trace.end('200');
 
     const safePortalUrl = toSafeOutboundUrl(portalUrl);
 

@@ -1,9 +1,10 @@
 import { Opportunity, EducationLevel } from '@fresherflow/types';
+import { haversineKm } from '@fresherflow/utils';
 import {
     isStaleWalkin,
     isGovernmentOpportunity,
     matchesFeedType,
-    getOpportunityDistanceKm,
+    getDriveDetails,
     isWalkinInPeriod,
     type WalkinDrivePeriod,
 } from '@/features/jobs/utils/walkinMapUtils';
@@ -289,6 +290,20 @@ export interface LocalFilterInput {
     driveRadiusKm?: number | null;
 }
 
+/**
+ * Distance for ranking and radius filtering. Only an exact venue coordinate
+ * counts — a city-centre fallback would present an approximate number as if it
+ * were the venue, which is exactly what the shared ranking helper rejects.
+ */
+function exactWalkinDistanceKm(opp: Opportunity, latitude: number, longitude: number): number | null {
+    const drive = getDriveDetails(opp);
+    if (!drive || typeof drive.latitude !== 'number' || typeof drive.longitude !== 'number') return null;
+    return haversineKm(
+        { latitude, longitude },
+        { latitude: drive.latitude, longitude: drive.longitude },
+    );
+}
+
 /** Pass 2: workMode/skills/role/saved/govt/drive scoping over pass-1 output. */
 export function applyLocalFilters(opps: Opportunity[], input: LocalFilterInput): Opportunity[] {
     const { workMode, skills, role, type, govtPhase, govtCategory, userLocation, driveDate, driveRadiusKm } = input;
@@ -324,15 +339,9 @@ export function applyLocalFilters(opps: Opportunity[], input: LocalFilterInput):
         // applied to drives — a radius around the user is not a filter on
         // remote or hybrid roles.
         if (type === 'WALKIN' && userLocation && driveRadiusKm != null) {
-            const distance = getOpportunityDistanceKm(
-                opp,
-                userLocation.latitude,
-                userLocation.longitude,
-            );
-            // A drive with no resolvable venue has no distance. Excluding it
-            // is the point of a radius filter, but the distance helper falls
-            // back to a city centre, so a drive outside the radius is dropped
-            // rather than silently kept.
+            const distance = exactWalkinDistanceKm(opp, userLocation.latitude, userLocation.longitude);
+            // No exact venue coordinates means no distance. A city-centre
+            // fallback must not silently keep a drive outside the radius.
             if (distance === null || distance > driveRadiusKm) return false;
         }
 
@@ -343,11 +352,7 @@ export function applyLocalFilters(opps: Opportunity[], input: LocalFilterInput):
     if (type === 'WALKIN' && userLocation) {
         const withDistance = filtered.map((opp) => ({
             ...opp,
-            distanceKm: getOpportunityDistanceKm(
-                opp,
-                userLocation.latitude,
-                userLocation.longitude,
-            ),
+            distanceKm: exactWalkinDistanceKm(opp, userLocation.latitude, userLocation.longitude),
         }));
         withDistance.sort((a, b) => {
             const dA = a.distanceKm ?? Infinity;

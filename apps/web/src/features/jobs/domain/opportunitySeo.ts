@@ -222,6 +222,16 @@ export const fetchOpportunityForMetadata = cache(async (slugOrId: string): Promi
 });
 
 
+/** A closed listing keeps its title for context but must not be indexed as an open job. */
+export function generateClosedOpportunityMetadata(opportunity: ExtendedOpportunity): Metadata {
+    const title = `${opportunity.title} — listing unavailable | FresherFlow`;
+    return {
+        title: { absolute: truncateTitleByPixels(title) },
+        description: 'This listing is no longer available. FresherFlow keeps it for reference and links to current fresher jobs.',
+        robots: { index: false, follow: true },
+    };
+}
+
 export async function generateOpportunityMetadata(opportunity: ExtendedOpportunity): Promise<Metadata> {
     const expiry = getExpiryState(opportunity);
 

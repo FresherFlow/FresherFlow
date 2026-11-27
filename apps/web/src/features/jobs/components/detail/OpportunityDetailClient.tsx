@@ -22,8 +22,8 @@ import Link from 'next/link';
 import { Button } from '@/ui/Button';
 import { CopyButton } from '@/ui/CopyButton';
 import { OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';import { cn } from '@/ui/cn';
-import { slugify } from '@fresherflow/utils/slugify';
 import { getCompanySlug } from '@/features/jobs/domain/opportunityDisplay';
+import { RelatedSearches } from '@/features/jobs/components/detail/RelatedSearches';
 
 // Subcomponents
 const ComplexityCard = dynamic(() => import('@/features/jobs/components/detail/ComplexityCard').then(m => m.ComplexityCard));
@@ -413,57 +413,17 @@ export default function OpportunityDetailClient({
                             />
                         </div>
 
-                        <div className="mt-4 rounded-xl border border-border bg-card p-4 dark:border-transparent">
-                            <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                                <span className="inline-block h-4 w-1 rounded-full bg-primary" aria-hidden="true" />
-                                Related searches
-                            </h3>
-                            <div className="mt-2.5 flex flex-wrap gap-2">
-                                {(() => {
-                                    const titleCase = (value: string) =>
-                                        value.trim().split(' ').map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-                                    const links: { label: string; href: string }[] = [];
-                                    links.push({
-                                        label: `${opp.company} careers`,
-                                        href: `/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`,
-                                    });
-                                    opp.allowedPassoutYears?.forEach((year) => links.push({ label: `${year} batch jobs`, href: `/jobs/${year}-batch` }));
-                                    (opp.locations || [])
-                                        .filter((loc) => {
-                                            if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return false;
-                                            if (validDirectoryLinks?.validLocations?.length) return validDirectoryLinks.validLocations.includes(loc.trim().toLowerCase());
-                                            return true;
-                                        })
-                                        .forEach((loc) => links.push({ label: `Jobs in ${titleCase(loc)}`, href: `/jobs/${slugify(loc)}-jobs` }));
-                                    (opp.requiredSkills || [])
-                                        .filter((skill) => {
-                                            if (validDirectoryLinks?.validSkills?.length) return validDirectoryLinks.validSkills.includes(skill.trim().toLowerCase());
-                                            return true;
-                                        })
-                                        .slice(0, 5)
-                                        .forEach((skill) => links.push({ label: `${titleCase(skill)} jobs`, href: `/jobs/${slugify(skill)}-jobs` }));
-                                    if (opp.jobFunction) {
-                                        if (opp.jobFunction.toLowerCase() === 'internship') {
-                                            links.push({ label: 'Internships', href: '/jobs/internships' });
-                                        } else {
-                                            const roleSlug = slugify(opp.jobFunction);
-                                            if (['software-engineer','data-analyst','business-analyst','frontend-developer','test-engineer'].includes(roleSlug)) {
-                                                links.push({ label: `${titleCase(opp.jobFunction)} jobs`, href: `/jobs/${roleSlug}-jobs` });
-                                            }
-                                        }
-                                    }
-                                    return links.map((link) => (
-                                        <Link
-                                            key={link.href}
-                                            href={link.href}
-                                            className="inline-flex rounded-md border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors dark:border-transparent dark:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:border-primary/40 [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                        >
-                                            {link.label}
-                                        </Link>
-                                    ));
-                                })()}
-                            </div>
-                        </div>
+                        <RelatedSearches
+                            company={opp.company}
+                            companyHref={(opp as any).companySlug ? `/companies/${(opp as any).companySlug}` : null}
+                            companyWebsite={(opp as any).companyWebsite}
+                            passoutYears={opp.allowedPassoutYears}
+                            locations={opp.locations}
+                            skills={opp.requiredSkills}
+                            jobFunction={opp.jobFunction}
+                            validSkills={validDirectoryLinks?.validSkills}
+                            validLocations={validDirectoryLinks?.validLocations}
+                        />
 
                         {/* The related list is derived from client feed state. It can be
                             populated on the first client render while the server had

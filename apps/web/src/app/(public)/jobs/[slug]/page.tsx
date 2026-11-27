@@ -1,7 +1,9 @@
 import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
+import { connection } from 'next/server';
 import { logRouteResult } from '@/lib/observability';
+import { startRouteTrace } from '@/lib/routeMetrics';
 import { Suspense, cache } from 'react';
 import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
 import { OpportunityDetailSkeleton, FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
@@ -10,6 +12,7 @@ import {
     fetchOpportunityForPage,
     fetchOpportunityForMetadata,
     generateOpportunityMetadata,
+    generateClosedOpportunityMetadata,
     generateOpportunityJsonLd,
     getExpiryState,
     getTypeHubPath,
@@ -19,6 +22,7 @@ import {
 import { fetchGovernmentFeed, fetchFeedIndex, fetchCompaniesMetadata } from '@/lib/api/feedServer';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
+import { ClosedListingView } from '@/features/jobs/components/detail/ClosedListingView';
 import { getJobDiscussionForSeo } from '@/features/jobs/domain/jobDiscussionSeo';
 import { getFeedBadgeLabel, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { filterOpportunities } from '@/features/jobs/utils/filterOpportunities';
@@ -71,12 +75,23 @@ function getJobSlugs(
     return slugs;
 }
 
-/** One feed pass builds the board registry; registry slugs ∩ job slugs = ∅ asserted at build. */
+/**
+ * One feed pass builds the board registry; registry slugs ∩ job slugs = ∅
+ * asserted at build. Memoised per feed version, not per request: the registry
+ * is derived from the feed index and the index only changes when its
+ * `generatedAt` does, so rebuilding it for every /jobs/<slug> render repeats
+ * identical O(n) work in the same isolate.
+ */
+let taxonomyRegistryMemo: { key: string; value: TaxonomyRegistry | null } | null = null;
+
 const loadTaxonomyRegistry = cache(async (): Promise<TaxonomyRegistry | null> => {
     try {
         const feed = await fetchFeedIndex();
+        const key = feed?.generatedAt ?? `count:${feed?.opportunities?.length ?? 0}`;
+        if (taxonomyRegistryMemo?.key === key) return taxonomyRegistryMemo.value;
         const registry = buildTaxonomyRegistry(feed?.opportunities || []);
         assertRegistryJobSlugCollision(registry, getJobSlugs(feed));
+        taxonomyRegistryMemo = { key, value: registry };
         return registry;
     } catch (err) {
         if (process.env.NODE_ENV !== 'production') {
@@ -133,10 +148,14 @@ type Props = {
     params: Promise<{ slug: string }>;
 };
 
-// No ISR timer, no ISR writes on bogus slugs. Route is dynamically rendered
-// on every request (force-dynamic), so crawler-invented slugs never hit the
-// ISR cache. Trade-off: compute on every request instead of edge cache.
-export const dynamic = 'force-dynamic';
+// No ISR timer: freshness is the `feed-version`/`opportunity-*` tag bust from
+// /api/revalidate, so the page is cached and regenerated once per publish
+// instead of fully re-rendered on every visit. `force-dynamic` here meant every
+// crawler hit paid for a full SSR (feed parse, taxonomy registry, JSON-LD),
+// which is what drove the Vercel Fluid CPU burn. Miss paths call connection()
+// below so a bogus slug still renders dynamically and is never written to the
+// ISR cache.
+export const revalidate = false;
 
 // dynamicParams = true: allows newly published jobs to be dynamically generated on their first visit,
 // rather than 404ing.
@@ -157,6 +176,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug: slugOrId } = await params;
     if (isInvalidSlug(slugOrId)) {
         logRouteResult('/[slug] (crawler)', '404');
+        await connection();
         notFound();
     }
 
@@ -190,19 +210,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         const opportunity =
             (await fetchOpportunityForMetadata(slugOrId)) ?? (await fetchOpportunityForPage(slugOrId));
         if (!opportunity) throw new Error('Opportunity not found');
+        if (getExpiryState(opportunity).isExpired) return generateClosedOpportunityMetadata(opportunity);
         return await generateOpportunityMetadata(opportunity);
     } catch {
+        // The body renders the closed-listing view for a missing opportunity.
+        // Keep the title consistent and stop Google indexing dead detail URLs.
         return {
-            title: 'Job Not Found',
-            description: 'This job listing is no longer available.',
+            title: { absolute: 'Listing unavailable — FresherFlow' },
+            description: 'This listing is no longer available. Browse current fresher jobs, internships and walk-in drives.',
+            robots: { index: false, follow: true },
         };
     }
 }
 
 export default async function OpportunityDetailPage({ params }: Props) {
     const { slug: slugOrId } = await params;
+    const trace = startRouteTrace('/jobs/[slug]');
     if (isInvalidSlug(slugOrId)) {
-        logRouteResult('/[slug] (crawler)', '404');
+        trace.end('404');
+        await connection();
         notFound();
     }
 
@@ -219,7 +245,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // filter — not a missing page. Empty boards render with an empty
         // state and noindex metadata (see generateMetadata); only unknown
         // slugs fall through to the job branch and its 404 below.
-        logRouteResult('/[slug] (board)', '200');
+        trace.end('200');
 
         return (
             <Suspense fallback={<FeedPageSkeleton />}>
@@ -262,7 +288,12 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // instead of soft-404ing a 200 that looks like a listing.
         //
         if (!opportunityData) {
-            logRouteResult('/[slug]', '404');
+            trace.end('404');
+            // Never cache a miss: with dynamicParams = true any slug a crawler
+            // invents lands here, and an ISR write per invented URL is exactly
+            // the amplification this route was made dynamic to avoid. Opt this
+            // request out of the cache instead of the whole route.
+            await connection();
             notFound();
         }
 
@@ -275,50 +306,54 @@ export default async function OpportunityDetailPage({ params }: Props) {
             permanentRedirect(getOpportunityPath(detailType, opportunityData.slug || opportunityData.id));
         }
 
-        const expiry = getExpiryState(opportunityData);
-
-        // SEO Enforcement: Redirect to slug if ID was used
-        if (slugOrId === opportunityData.id && opportunityData.slug) {
-            logRouteResult('/[slug]', '308');
-            permanentRedirect(getOpportunityPath(getFeedBadgeLabel(opportunityData), opportunityData.slug));
-        }
-
-        // The listing payload carries no company slug, so the detail links and
-        // the JSON-LD breadcrumb would each guess one from the website. Resolve
-        // it with the same slugger `/companies/{slug}` uses, so the link points
-        // at the page that actually exists.
+        // The listing payload carries no company slug. Resolve it with the same
+        // slugger `/companies/{slug}` uses, so the closed page can link to the
+        // company that actually exists.
         const companyDirectory = await fetchCompaniesMetadata().catch(() => null);
         const companySlug = companyDirectory ? new CompanySlugger(companyDirectory).getSlug(opportunityData) : null;
         if (companySlug) {
             opportunityData = { ...opportunityData, companySlug } as ExtendedOpportunity;
         }
 
-        // Expired pages stay live for the grace period, then move to the most
-        // specific live page. Company profiles are evergreen now, so they are
-        // the better destination; the type board is the fallback when the
-        // company cannot be resolved. A 308 beats a 404 or a dead 200 here.
-        if (expiry.pastGrace) {
-            logRouteResult('/[slug]', '308');
-            permanentRedirect(
-                companySlug ? `/companies/${companySlug}` : getTypeHubPath(getFeedBadgeLabel(opportunityData))
+        const directoryLinks = feed?.opportunities ? getValidDirectoryLinks(feed.opportunities) : null;
+        const expiry = getExpiryState(opportunityData);
+
+        // A closed listing keeps its URL and its facts as a quiet reference,
+        // exactly like a job board's "no longer available" page. No redirect,
+        // no apply action, no JobPosting markup.
+        if (expiry.isExpired) {
+            trace.end('200');
+            return (
+                <ClosedListingView
+                    opportunity={opportunityData}
+                    companyHref={companySlug ? `/companies/${companySlug}` : null}
+                    validSkills={directoryLinks?.validSkills}
+                    validLocations={directoryLinks?.validLocations}
+                />
             );
+        }
+
+        // SEO Enforcement: Redirect to slug if ID was used
+        if (slugOrId === opportunityData.id && opportunityData.slug) {
+            trace.end('308');
+            permanentRedirect(getOpportunityPath(getFeedBadgeLabel(opportunityData), opportunityData.slug));
         }
 
         if (feed?.opportunities) {
             relatedOpportunitiesData = getRelatedOpportunities(opportunityData, feed.opportunities);
-            validDirectoryLinks = getValidDirectoryLinks(feed.opportunities);
+            if (directoryLinks) validDirectoryLinks = directoryLinks;
         }
     } catch (err) {
         // Re-throw Next.js navigation signals (notFound, redirect) — they must propagate.
         // Only swallow genuine network/fetch failures.
         if (isNextNavigationError(err)) throw err;
         // CDN is temporarily down — render client with null so it can show retry UI
-        // rather than hard 404-ing on a transient error.
+        // rather than hard 404-ing on a transient error. A transient failure
+        // must not be cached as the page's permanent state.
+        await connection();
     }
 
-    if (opportunityData) {
-        logRouteResult('/[slug]', '200');
-    }
+    trace.end(opportunityData ? '200' : '500');
 
     // Server-rendered H1 + summary so crawlers always see real content —
     // the interactive detail view below is a Suspense-wrapped client

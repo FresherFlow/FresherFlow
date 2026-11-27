@@ -5,6 +5,7 @@ import { Skeleton } from '@/ui/Skeleton';
 import { fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/feedServer';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { buildCompanyFollowMap } from '@/features/companies/utils/companyDirectory';
+import { startRouteTrace } from '@/lib/routeMetrics';
 
 // No timer, by design — see `lib/api/feedCache.ts` for the full policy.
 // Freshness arrives when the API says so: a rebuild calls /api/revalidate,
@@ -84,6 +85,11 @@ function JobsShellFallback() {
 }
 
 export default async function JobsPage() {
+    // Prerendered route: this body runs when the page is generated, not on a
+    // cached hit, so the sample is a regeneration cost. That is the only CPU
+    // this route can spend here — a cache hit never enters this function.
+    const trace = startRouteTrace('/jobs');
+
     // Single page of the bootstrap feed (not the whole thing): the
     // split-view detail pane renders the job description from its list item
     // and never refetches when initialData exists. The remaining feed is
@@ -114,6 +120,8 @@ export default async function JobsPage() {
         cachedAt: new Date(feedIndexData?.generatedAt || Date.now()).getTime(),
         partial: false,
     } : null;
+
+    trace.end('200');
 
     return (
         <Suspense fallback={<JobsShellFallback />}>
